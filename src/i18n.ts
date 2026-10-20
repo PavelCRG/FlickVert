@@ -24,7 +24,10 @@ const messages = {
   'Max width': ['Max width', 'Макс. ширина'], 'Max height': ['Max height', 'Макс. высота'], 'Animated GIFs are converted using the first frame.': ['Animated GIFs are converted using the first frame.', 'Анимированные GIF преобразуются только по первому кадру.'],
   'Image': ['Image', 'Изображение'], 'Video': ['Video', 'Видео'], 'Audio': ['Audio', 'Аудио'], 'PDF document': ['PDF document', 'Документ PDF'], 'File': ['File', 'Файл'],
   'Quick shortcut': ['Quick shortcut', 'Быстрый вызов'], 'Shortcut unavailable. Use the tray menu.': ['Shortcut unavailable. Use the tray menu.', 'Сочетание недоступно. Используйте меню в области уведомлений.'],
-  'Drop files to add them': ['Drop files to add them', 'Перетащите файлы сюда'], 'Your files stay on this device. Image conversion runs locally.': ['Your files stay on this device. Image conversion runs locally.', 'Файлы остаются на устройстве. Конвертация выполняется локально.'],
+  'FFmpeg unavailable': ['FFmpeg unavailable', 'FFmpeg не найден'], 'Drop media from Finder or Explorer': ['Drop media from Finder or Explorer', 'Перетащите файл из Finder или Проводника'],
+  'Video format': ['Video format', 'Формат видео'], 'Audio format': ['Audio format', 'Формат аудио'], 'item': ['item', 'файл'], 'items': ['items', 'файлов'],
+  'Browse images or drop audio and video from Finder or Explorer.': ['Browse images or drop audio and video from Finder or Explorer.', 'Выбирайте изображения или перетащите аудио и видео из Finder/Проводника.'],
+  'Drop files to add them': ['Drop files to add them', 'Перетащите файлы сюда'], 'Your files stay on this device. Processing runs locally.': ['Your files stay on this device. Processing runs locally.', 'Файлы остаются на устройстве. Обработка выполняется локально.'],
 } as const
 
 export type MessageKey = keyof typeof messages

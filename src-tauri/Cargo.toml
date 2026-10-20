@@ -1,7 +1,7 @@
 [package]
 name = "flickvert"
 version = "0.1.0"
-description = "Локальный конвертер файлов"
+description = "Local-first cross-platform file converter"
 authors = ["FlickVert"]
 edition = "2021"
 
@@ -11,6 +11,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-global-shortcut = "2.3.1"
+serde = { version = "1", features = ["derive"] }
 
 [profile.release]
 panic = "abort"

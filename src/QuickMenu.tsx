@@ -13,7 +13,11 @@ export default function QuickMenu() {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') void getCurrentWindow().hide() }
     window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
+    let unlisten: (() => void) | undefined
+    let disposed = false
+    void getCurrentWindow().onFocusChanged(({ payload }) => { if (!payload) void getCurrentWindow().hide() })
+      .then((stop) => { if (disposed) stop(); else unlisten = stop })
+    return () => { disposed = true; window.removeEventListener('keydown', onKeyDown); unlisten?.() }
   }, [])
   async function choose(actionId: string) {
     await invoke('quick_action', { actionId })

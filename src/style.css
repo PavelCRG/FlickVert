@@ -59,10 +59,9 @@ button{color:inherit}
   font-weight:750;
   letter-spacing:-.6px}
 .brand-mark{display:block;
-  width:24px;
-  height:18px;
-  object-fit:contain;
-  filter:drop-shadow(0 2px 3px #163f9b20)}
+  width:20px;
+  height:15px;
+  object-fit:contain}
 .side-label{padding:0 10px;
   margin-bottom:11px;
   font-size:11px;
@@ -145,7 +144,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,.dropzone:focus-vi
   justify-content:space-between;
   margin-bottom:25px}
 .heading-copy{flex:1;min-width:0}
-.hero-mark{width:38px;height:27px;object-fit:contain;margin:0 20px -1px 14px;filter:drop-shadow(0 3px 4px #163f9b20)}
+.hero-mark{width:28px;height:20px;object-fit:contain;margin:0 14px -1px 10px}
 .page-heading h1{text-wrap:balance}
 .eyebrow{font-size:10px;
   font-weight:700;
@@ -445,7 +444,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,.dropzone:focus-vi
 .page{padding:32px 28px}
 .topbar{padding:0 28px}
 .format-chip{display:none}
-  .hero-mark{width:34px;height:24px;margin-right:0}
+  .hero-mark{width:26px;height:19px;margin-right:0}
 .controls{gap:12px}
 }
 @media(max-height:710px){.page{padding-top:25px}
