@@ -1,4 +1,6 @@
 import { useRef, useState, type ChangeEvent, type DragEvent, type ReactNode } from 'react'
+import { invoke } from '@tauri-apps/api/core'
+import { convertImage } from './conversion/images'
 
 type Format = 'image/png' | 'image/jpeg' | 'image/webp'
 type Item = { id: string; file: File; status: 'ready' | 'done' | 'error'; output?: string }
@@ -67,25 +69,11 @@ export default function App() {
     try {
       for (const item of work) {
         try {
-          // shortcut: animated GIFs convert as their first frame, upgrade when multi-frame export is requested.
-          const bitmap = await createImageBitmap(item.file)
-          const canvas = document.createElement('canvas')
-          canvas.width = bitmap.width
-          canvas.height = bitmap.height
-          const context = canvas.getContext('2d')!
-          if (format === 'image/jpeg') { context.fillStyle = '#fff'; context.fillRect(0, 0, canvas.width, canvas.height) }
-          context.drawImage(bitmap, 0, 0)
-          bitmap.close()
-          const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((result) => result ? resolve(result) : reject(new Error('Image conversion failed')), format, quality / 100))
-          if (blob.type !== format) throw new Error(`This device cannot export ${format}`)
+          const blob = await convertImage(item.file, { format, quality })
           const selected = formats.find((entry) => entry.value === format)!
           const name = `${item.file.name.replace(/\.[^.]+$/, '')}.${selected.ext}`
-          const link = document.createElement('a')
-          link.href = URL.createObjectURL(blob)
-          link.download = name
-          link.click()
-          setTimeout(() => URL.revokeObjectURL(link.href), 1000)
-          setItems((current) => current.map((row) => row.id === item.id ? { ...row, status: 'done', output: name } : row))
+          const path = await invoke<string>('save_output', { fileName: name, bytes: Array.from(new Uint8Array(await blob.arrayBuffer())) })
+          setItems((current) => current.map((row) => row.id === item.id ? { ...row, status: 'done', output: path } : row))
         } catch {
           setItems((current) => current.map((row) => row.id === item.id ? { ...row, status: 'error' } : row))
         }
