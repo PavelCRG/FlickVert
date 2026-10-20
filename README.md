@@ -1,31 +1,69 @@
-# FlickVert
+<p align="center">
+  <img src="public/fv-mark.svg" width="72" alt="FlickVert FV monogram" />
+</p>
 
-![FlickVert FV mark](public/fv-mark-3d.png)
+<h1 align="center">FlickVert</h1>
 
-A cross-platform desktop image converter for Windows and macOS.
+<p align="center">A small desktop app for converting images on your device.</p>
 
-## Stack
+<p align="center"><strong>Windows · macOS</strong> &nbsp;|&nbsp; Tauri 2 · React · TypeScript</p>
 
-- **Tauri 2 + Rust** for the native desktop shell and platform installers.
-- **React + TypeScript + Vite** for one shared interface across both platforms.
-- **Canvas API** for local PNG, JPEG, WebP, GIF and BMP conversion to PNG, JPEG or WebP.
-- **FV 3D mark** in `public/fv-mark-3d.png`, used in the app and favicon.
+---
 
-Image processing stays on the device. Other file types are identified in the queue but are not converted yet. Animated GIFs are converted as a single frame; transparent pixels are filled with white when exporting to JPEG.
+FlickVert converts common image files without uploading them to a server. Add files by dropping them into the window or choosing them from your computer.
 
-## Run
+## What it can do
 
-Install Node.js, Rust and the [Tauri platform prerequisites](https://v2.tauri.app/start/prerequisites/). On Windows this includes Microsoft C++ Build Tools and WebView2. On macOS it includes Xcode Command Line Tools.
+- Convert PNG, JPEG, WebP, GIF and BMP images to PNG, JPEG or WebP.
+- Adjust output quality for JPEG and WebP; PNG stays lossless.
+- Convert multiple images in one batch.
+- Review completed conversions in the session history.
+- Switch between light and dark themes.
+- Keep image processing on the device; converted files use the system's default download behavior.
+
+### Format notes
+
+- Animated GIFs are converted from their first frame.
+- Transparent areas are filled with white when converting to JPEG.
+- Other file types can appear in the queue, but are not converted.
+
+## Run locally
+
+### Requirements
+
+- Node.js LTS and Rust stable.
+- **Windows:** Microsoft C++ Build Tools with *Desktop development with C++*, plus WebView2.
+- **macOS:** Xcode Command Line Tools (`xcode-select --install`).
+
+See the [official Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for current setup details.
+
+### Development
+
+Run these commands from the repository folder:
 
 ```sh
 npm install
 npm run tauri dev
 ```
 
-Build a release for the current operating system:
+Create a production build for the current operating system:
 
 ```sh
 npm run tauri build
 ```
 
-Build Windows and macOS packages on their respective operating systems. Tauri uses the platform's supported bundle formats.
+Windows and macOS installers must be built on their respective operating systems.
+
+## Project layout
+
+```text
+public/       App icon and static assets
+src/          React interface and styles
+src-tauri/    Tauri and Rust desktop shell
+```
+
+## Stack
+
+- **Tauri 2 + Rust** — native desktop window and packaging.
+- **React + TypeScript + Vite** — app interface and development server.
+- **Canvas API** — local image decoding and export.

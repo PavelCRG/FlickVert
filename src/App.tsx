@@ -42,6 +42,7 @@ export default function App() {
   const input = useRef<HTMLInputElement>(null)
   const ready = items.filter((item) => item.status === 'ready' && supported(item.file)).length
   const done = items.filter((item) => item.status === 'done').length
+  const completed = items.filter((item) => item.status === 'done')
 
   function addFiles(files: FileList | File[]) {
     setItems((current) => {
@@ -66,6 +67,7 @@ export default function App() {
     try {
       for (const item of work) {
         try {
+          // shortcut: animated GIFs convert as their first frame, upgrade when multi-frame export is requested.
           const bitmap = await createImageBitmap(item.file)
           const canvas = document.createElement('canvas')
           canvas.width = bitmap.width
@@ -93,7 +95,7 @@ export default function App() {
 
   return <div className={`app ${theme}`} onDragOver={(event) => { event.preventDefault(); setDragging(true) }} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragging(false) }} onDrop={onDrop}>
     <aside className="sidebar">
-      <div className="brand"><img className="brand-mark" src="/fv-mark-3d.png" alt=""/><span>FlickVert</span></div>
+      <div className="brand"><img className="brand-mark" src="/fv-mark.svg" alt=""/><span>FlickVert</span></div>
       <div className="side-label">Workspace</div>
       <nav aria-label="Main navigation">
         <button className={section === 'convert' ? 'nav-item active' : 'nav-item'} onClick={() => setSection('convert')}><Icon name="convert"/><span>Convert files</span></button>
@@ -109,7 +111,7 @@ export default function App() {
     <main className="main">
       <header className="topbar"><div className="breadcrumb">FlickVert <Icon name="arrow" size={14}/><span>{section === 'convert' ? 'Convert files' : section === 'history' ? 'History' : 'Settings'}</span></div><button className="theme-button" title="Switch theme" onClick={toggleTheme}><Icon name="sun" size={17}/></button></header>
       {section === 'convert' && <div className="page">
-        <div className="page-heading"><div className="heading-copy"><p className="eyebrow">SIMPLE. LOCAL.</p><h1>File conversion</h1><p className="subtitle">Add files, choose a format and save the result.</p></div><img className="hero-mark" src="/fv-mark-3d.png" alt="FlickVert FV 3D logo"/><div className="format-chip"><span className="chip-dot"/>Images · PNG, JPEG, WebP</div></div>
+        <div className="page-heading"><div className="heading-copy"><p className="eyebrow">PRIVATE BY DESIGN</p><h1>File conversion</h1><p className="subtitle">Add images, choose a format and save the result.</p></div><img className="hero-mark" src="/fv-mark.svg" alt="FlickVert FV monogram"/><div className="format-chip"><span className="chip-dot"/>Images · PNG, JPEG, WebP</div></div>
         <section className={`dropzone ${dragging ? 'dragging' : ''}`} onClick={() => input.current?.click()} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') input.current?.click() }} tabIndex={0} role="button" aria-label="Add files">
           <input ref={input} type="file" multiple accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt,.md" onChange={onPick} hidden/>
           <div className="upload-icon"><Icon name="plus" size={23}/></div><div className="drop-title">Drop files here</div><div className="drop-subtitle">or <span>browse your computer</span></div><div className="drop-note">Files are processed on your device and never uploaded</div>
@@ -126,12 +128,12 @@ export default function App() {
           <div className="settings-title"><div><h2>Output settings</h2><p>These settings apply to every image in the queue.</p></div><span className="settings-step">FORMAT</span></div>
           <div className="controls"><label className="field"><span>Convert to</span><select value={format} onChange={(event) => setFormat(event.target.value as Format)}>{formats.map((entry) => <option key={entry.value} value={entry.value}>{entry.label}</option>)}</select></label>
             {format !== 'image/png' ? <label className="quality-field"><span>Quality <strong>{quality}%</strong></span><input type="range" min="40" max="100" value={quality} onChange={(event) => setQuality(Number(event.target.value))}/></label> : <div className="quality-field lossless"><span>Quality</span><div>Lossless</div></div>}
-            <div className="destination"><span>Save location</span><div><Icon name="file" size={15}/> Downloads</div></div>
+            <div className="destination"><span>Download behavior</span><div><Icon name="file" size={15}/> System default</div></div>
           </div>
         </section>
         <footer className="action-bar"><div className="action-hint">{items.length === 0 ? 'Add images to get started' : ready === 0 ? 'No supported images in the queue' : `${ready} ${ready === 1 ? 'image' : 'images'} ready to convert`}</div><button className="primary-button" onClick={convert} disabled={ready === 0 || converting}><Icon name="convert" size={17}/>{converting ? 'Converting...' : done > 0 && ready === 0 ? 'Done' : 'Convert'}<span className="button-count">{ready || ''}</span></button></footer>
       </div>}
-      {section === 'history' && <div className="page simple-page"><p className="eyebrow">RECENT WORK</p><h1>History</h1><p className="subtitle">Completed files stay in the queue until you clear it.</p><button className="secondary-button" onClick={() => setSection('convert')}>Back to conversion</button></div>}
+      {section === 'history' && <div className="page simple-page"><p className="eyebrow">RECENT WORK</p><h1>History</h1><p className="subtitle">Conversions completed during this session.</p>{completed.length ? <div className="file-list history-list">{completed.map((item) => <article className="file-row" key={item.id}><div className="file-icon"><Icon name="check" size={18}/></div><div className="file-info"><strong title={item.output}>{item.output}</strong><span>{typeOf(item.file)} <i/> {sizeOf(item.file.size)}</span></div><span className="status done">Converted</span></article>)}</div> : <div className="empty-queue history-empty"><div className="empty-glyph"><Icon name="history" size={21}/></div><div><strong>No completed conversions yet</strong><p>Converted files will appear here until you close FlickVert</p></div></div>}<button className="secondary-button" onClick={() => setSection('convert')}>Back to conversion</button></div>}
       {section === 'settings' && <div className="page simple-page"><p className="eyebrow">MAKE IT YOURS</p><h1>Settings</h1><p className="subtitle">Choose how FlickVert looks.</p><div className="theme-options"><button className={theme === 'light' ? 'theme-option selected' : 'theme-option'} onClick={() => { setTheme('light'); localStorage.setItem('flickvert-theme', 'light') }}><Icon name="sun"/> Light</button><button className={theme === 'dark' ? 'theme-option selected' : 'theme-option'} onClick={() => { setTheme('dark'); localStorage.setItem('flickvert-theme', 'dark') }}>Dark</button></div><div className="settings-note"><Icon name="lock" size={17}/> Your files stay on this device. Image conversion runs locally.</div></div>}
     </main>
     {dragging && <div className="drag-overlay"><div><Icon name="plus" size={30}/><strong>Drop files to add them</strong></div></div>}

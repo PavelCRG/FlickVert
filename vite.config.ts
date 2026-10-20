@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+declare const process: { env: { TAURI_ENV_PLATFORM?: string } }
+
 export default defineConfig({
   plugins: [react()],
   clearScreen: false,
