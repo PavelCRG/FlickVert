@@ -1,7 +1,7 @@
 import type { Language } from './settings'
 
 const messages = {
-  'Convert files': ['Convert files', 'Конвертация файлов'], 'History': ['History', 'История'], 'Settings': ['Settings', 'Настройки'],
+  'Convert files': ['Convert files', 'Конвертация файлов'], 'History': ['History', 'История'], 'Settings': ['Settings', 'Настройки'], 'Resize': ['Resize', 'Изменить размер'], 'Choose an action': ['Choose an action', 'Выберите действие'],
   'Workspace': ['Workspace', 'Рабочая область'], 'Your files stay here': ['Your files stay here', 'Файлы остаются на устройстве'],
   'Processed on this device': ['Processed on this device', 'Обработка на этом устройстве'], 'PRIVATE BY DESIGN': ['PRIVATE BY DESIGN', 'КОНФИДЕНЦИАЛЬНОСТЬ'],
   'File conversion': ['File conversion', 'Конвертация файлов'], 'Add images, choose a format and save the result.': ['Add images, choose a format and save the result.', 'Добавьте изображения, выберите формат и сохраните результат.'],
@@ -24,7 +24,7 @@ const messages = {
   'Max width': ['Max width', 'Макс. ширина'], 'Max height': ['Max height', 'Макс. высота'], 'Animated GIFs are converted using the first frame.': ['Animated GIFs are converted using the first frame.', 'Анимированные GIF преобразуются только по первому кадру.'],
   'Image': ['Image', 'Изображение'], 'Video': ['Video', 'Видео'], 'Audio': ['Audio', 'Аудио'], 'PDF document': ['PDF document', 'Документ PDF'], 'File': ['File', 'Файл'],
   'Quick shortcut': ['Quick shortcut', 'Быстрый вызов'], 'Shortcut unavailable. Use the tray menu.': ['Shortcut unavailable. Use the tray menu.', 'Сочетание недоступно. Используйте меню в области уведомлений.'],
-  'FFmpeg unavailable': ['FFmpeg unavailable', 'FFmpeg не найден'], 'Drop media from Finder or Explorer': ['Drop media from Finder or Explorer', 'Перетащите файл из Finder или Проводника'],
+  'FFmpeg unavailable': ['FFmpeg unavailable', 'FFmpeg не найден'], 'Pandoc unavailable': ['Pandoc unavailable', 'Pandoc не найден'], 'ImageMagick unavailable': ['ImageMagick unavailable', 'ImageMagick не найден'], 'LibreOffice unavailable': ['LibreOffice unavailable', 'LibreOffice не найден'], 'Conversion engines': ['Conversion engines', 'Модули конвертации'], 'Detected': ['Detected', 'Найден'], 'Not detected on PATH': ['Not detected on PATH', 'Не найден в PATH'], 'Document format': ['Document format', 'Формат документа'], 'Document': ['Document', 'Документ'], 'Drop media from Finder or Explorer': ['Drop media from Finder or Explorer', 'Перетащите файл из Finder или Проводника'],
   'Video format': ['Video format', 'Формат видео'], 'Audio format': ['Audio format', 'Формат аудио'], 'item': ['item', 'файл'], 'items': ['items', 'файлов'],
   'Browse images or drop audio and video from Finder or Explorer.': ['Browse images or drop audio and video from Finder or Explorer.', 'Выбирайте изображения или перетащите аудио и видео из Finder/Проводника.'],
   'Drop files to add them': ['Drop files to add them', 'Перетащите файлы сюда'], 'Your files stay on this device. Processing runs locally.': ['Your files stay on this device. Processing runs locally.', 'Файлы остаются на устройстве. Обработка выполняется локально.'],

@@ -8,15 +8,23 @@ import { t, type MessageKey } from './i18n'
 
 type Format = 'image/png' | 'image/jpeg' | 'image/webp'
 type Item = { id: string; file: File; size: number; path?: string; status: 'ready' | 'done' | 'error'; output?: string; error?: string }
-type NativeMedia = { path: string; name: string; size: number; mime: string }
+type NativeFile = { path: string; name: string; size: number; extension: string; mime: string }
+type Engines = { ffmpeg: boolean; pandoc: boolean; imagemagick: boolean; libreoffice: boolean }
 const formats: { value: Format; label: string; ext: string }[] = [
   { value: 'image/png', label: 'PNG', ext: 'png' },
   { value: 'image/jpeg', label: 'JPEG', ext: 'jpg' },
   { value: 'image/webp', label: 'WebP', ext: 'webp' },
 ]
 const imageTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/bmp']
+const documentExtensions = ['docx', 'odt', 'md', 'markdown', 'html', 'htm', 'epub', 'rtf', 'txt', 'rst', 'tex']
+const officeExtensions = ['doc', 'xls', 'xlsx', 'ods', 'ppt', 'pptx', 'odp', 'csv']
+const rawExtensions = ['cr2', 'cr3', 'nef', 'arw', 'raf', 'dng', 'orf', 'rw2']
 const supported = (file: File) => imageTypes.includes(file.type)
 const isMedia = (file: File) => file.type.startsWith('audio/') || file.type.startsWith('video/')
+const extensionOf = (file: File) => file.name.split('.').pop()?.toLowerCase() ?? ''
+const isDocument = (file: File) => documentExtensions.includes(extensionOf(file))
+const isOffice = (file: File) => officeExtensions.includes(extensionOf(file))
+const isRaw = (file: File) => rawExtensions.includes(extensionOf(file))
 const sizeOf = (bytes: number) => bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`
 
 function Icon({ name, size = 18 }: { name: string; size?: number }) {
@@ -46,11 +54,19 @@ export default function App() {
   const [dragging, setDragging] = useState(false)
   const [converting, setConverting] = useState(false)
   const [shortcutError, setShortcutError] = useState(false)
-  const [ffmpegAvailable, setFfmpegAvailable] = useState(false)
+  const [engines, setEngines] = useState<Engines>({ ffmpeg: false, pandoc: false, imagemagick: false, libreoffice: false })
   const [videoFormat, setVideoFormat] = useState('mp4')
   const [audioFormat, setAudioFormat] = useState('mp3')
+  const [documentFormat, setDocumentFormat] = useState('html')
   const input = useRef<HTMLInputElement>(null)
-  const canConvert = (item: Item) => supported(item.file) || (isMedia(item.file) && !!item.path && ffmpegAvailable)
+  const canConvert = (item: Item) => {
+    if (supported(item.file)) return true
+    if (!item.path) return false
+    if (isMedia(item.file)) return engines.ffmpeg
+    if (isRaw(item.file)) return engines.imagemagick
+    if (documentFormat === 'pdf') return engines.libreoffice && (isDocument(item.file) || isOffice(item.file))
+    return isDocument(item.file) && engines.pandoc
+  }
   const ready = items.filter((item) => item.status === 'ready' && canConvert(item)).length
   const done = items.filter((item) => item.status === 'done').length
   const completed = items.filter((item) => item.status === 'done')
@@ -76,15 +92,20 @@ export default function App() {
   }, [preferences.shortcut])
 
   useEffect(() => {
-    if (isTauri()) void invoke<boolean>('has_ffmpeg').then(setFfmpegAvailable)
+    if (isTauri()) void invoke<Engines>('engine_status').then(setEngines)
   }, [])
+
+  useEffect(() => {
+    if (!engines.pandoc && engines.libreoffice) setDocumentFormat('pdf')
+    else if (engines.pandoc && documentFormat === 'pdf') setDocumentFormat('html')
+  }, [engines.pandoc, engines.libreoffice])
 
   useEffect(() => {
     if (!isTauri()) return
     let unlisten: (() => void) | undefined
     let disposed = false
     void getCurrentWebview().onDragDropEvent((event) => {
-      if (event.payload.type === 'drop') void invoke<NativeMedia[]>('inspect_dropped_media', { paths: event.payload.paths }).then(addNativeMedia)
+      if (event.payload.type === 'drop') void invoke<NativeFile[]>('inspect_dropped_files', { paths: event.payload.paths }).then(addNativeFiles)
     }).then((stop) => { if (disposed) stop(); else unlisten = stop })
     return () => { disposed = true; unlisten?.() }
   }, [])
@@ -100,7 +121,7 @@ export default function App() {
       return next
     })
   }
-  function addNativeMedia(files: NativeMedia[]) {
+  function addNativeFiles(files: NativeFile[]) {
     setItems((current) => {
       const next = [...current]
       for (const entry of files) {
@@ -126,7 +147,7 @@ export default function App() {
     } catch { setShortcutError(true) }
   }
   const tr = (key: MessageKey) => t(language, key)
-  const typeOf = (file: File) => tr(supported(file) ? 'Image' : file.type.startsWith('video/') ? 'Video' : file.type.startsWith('audio/') ? 'Audio' : file.type === 'application/pdf' ? 'PDF document' : 'File')
+  const typeOf = (file: File) => tr(supported(file) || isRaw(file) ? 'Image' : file.type.startsWith('video/') ? 'Video' : file.type.startsWith('audio/') ? 'Audio' : isDocument(file) || isOffice(file) ? 'Document' : file.type === 'application/pdf' ? 'PDF document' : 'File')
 
   async function convert() {
     const work = items.filter((item) => item.status === 'ready' && canConvert(item))
@@ -141,8 +162,8 @@ export default function App() {
             const name = `${item.file.name.replace(/\.[^.]+$/, '')}.${selected.ext}`
             path = await invoke<string>('save_output', { fileName: name, bytes: Array.from(new Uint8Array(await blob.arrayBuffer())) })
           } else {
-            const outputExtension = item.file.type.startsWith('audio/') ? audioFormat : videoFormat
-            path = await invoke<string>('convert_media', { inputPath: item.path, outputExtension })
+            const outputExtension = isMedia(item.file) ? item.file.type.startsWith('audio/') ? audioFormat : videoFormat : isDocument(item.file) || isOffice(item.file) ? documentFormat : 'png'
+            path = await invoke<string>('convert_file', { inputPath: item.path, outputExtension })
           }
           setItems((current) => current.map((row) => row.id === item.id ? { ...row, status: 'done', output: path } : row))
         } catch (error) {
@@ -179,7 +200,7 @@ export default function App() {
           <div className="section-heading"><div><h2>{tr('File queue')}</h2><span className="count">{items.length}</span></div>{items.length > 0 && <button className="text-button" onClick={() => setItems([])}>{tr('Clear queue')}</button>}</div>
           {items.length === 0 ? <div className="empty-queue"><div className="empty-glyph"><Icon name="file" size={21}/></div><div><strong>{tr('Your files will appear here')}</strong><p>{tr('Add one or more files to get started')}</p></div></div> : <div className="file-list">{items.map((item) => <article className="file-row" key={item.id}>
             <div className="file-icon"><Icon name={supported(item.file) ? 'image' : 'file'} size={19}/></div><div className="file-info"><strong title={item.file.name}>{item.file.name}</strong><span>{typeOf(item.file)} <i/> {sizeOf(item.size)}</span></div>
-            {item.status === 'done' ? <span className="status done"><Icon name="check" size={14}/>{item.output ?? tr('Done')}</span> : item.status === 'error' ? <span className="status error" title={item.error}>{tr('Could not convert')}</span> : canConvert(item) ? <span className="status ready">{tr('Ready to convert')}</span> : <span className="status unavailable">{tr(isMedia(item.file) ? item.path ? 'FFmpeg unavailable' : 'Drop media from Finder or Explorer' : 'Format not supported')}</span>}
+            {item.status === 'done' ? <span className="status done"><Icon name="check" size={14}/>{item.output ?? tr('Done')}</span> : item.status === 'error' ? <span className="status error" title={item.error}>{tr('Could not convert')}</span> : canConvert(item) ? <span className="status ready">{tr('Ready to convert')}</span> : <span className="status unavailable">{isMedia(item.file) ? item.path ? tr('FFmpeg unavailable') : tr('Drop media from Finder or Explorer') : isRaw(item.file) ? tr('ImageMagick unavailable') : isDocument(item.file) || isOffice(item.file) ? tr(documentFormat === 'pdf' ? 'LibreOffice unavailable' : 'Pandoc unavailable') : tr('Format not supported')}</span>}
             <button className="remove-button" onClick={() => setItems((current) => current.filter((row) => row.id !== item.id))} aria-label={`Remove ${item.file.name}`}><Icon name="close" size={17}/></button>
           </article>)}</div>}
         </section>
@@ -192,13 +213,14 @@ export default function App() {
             <label className="field"><span>{tr('Max height')}</span><input type="number" min="1" max="32768" placeholder="Original" value={preferences.height ?? ''} onChange={(event) => updatePreferences({ height: event.target.value ? Number(event.target.value) : undefined })}/></label>
             {items.some((item) => item.path && item.file.type.startsWith('video/')) && <label className="field"><span>{tr('Video format')}</span><select value={videoFormat} onChange={(event) => setVideoFormat(event.target.value)}>{['mp4', 'webm', 'mkv'].map((value) => <option key={value} value={value}>{value.toUpperCase()}</option>)}</select></label>}
             {items.some((item) => item.path && item.file.type.startsWith('audio/')) && <label className="field"><span>{tr('Audio format')}</span><select value={audioFormat} onChange={(event) => setAudioFormat(event.target.value)}>{['mp3', 'wav', 'm4a', 'flac', 'ogg'].map((value) => <option key={value} value={value}>{value.toUpperCase()}</option>)}</select></label>}
+            {items.some((item) => item.path && (isDocument(item.file) || isOffice(item.file))) && <label className="field"><span>{tr('Document format')}</span><select value={documentFormat} onChange={(event) => setDocumentFormat(event.target.value)}>{[...(engines.libreoffice ? ['pdf'] : []), ...(engines.pandoc ? ['docx', 'odt', 'md', 'html', 'epub', 'rtf', 'txt', 'rst', 'tex'] : [])].map((value) => <option key={value} value={value}>{value.toUpperCase()}</option>)}</select></label>}
           </div>
           {items.some((item) => item.file.type === 'image/gif' && item.status === 'ready') && <p className="animated-note">{tr('Animated GIFs are converted using the first frame.')}</p>}
         </section>
         <footer className="action-bar"><div className="action-hint">{items.length === 0 ? tr('Add images to get started') : ready === 0 ? tr('No supported images in the queue') : `${ready} ${tr(ready === 1 ? 'item' : 'items')} ${tr('Ready to convert').toLowerCase()}`}</div><button className="primary-button" onClick={convert} disabled={ready === 0 || converting}><Icon name="convert" size={17}/>{converting ? tr('Converting...') : done > 0 && ready === 0 ? tr('Done') : tr('Convert')}<span className="button-count">{ready || ''}</span></button></footer>
       </div>}
       {section === 'history' && <div className="page simple-page"><p className="eyebrow">{tr('RECENT WORK')}</p><h1>{tr('History')}</h1><p className="subtitle">{tr('Conversions completed during this session.')}</p>{completed.length ? <div className="file-list history-list">{completed.map((item) => <article className="file-row" key={item.id}><div className="file-icon"><Icon name="check" size={18}/></div><div className="file-info"><strong title={item.output}>{item.output}</strong><span>{typeOf(item.file)} <i/> {sizeOf(item.size)}</span></div><span className="status done">{tr('Converted')}</span></article>)}</div> : <div className="empty-queue history-empty"><div className="empty-glyph"><Icon name="history" size={21}/></div><div><strong>{tr('No completed conversions yet')}</strong><p>{tr('Converted files will appear here until you close FlickVert')}</p></div></div>}<button className="secondary-button" onClick={() => setSection('convert')}>{tr('Back to conversion')}</button></div>}
-      {section === 'settings' && <div className="page simple-page"><p className="eyebrow">{tr('MAKE IT YOURS')}</p><h1>{tr('Settings')}</h1><p className="subtitle">{tr('Choose how FlickVert looks.')}</p><h2 className="preference-heading">{tr('Appearance')}</h2><div className="theme-options">{(['system', 'light', 'dark'] as const).map((appearance) => <button key={appearance} className={theme === appearance ? 'theme-option selected' : 'theme-option'} onClick={() => updatePreferences({ appearance })}>{tr(appearance === 'system' ? 'System' : appearance === 'light' ? 'Light' : 'Dark')}</button>)}</div><h2 className="preference-heading">{tr('Language')}</h2><div className="theme-options"><button className={language === 'en' ? 'theme-option selected' : 'theme-option'} onClick={() => updatePreferences({ language: 'en' })}>{tr('English')}</button><button className={language === 'ru' ? 'theme-option selected' : 'theme-option'} onClick={() => updatePreferences({ language: 'ru' })}>{tr('Russian')}</button></div><h2 className="preference-heading">{tr('Quick shortcut')}</h2><label className="field shortcut-field"><select value={preferences.shortcut} onChange={(event) => { void updateShortcut(event.target.value) }}><option value="CTRL+ALT+SPACE">Ctrl + Alt + Space</option><option value="CTRL+SHIFT+SPACE">Ctrl + Shift + Space</option><option value="ALT+SHIFT+SPACE">Alt + Shift + Space</option></select></label>{shortcutError && <p className="shortcut-error">{tr('Shortcut unavailable. Use the tray menu.')}</p>}<div className="settings-note"><Icon name="lock" size={17}/> {tr('Your files stay on this device. Processing runs locally.')}</div></div>}
+      {section === 'settings' && <div className="page simple-page"><p className="eyebrow">{tr('MAKE IT YOURS')}</p><h1>{tr('Settings')}</h1><p className="subtitle">{tr('Choose how FlickVert looks.')}</p><h2 className="preference-heading">{tr('Appearance')}</h2><div className="theme-options">{(['system', 'light', 'dark'] as const).map((appearance) => <button key={appearance} className={theme === appearance ? 'theme-option selected' : 'theme-option'} onClick={() => updatePreferences({ appearance })}>{tr(appearance === 'system' ? 'System' : appearance === 'light' ? 'Light' : 'Dark')}</button>)}</div><h2 className="preference-heading">{tr('Language')}</h2><div className="theme-options"><button className={language === 'en' ? 'theme-option selected' : 'theme-option'} onClick={() => updatePreferences({ language: 'en' })}>{tr('English')}</button><button className={language === 'ru' ? 'theme-option selected' : 'theme-option'} onClick={() => updatePreferences({ language: 'ru' })}>{tr('Russian')}</button></div><h2 className="preference-heading">{tr('Quick shortcut')}</h2><label className="field shortcut-field"><select value={preferences.shortcut} onChange={(event) => { void updateShortcut(event.target.value) }}><option value="CTRL+ALT+SPACE">Ctrl + Alt + Space</option><option value="CTRL+SHIFT+SPACE">Ctrl + Shift + Space</option><option value="ALT+SHIFT+SPACE">Alt + Shift + Space</option></select></label>{shortcutError && <p className="shortcut-error">{tr('Shortcut unavailable. Use the tray menu.')}</p>}<h2 className="preference-heading">{tr('Conversion engines')}</h2><div className="engine-status">{[['FFmpeg', engines.ffmpeg], ['Pandoc', engines.pandoc], ['ImageMagick', engines.imagemagick], ['LibreOffice', engines.libreoffice]].map(([name, available]) => <div key={String(name)}><span>{name}</span><span className={available ? 'engine-found' : ''}>{tr(available ? 'Detected' : 'Not detected on PATH')}</span></div>)}</div><div className="settings-note"><Icon name="lock" size={17}/> {tr('Your files stay on this device. Processing runs locally.')}</div></div>}
     </main>
     {dragging && <div className="drag-overlay"><div><Icon name="plus" size={30}/><strong>{tr('Drop files to add them')}</strong></div></div>}
   </div>

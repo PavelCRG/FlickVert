@@ -476,6 +476,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,.dropzone:focus-vi
 .field input{height:34px;min-width:0;padding:0 9px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--text)}
 .animated-note{font-size:12px;color:var(--muted);margin:12px 0 0}
 .shortcut-field{margin-top:10px;max-width:320px}.shortcut-error{font-size:12px;color:#d14343;margin:8px 0 0}
+.engine-status{max-width:440px;margin-top:10px;border-top:1px solid var(--line)}.engine-status>div{display:flex;justify-content:space-between;gap:16px;padding:9px 0;border-bottom:1px solid var(--line);font-size:12px;color:var(--muted)}.engine-status>div span:first-child{color:var(--text)}.engine-status .engine-found{color:var(--good)}
 .primary-button{background:var(--accent);box-shadow:none}
 .primary-button:hover:not(:disabled){background:color-mix(in srgb,var(--accent) 88%,black);transform:none}
 .drag-overlay>div{border-radius:8px;box-shadow:0 8px 24px #182c4c20}

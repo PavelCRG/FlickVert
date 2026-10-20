@@ -21,15 +21,22 @@ struct DroppedFiles(Mutex<HashSet<PathBuf>>);
 
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-struct MediaFile {
+struct NativeFile {
     path: String,
     name: String,
     size: u64,
+    extension: String,
     mime: &'static str,
 }
 
-fn media_mime(extension: &str) -> Option<&'static str> {
+fn file_mime(extension: &str) -> Option<&'static str> {
     match extension {
+        "png" => Some("image/png"),
+        "jpg" | "jpeg" => Some("image/jpeg"),
+        "webp" => Some("image/webp"),
+        "gif" => Some("image/gif"),
+        "bmp" => Some("image/bmp"),
+        "cr2" | "cr3" | "nef" | "arw" | "raf" | "dng" | "orf" | "rw2" => Some("image/x-raw"),
         "mp4" | "m4v" | "mpeg" => Some("video/mp4"),
         "mov" => Some("video/quicktime"),
         "mkv" => Some("video/x-matroska"),
@@ -41,15 +48,19 @@ fn media_mime(extension: &str) -> Option<&'static str> {
         "m4a" => Some("audio/mp4"),
         "flac" => Some("audio/flac"),
         "ogg" | "opus" => Some("audio/ogg"),
+        "docx" | "doc" | "odt" | "rtf" | "md" | "markdown" | "html" | "htm" | "epub" | "txt"
+        | "rst" | "tex" | "xls" | "xlsx" | "ods" | "ppt" | "pptx" | "odp" | "csv" => {
+            Some("application/octet-stream")
+        }
         _ => None,
     }
 }
 
 #[tauri::command]
-fn inspect_dropped_media(
+fn inspect_dropped_files(
     paths: Vec<String>,
     dropped: tauri::State<'_, DroppedFiles>,
-) -> Vec<MediaFile> {
+) -> Vec<NativeFile> {
     let mut selected = dropped.0.lock().unwrap();
     paths
         .into_iter()
@@ -57,16 +68,17 @@ fn inspect_dropped_media(
             let path = fs::canonicalize(path).ok()?;
             let metadata = fs::metadata(&path).ok()?;
             let extension = path.extension()?.to_str()?.to_ascii_lowercase();
-            let mime = media_mime(&extension)?;
+            let mime = file_mime(&extension)?;
             if !metadata.is_file() {
                 return None;
             }
             let name = path.file_name()?.to_string_lossy().into_owned();
             selected.insert(path.clone());
-            Some(MediaFile {
+            Some(NativeFile {
                 path: path.to_string_lossy().into_owned(),
                 name,
                 size: metadata.len(),
+                extension,
                 mime,
             })
         })
@@ -74,12 +86,12 @@ fn inspect_dropped_media(
 }
 
 #[tauri::command]
-fn has_ffmpeg() -> bool {
-    operations::find_ffmpeg().is_some()
+fn engine_status() -> operations::Engines {
+    operations::all_engine_status()
 }
 
 #[tauri::command]
-fn convert_media(
+fn convert_file(
     app: AppHandle,
     input_path: String,
     output_extension: String,
@@ -94,12 +106,12 @@ fn convert_media(
         .and_then(|value| value.to_str())
         .unwrap_or("")
         .to_ascii_lowercase();
-    let kind =
-        operations::media_kind(&extension).ok_or_else(|| "Unsupported media input".to_string())?;
-    if !operations::output_extensions(kind).contains(&output_extension.as_str()) {
-        return Err("Unsupported output format".into());
-    }
-    let ffmpeg = operations::find_ffmpeg().ok_or_else(|| "FFmpeg is not installed".to_string())?;
+    let operation = operations::operation_for(
+        &extension,
+        &output_extension,
+        operations::all_engine_status(),
+    )
+    .ok_or_else(|| "No installed engine supports this input and output format".to_string())?;
     let work_root = app
         .path()
         .app_cache_dir()
@@ -119,9 +131,35 @@ fn convert_media(
         }
     };
     let result = (|| {
-        let output_temp = work_dir.join(format!("converted.{output_extension}"));
-        let args = operations::ffmpeg_args(&input, &output_temp);
-        let output: Output = operations::run(&ffmpeg, &args).map_err(|error| error.to_string())?;
+        let stem = input
+            .file_stem()
+            .and_then(|value| value.to_str())
+            .unwrap_or("converted");
+        let output_temp = if operation.engine == operations::Engine::LibreOffice {
+            work_dir.join(format!("{stem}.{output_extension}"))
+        } else {
+            work_dir.join(format!("converted.{output_extension}"))
+        };
+        let (executable, args) = match operation.engine {
+            operations::Engine::Ffmpeg => (
+                operations::find_executable("ffmpeg").ok_or("FFmpeg is not installed")?,
+                operations::ffmpeg_args(&input, &output_temp),
+            ),
+            operations::Engine::Pandoc => (
+                operations::find_executable("pandoc").ok_or("Pandoc is not installed")?,
+                operations::pandoc_args(&input, &output_temp),
+            ),
+            operations::Engine::ImageMagick => (
+                operations::find_executable("magick").ok_or("ImageMagick is not installed")?,
+                operations::imagemagick_args(&input, &output_temp),
+            ),
+            operations::Engine::LibreOffice => (
+                operations::find_executable("soffice").ok_or("LibreOffice is not installed")?,
+                operations::libreoffice_args(&input, &work_dir),
+            ),
+        };
+        let output: Output =
+            operations::run(&executable, &args).map_err(|error| error.to_string())?;
         if !output.status.success() {
             return Err(String::from_utf8_lossy(&output.stderr).trim().to_owned());
         }
@@ -131,7 +169,7 @@ fn convert_media(
                 .len()
                 == 0
         {
-            return Err("FFmpeg did not create an output file".into());
+            return Err("The conversion engine did not create an output file".into());
         }
         let stem = input
             .file_stem()
@@ -280,9 +318,9 @@ fn main() {
             save_output,
             quick_action,
             register_shortcut,
-            inspect_dropped_media,
-            has_ffmpeg,
-            convert_media
+            inspect_dropped_files,
+            engine_status,
+            convert_file
         ])
         .setup(|app| {
             app.manage(DroppedFiles::default());
@@ -329,4 +367,16 @@ fn main() {
         })
         .run(tauri::generate_context!())
         .expect("FlickVert failed to start");
+}
+
+#[cfg(test)]
+mod file_type_tests {
+    use super::file_mime;
+
+    #[test]
+    fn recognizes_document_and_raw_inputs_without_claiming_unknown_files() {
+        assert_eq!(file_mime("docx"), Some("application/octet-stream"));
+        assert_eq!(file_mime("cr3"), Some("image/x-raw"));
+        assert_eq!(file_mime("exe"), None);
+    }
 }

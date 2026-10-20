@@ -14,7 +14,7 @@
 
 - Convert PNG, JPEG, WebP, GIF, and BMP images to PNG, JPEG, or WebP.
 - Resize images to fit a maximum width and height while preserving their aspect ratio and avoiding upscaling.
-- Convert audio and video when FFmpeg is installed and the source is dropped directly from Finder or File Explorer into FlickVert.
+- Convert audio and video with FFmpeg, common text documents with Pandoc, Office files to PDF with LibreOffice, and camera RAW images with ImageMagick when the matching engine is installed. Drop these files from Finder or File Explorer into FlickVert.
 - Keep files on the device. Outputs go to `Downloads/FlickVert`; an existing output is kept and the new file gets a numbered name.
 - Use Russian or English, and follow the system's light/dark appearance or choose one explicitly.
 - Open the tray/menu-bar menu or quick action wheel with `Ctrl+Alt+Space` (Control+Option+Space on macOS).
@@ -23,8 +23,8 @@
 
 - Animated GIF input is converted from its first frame; animation is not preserved.
 - Transparent areas are filled with white when converting to JPEG.
-- Audio/video conversion uses an FFmpeg executable already available on `PATH`. FlickVert does not download tools.
-- PDF/Office, RAW camera, archive, and subtitle conversion are not implemented yet. Unsupported files remain unchanged.
+- Optional engines are detected on `PATH`: FFmpeg for audio/video, Pandoc for DOCX/ODT/Markdown/HTML/EPUB/RTF/TXT, LibreOffice for Office-to-PDF, and ImageMagick for common camera RAW files. FlickVert does not download or install tools.
+- PDF input and editing, spreadsheet/presentation output formats other than PDF, archives, and subtitles are not implemented yet. Unsupported files remain unchanged.
 
 ## Build and run
 
