@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">FlickVert FV</title>
+  <rect width="64" height="64" rx="18" fill="#285FE8"/>
+  <path d="M15 17h19M15 17v30M15 32h14M33 21l9 26 10-26" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="6"/>
+</svg>
