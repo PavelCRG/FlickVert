@@ -1,6 +1,6 @@
 # FlickVert
 
-![FlickVert FV mark](public/fv-mark.svg)
+![FlickVert FV mark](public/fv-mark-3d.png)
 
 A cross-platform desktop image converter for Windows and macOS.
 
@@ -9,6 +9,7 @@ A cross-platform desktop image converter for Windows and macOS.
 - **Tauri 2 + Rust** for the native desktop shell and platform installers.
 - **React + TypeScript + Vite** for one shared interface across both platforms.
 - **Canvas API** for local PNG, JPEG, WebP, GIF and BMP conversion to PNG, JPEG or WebP.
+- **FV 3D mark** in `public/fv-mark-3d.png`, used in the app and favicon.
 
 Image processing stays on the device. Other file types are identified in the queue but are not converted yet. Animated GIFs are converted as a single frame; transparent pixels are filled with white when exporting to JPEG.
 

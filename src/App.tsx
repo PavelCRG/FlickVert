@@ -93,7 +93,7 @@ export default function App() {
 
   return <div className={`app ${theme}`} onDragOver={(event) => { event.preventDefault(); setDragging(true) }} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragging(false) }} onDrop={onDrop}>
     <aside className="sidebar">
-      <div className="brand"><img className="brand-mark" src="/fv-mark.svg" alt=""/><span>FlickVert</span></div>
+      <div className="brand"><img className="brand-mark" src="/fv-mark-3d.png" alt=""/><span>FlickVert</span></div>
       <div className="side-label">Workspace</div>
       <nav aria-label="Main navigation">
         <button className={section === 'convert' ? 'nav-item active' : 'nav-item'} onClick={() => setSection('convert')}><Icon name="convert"/><span>Convert files</span></button>
@@ -109,7 +109,7 @@ export default function App() {
     <main className="main">
       <header className="topbar"><div className="breadcrumb">FlickVert <Icon name="arrow" size={14}/><span>{section === 'convert' ? 'Convert files' : section === 'history' ? 'History' : 'Settings'}</span></div><button className="theme-button" title="Switch theme" onClick={toggleTheme}><Icon name="sun" size={17}/></button></header>
       {section === 'convert' && <div className="page">
-        <div className="page-heading"><div><p className="eyebrow">SIMPLE. LOCAL.</p><h1>File conversion</h1><p className="subtitle">Add files, choose a format and save the result.</p></div><div className="format-chip"><span className="chip-dot"/>Images · PNG, JPEG, WebP</div></div>
+        <div className="page-heading"><div className="heading-copy"><p className="eyebrow">SIMPLE. LOCAL.</p><h1>File conversion</h1><p className="subtitle">Add files, choose a format and save the result.</p></div><img className="hero-mark" src="/fv-mark-3d.png" alt="FlickVert FV 3D logo"/><div className="format-chip"><span className="chip-dot"/>Images · PNG, JPEG, WebP</div></div>
         <section className={`dropzone ${dragging ? 'dragging' : ''}`} onClick={() => input.current?.click()} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') input.current?.click() }} tabIndex={0} role="button" aria-label="Add files">
           <input ref={input} type="file" multiple accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt,.md" onChange={onPick} hidden/>
           <div className="upload-icon"><Icon name="plus" size={23}/></div><div className="drop-title">Drop files here</div><div className="drop-subtitle">or <span>browse your computer</span></div><div className="drop-note">Files are processed on your device and never uploaded</div>
