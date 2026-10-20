@@ -23,6 +23,7 @@ const messages = {
   'Language': ['Language', 'Язык'], 'English': ['English', 'Английский'], 'Russian': ['Russian', 'Русский'], 'System appearance': ['System appearance', 'Как в системе'],
   'Max width': ['Max width', 'Макс. ширина'], 'Max height': ['Max height', 'Макс. высота'], 'Animated GIFs are converted using the first frame.': ['Animated GIFs are converted using the first frame.', 'Анимированные GIF преобразуются только по первому кадру.'],
   'Image': ['Image', 'Изображение'], 'Video': ['Video', 'Видео'], 'Audio': ['Audio', 'Аудио'], 'PDF document': ['PDF document', 'Документ PDF'], 'File': ['File', 'Файл'],
+  'Quick shortcut': ['Quick shortcut', 'Быстрый вызов'], 'Shortcut unavailable. Use the tray menu.': ['Shortcut unavailable. Use the tray menu.', 'Сочетание недоступно. Используйте меню в области уведомлений.'],
   'Drop files to add them': ['Drop files to add them', 'Перетащите файлы сюда'], 'Your files stay on this device. Image conversion runs locally.': ['Your files stay on this device. Image conversion runs locally.', 'Файлы остаются на устройстве. Конвертация выполняется локально.'],
 } as const
 

@@ -1,5 +1,6 @@
-import { useRef, useState, type ChangeEvent, type DragEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type DragEvent, type ReactNode } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
 import { convertImage } from './conversion/images'
 import { loadSettings, saveSettings, type AppSettings } from './settings'
 import { t, type MessageKey } from './i18n'
@@ -41,10 +42,31 @@ export default function App() {
   const [section, setSection] = useState<'convert' | 'history' | 'settings'>('convert')
   const [dragging, setDragging] = useState(false)
   const [converting, setConverting] = useState(false)
+  const [shortcutError, setShortcutError] = useState(false)
   const input = useRef<HTMLInputElement>(null)
   const ready = items.filter((item) => item.status === 'ready' && supported(item.file)).length
   const done = items.filter((item) => item.status === 'done').length
   const completed = items.filter((item) => item.status === 'done')
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined
+    let disposed = false
+    void listen<string>('flickvert://quick-action', ({ payload }) => {
+      setSection(payload === 'settings' ? 'settings' : 'convert')
+      if (payload === 'resize') setPreferences((current) => {
+        const next = { ...current, width: 1920, height: 1920 }
+        saveSettings(next)
+        return next
+      })
+    }).then((stop) => { if (disposed) stop(); else unlisten = stop })
+    return () => { disposed = true; unlisten?.() }
+  }, [])
+
+  useEffect(() => {
+    void invoke('register_shortcut', { shortcut: preferences.shortcut })
+      .then(() => setShortcutError(false))
+      .catch(() => setShortcutError(true))
+  }, [preferences.shortcut])
 
   function addFiles(files: FileList | File[]) {
     setItems((current) => {
@@ -61,6 +83,13 @@ export default function App() {
     const next = { ...preferences, ...patch }
     setPreferences(next)
     saveSettings(next)
+  }
+  async function updateShortcut(shortcut: string) {
+    try {
+      await invoke('register_shortcut', { shortcut })
+      setShortcutError(false)
+      updatePreferences({ shortcut })
+    } catch { setShortcutError(true) }
   }
   const tr = (key: MessageKey) => t(language, key)
   const typeOf = (file: File) => tr(supported(file) ? 'Image' : file.type.startsWith('video/') ? 'Video' : file.type.startsWith('audio/') ? 'Audio' : file.type === 'application/pdf' ? 'PDF document' : 'File')
@@ -127,7 +156,7 @@ export default function App() {
         <footer className="action-bar"><div className="action-hint">{items.length === 0 ? tr('Add images to get started') : ready === 0 ? tr('No supported images in the queue') : `${ready} ${tr(ready === 1 ? 'image' : 'images')} ${tr('Ready to convert').toLowerCase()}`}</div><button className="primary-button" onClick={convert} disabled={ready === 0 || converting}><Icon name="convert" size={17}/>{converting ? tr('Converting...') : done > 0 && ready === 0 ? tr('Done') : tr('Convert')}<span className="button-count">{ready || ''}</span></button></footer>
       </div>}
       {section === 'history' && <div className="page simple-page"><p className="eyebrow">{tr('RECENT WORK')}</p><h1>{tr('History')}</h1><p className="subtitle">{tr('Conversions completed during this session.')}</p>{completed.length ? <div className="file-list history-list">{completed.map((item) => <article className="file-row" key={item.id}><div className="file-icon"><Icon name="check" size={18}/></div><div className="file-info"><strong title={item.output}>{item.output}</strong><span>{typeOf(item.file)} <i/> {sizeOf(item.file.size)}</span></div><span className="status done">{tr('Converted')}</span></article>)}</div> : <div className="empty-queue history-empty"><div className="empty-glyph"><Icon name="history" size={21}/></div><div><strong>{tr('No completed conversions yet')}</strong><p>{tr('Converted files will appear here until you close FlickVert')}</p></div></div>}<button className="secondary-button" onClick={() => setSection('convert')}>{tr('Back to conversion')}</button></div>}
-      {section === 'settings' && <div className="page simple-page"><p className="eyebrow">{tr('MAKE IT YOURS')}</p><h1>{tr('Settings')}</h1><p className="subtitle">{tr('Choose how FlickVert looks.')}</p><h2 className="preference-heading">{tr('Appearance')}</h2><div className="theme-options">{(['system', 'light', 'dark'] as const).map((appearance) => <button key={appearance} className={theme === appearance ? 'theme-option selected' : 'theme-option'} onClick={() => updatePreferences({ appearance })}>{tr(appearance === 'system' ? 'System' : appearance === 'light' ? 'Light' : 'Dark')}</button>)}</div><h2 className="preference-heading">{tr('Language')}</h2><div className="theme-options"><button className={language === 'en' ? 'theme-option selected' : 'theme-option'} onClick={() => updatePreferences({ language: 'en' })}>{tr('English')}</button><button className={language === 'ru' ? 'theme-option selected' : 'theme-option'} onClick={() => updatePreferences({ language: 'ru' })}>{tr('Russian')}</button></div><div className="settings-note"><Icon name="lock" size={17}/> {tr('Your files stay on this device. Image conversion runs locally.')}</div></div>}
+      {section === 'settings' && <div className="page simple-page"><p className="eyebrow">{tr('MAKE IT YOURS')}</p><h1>{tr('Settings')}</h1><p className="subtitle">{tr('Choose how FlickVert looks.')}</p><h2 className="preference-heading">{tr('Appearance')}</h2><div className="theme-options">{(['system', 'light', 'dark'] as const).map((appearance) => <button key={appearance} className={theme === appearance ? 'theme-option selected' : 'theme-option'} onClick={() => updatePreferences({ appearance })}>{tr(appearance === 'system' ? 'System' : appearance === 'light' ? 'Light' : 'Dark')}</button>)}</div><h2 className="preference-heading">{tr('Language')}</h2><div className="theme-options"><button className={language === 'en' ? 'theme-option selected' : 'theme-option'} onClick={() => updatePreferences({ language: 'en' })}>{tr('English')}</button><button className={language === 'ru' ? 'theme-option selected' : 'theme-option'} onClick={() => updatePreferences({ language: 'ru' })}>{tr('Russian')}</button></div><h2 className="preference-heading">{tr('Quick shortcut')}</h2><label className="field shortcut-field"><select value={preferences.shortcut} onChange={(event) => { void updateShortcut(event.target.value) }}><option value="CTRL+ALT+SPACE">Ctrl + Alt + Space</option><option value="CTRL+SHIFT+SPACE">Ctrl + Shift + Space</option><option value="ALT+SHIFT+SPACE">Alt + Shift + Space</option></select></label>{shortcutError && <p className="shortcut-error">{tr('Shortcut unavailable. Use the tray menu.')}</p>}<div className="settings-note"><Icon name="lock" size={17}/> {tr('Your files stay on this device. Image conversion runs locally.')}</div></div>}
     </main>
     {dragging && <div className="drag-overlay"><div><Icon name="plus" size={30}/><strong>{tr('Drop files to add them')}</strong></div></div>}
   </div>

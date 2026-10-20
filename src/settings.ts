@@ -11,7 +11,7 @@ export type AppSettings = {
 }
 
 export const defaultSettings: AppSettings = {
-  language: 'en', appearance: 'system', quality: 88, format: 'image/webp', shortcut: 'Ctrl+Alt+Space',
+  language: 'en', appearance: 'system', quality: 88, format: 'image/webp', shortcut: 'CTRL+ALT+SPACE',
 }
 
 export function normalizeSettings(value: unknown): AppSettings {
@@ -23,7 +23,7 @@ export function normalizeSettings(value: unknown): AppSettings {
     appearance: raw.appearance === 'dark' || raw.appearance === 'light' ? raw.appearance : 'system',
     quality: Number.isInteger(raw.quality) && Number(raw.quality) >= 40 && Number(raw.quality) <= 100 ? Number(raw.quality) : 88,
     format: raw.format === 'image/png' || raw.format === 'image/jpeg' ? raw.format : 'image/webp',
-    shortcut: typeof raw.shortcut === 'string' && /^Ctrl\+Alt\+Space$/.test(raw.shortcut) ? raw.shortcut : 'Ctrl+Alt+Space',
+    shortcut: ['CTRL+ALT+SPACE', 'CTRL+SHIFT+SPACE', 'ALT+SHIFT+SPACE'].includes(String(raw.shortcut)) ? String(raw.shortcut) : 'CTRL+ALT+SPACE',
     ...(validDimension(raw.width) ? { width: validDimension(raw.width) } : {}),
     ...(validDimension(raw.height) ? { height: validDimension(raw.height) } : {}),
   }

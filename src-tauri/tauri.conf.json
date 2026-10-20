@@ -11,6 +11,7 @@
   },
   "app": {
     "windows": [{
+      "label": "main",
       "title": "FlickVert",
       "width": 1120,
       "height": 760,

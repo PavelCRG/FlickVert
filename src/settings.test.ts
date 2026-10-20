@@ -8,7 +8,7 @@ test('invalid or absent saved settings resolve to safe defaults', () => {
 })
 
 test('valid settings retain supported preferences', () => {
-  assert.deepEqual(normalizeSettings({ language: 'ru', appearance: 'dark', quality: 75, width: 1200, height: 900, format: 'image/jpeg', shortcut: 'Ctrl+Alt+Space' }), {
-    language: 'ru', appearance: 'dark', quality: 75, width: 1200, height: 900, format: 'image/jpeg', shortcut: 'Ctrl+Alt+Space',
+  assert.deepEqual(normalizeSettings({ language: 'ru', appearance: 'dark', quality: 75, width: 1200, height: 900, format: 'image/jpeg', shortcut: 'CTRL+SHIFT+SPACE' }), {
+    language: 'ru', appearance: 'dark', quality: 75, width: 1200, height: 900, format: 'image/jpeg', shortcut: 'CTRL+SHIFT+SPACE',
   })
 })
