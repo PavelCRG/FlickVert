@@ -1,13 +1,28 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 176 120" fill="none">
   <defs>
-    <linearGradient id="tile" x1="28" y1="18" x2="224" y2="238" gradientUnits="userSpaceOnUse"><stop stop-color="#4E82F6"/><stop offset=".52" stop-color="#2458D6"/><stop offset="1" stop-color="#153B9B"/></linearGradient>
-    <linearGradient id="face" x1="64" y1="54" x2="192" y2="210" gradientUnits="userSpaceOnUse"><stop stop-color="#FFF"/><stop offset=".48" stop-color="#EAF1FF"/><stop offset="1" stop-color="#B9CEFF"/></linearGradient>
-    <linearGradient id="edge" x1="56" y1="72" x2="197" y2="208" gradientUnits="userSpaceOnUse"><stop stop-color="#8CB1FF"/><stop offset="1" stop-color="#3266DB"/></linearGradient>
-    <filter id="shadow" x="38" y="42" width="190" height="184" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feGaussianBlur in="SourceAlpha" stdDeviation="5"/><feOffset dy="7"/><feComponentTransfer><feFuncA type="linear" slope=".42"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <linearGradient id="front" x1="36" y1="22" x2="125" y2="94" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#77A5FF"/>
+      <stop offset=".48" stop-color="#3975F6"/>
+      <stop offset="1" stop-color="#2052C9"/>
+    </linearGradient>
+    <linearGradient id="side" x1="48" y1="54" x2="142" y2="108" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1A3D99"/>
+      <stop offset="1" stop-color="#102B70"/>
+    </linearGradient>
+    <filter id="shadow" x="8" y="4" width="164" height="112" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+      <feOffset dy="4"/>
+      <feComponentTransfer><feFuncA type="linear" slope=".22"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
   </defs>
-  <rect x="12" y="12" width="232" height="232" rx="56" fill="url(#tile)"/>
-  <path d="M68 14h120a56 56 0 0 1 56 56v8C190 54 123 36 36 44V70H12V70a56 56 0 0 1 56-56Z" fill="#FFF" opacity=".09"/>
-  <path d="M48 55h125v26H79v31h70v25H79v63H48V55Zm70 65h30l24 49 24-49h31l-41 77h-27l-41-77Z" transform="translate(0 6)" fill="url(#edge)"/>
-  <path d="M48 55h125v26H79v31h70v25H79v63H48V55Zm70 65h30l24 49 24-49h31l-41 77h-27l-41-77Z" fill="url(#face)" filter="url(#shadow)"/>
-  <path d="M52 58h117" stroke="#FFF" stroke-opacity=".62" stroke-width="2" stroke-linecap="round"/>
+  <g filter="url(#shadow)">
+    <g transform="translate(6 8)" fill="url(#side)">
+      <path d="M24 19h61v8H32v22h43v8H32v30h-8V19Z"/>
+      <path d="M88 19h13l21 51 21-51h13l-30 68h-9L88 19Z"/>
+    </g>
+    <path d="M24 19h61v8H32v22h43v8H32v30h-8V19Z" fill="url(#front)"/>
+    <path d="M88 19h13l21 51 21-51h13l-30 68h-9L88 19Z" fill="url(#front)"/>
+    <path d="M29 22h50m23 3 15 36" stroke="#FFF" stroke-opacity=".55" stroke-width="2" stroke-linecap="round"/>
+  </g>
 </svg>

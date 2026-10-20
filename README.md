@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/fv-mark.svg" width="72" alt="FlickVert FV monogram" />
+  <img src="public/fv-mark.svg" width="48" alt="FlickVert FV monogram" />
 </p>
 
 <h1 align="center">FlickVert</h1>
