@@ -173,7 +173,7 @@ export default function QuickMenu() {
   return <main className={`quick-shell${dragMode ? ' drag-mode' : ''}`} aria-label="FlickVert quick actions">
     <header><img src="/fv-mark.svg" alt=""/><span>FlickVert</span><kbd>ESC</kbd></header>
     {formats.length > 0 ? <div className="quick-orbit" aria-label={tr('Select output format')}>
-      <div className="quick-center"><strong>FV</strong><span>{files.length === 1 ? files[0].name : `${files.length} ${tr('files')}`}</span></div>
+      <div className="quick-center"><img className="quick-monogram" src="/fv-mark.svg" alt="FlickVert"/><span>{files.length === 1 ? files[0].name : `${files.length} ${tr('files')}`}</span></div>
       {formats.map((format, index) => {
         const angle = (index / formats.length) * Math.PI * 2 - Math.PI / 2
         const distance = formats.length > 5 ? 35 : 33
@@ -184,7 +184,7 @@ export default function QuickMenu() {
         </button>
       })}
     </div> : <div className="quick-orbit quick-actions">
-      <div className="quick-center"><strong>FV</strong><span>{status || (files.length ? tr('No formats available') : dragMode ? tr('Drag a file here') : tr('Choose an action'))}</span></div>
+      <div className="quick-center"><img className="quick-monogram" src="/fv-mark.svg" alt="FlickVert"/><span>{status || (files.length ? tr('No formats available') : dragMode ? tr('Drag a file here') : tr('Choose an action'))}</span></div>
       {!dragMode && actions.map((action, index) => {
         const angle = (index / actions.length) * Math.PI * 2 - Math.PI / 2
         return <button key={action.id} className={`quick-action action-${action.id}`} style={{ left: `${50 + Math.cos(angle) * 34}%`, top: `${50 + Math.sin(angle) * 34}%` }} onClick={() => void choose(action.id)}><span>{action.glyph}</span><small>{tr(action.label)}</small></button>

@@ -1,12 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
   <defs>
-    <linearGradient id="tile" x1="72" y1="48" x2="440" y2="464" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#479bff"/>
-      <stop offset="1" stop-color="#1761d1"/>
+    <linearGradient id="tile" x1="64" y1="18" x2="443" y2="495" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFBD69"/>
+      <stop offset=".5" stop-color="#F17D3D"/>
+      <stop offset="1" stop-color="#D95132"/>
+    </linearGradient>
+    <linearGradient id="letters" x1="173" y1="187" x2="376" y2="341" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF9EF"/>
+      <stop offset="1" stop-color="#FFE8C7"/>
     </linearGradient>
   </defs>
-  <rect x="20" y="20" width="472" height="472" rx="108" fill="url(#tile)"/>
-  <path d="M111 143h64l45 173 48-173h61l-76 228h-68z" fill="#fff"/>
-  <path d="M289 143h61v228h-61z" fill="#fff"/>
-  <path d="M350 143h58v52h-58zm0 86h58v142h-58z" fill="#dcecff"/>
+  <path d="M110 12h292a98 98 0 0 1 98 98v292a98 98 0 0 1-98 98H110a98 98 0 0 1-98-98V110a98 98 0 0 1 98-98Z" fill="#923C2D" opacity=".4" transform="translate(0 8)"/>
+  <path d="M110 4h292a98 98 0 0 1 98 98v292a98 98 0 0 1-98 98H110a98 98 0 0 1-98-98V102a98 98 0 0 1 98-98Z" fill="url(#tile)"/>
+  <g transform="translate(110 176) scale(2.8)" fill="#813D2D" opacity=".46">
+    <path d="M12 10h56v11H25v10h29v10H25v19H12V10Z"/>
+    <path d="M53 25h14l12 23 12-23h14L84 60H74L53 25Z"/>
+  </g>
+  <g transform="translate(110 172) scale(2.8)" fill="url(#letters)">
+    <path d="M12 8h56v11H25v10h29v10H25v19H12V8Z"/>
+    <path d="M53 23h14l12 23 12-23h14L84 58H74L53 23Z"/>
+  </g>
+  <path d="m157 207 94 0m20 42 22 40" stroke="#FFF" stroke-linecap="round" stroke-opacity=".85" stroke-width="8"/>
 </svg>

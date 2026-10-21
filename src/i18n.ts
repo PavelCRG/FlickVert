@@ -30,6 +30,7 @@ const messages = {
   'Video format': ['Video format', 'Формат видео'], 'Audio format': ['Audio format', 'Формат аудио'], 'item': ['item', 'файл'], 'items': ['items', 'файлов'],
   'Browse images or drop audio and video from Finder or Explorer.': ['Browse images or drop audio and video from Finder or Explorer.', 'Выбирайте изображения или перетащите аудио и видео из Finder/Проводника.'],
   'Drop files to add them': ['Drop files to add them', 'Перетащите файлы сюда'], 'Your files stay on this device. Processing runs locally.': ['Your files stay on this device. Processing runs locally.', 'Файлы остаются на устройстве. Обработка выполняется локально.'],
+  'Closing the window keeps FlickVert in the tray. Choose Show FlickVert in its menu to reopen it.': ['Closing the window keeps FlickVert in the tray. Choose Show FlickVert in its menu to reopen it.', 'При закрытии FlickVert остаётся в трее. Выберите в его меню «Show FlickVert», чтобы снова открыть окно.'],
 } as const
 
 export type MessageKey = keyof typeof messages

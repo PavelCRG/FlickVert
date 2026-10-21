@@ -1,112 +1,79 @@
-<p align="center">
-  <img src="public/fv-mark.svg" width="64" alt="FlickVert FV logo" />
-</p>
+<div align="center">
+  <img src="public/fv-mark.svg" width="72" height="48" alt="FlickVert FV mark" />
+  <h1>FlickVert</h1>
+  <p>A small, local file converter for Windows and macOS.</p>
+  <p>
+    <a href="#quick-start"><img alt="Quick start" src="https://img.shields.io/badge/Quick%20start-Drag%20%26%20convert-E8783D?style=for-the-badge"></a>
+    <a href="#supported-formats"><img alt="Supported formats" src="https://img.shields.io/badge/Formats-What%20works-59616D?style=for-the-badge"></a>
+    <a href="#build-from-source"><img alt="Build from source" src="https://img.shields.io/badge/Build-From%20source-59616D?style=for-the-badge"></a>
+  </p>
+  <p><a href="README.ru.md">Русский</a> · <a href="README.zh-CN.md">简体中文</a></p>
+</div>
 
-<h1 align="center">FlickVert</h1>
+FlickVert sits beside File Explorer and Finder. Drop a file onto the app, choose a format, and save the result on your device.
 
-<p align="center">A small, local file converter for Windows and macOS.</p>
+## Contents
 
-<p align="center"><strong>Drag a file · Tap Shift · Drop on a format</strong></p>
+- [Quick start](#quick-start)
+- [Close and reopen](#close-and-reopen)
+- [How the drag wheel works](#how-the-drag-wheel-works)
+- [Supported formats](#supported-formats)
+- [Where files are saved](#where-files-are-saved)
+- [Build from source](#build-from-source)
+- [Privacy](#privacy)
 
-<p align="center">A lightweight helper alongside File Explorer and Finder. Dropped files are converted locally and saved beside their originals.</p>
+## Quick start
 
-<p align="center"><a href="#english">English</a> · <a href="#русский">Русский</a> · <a href="#中文">中文</a></p>
+1. Open FlickVert and drop one or more files into the window, or choose an image with **Browse**.
+2. Pick an output format and start the conversion.
+3. Find the converted file beside the original. Images chosen with **Browse** go to `Downloads/FlickVert`.
 
----
+## Close and reopen
 
-## English
+Closing the window keeps FlickVert running in the notification area so the drag wheel and shortcut remain available. Open the tray icon menu and choose **Show FlickVert** to bring the window back. Choose **Quit** there to exit the app.
 
-### Get started
+The default shortcut, **Ctrl+Alt+Space**, opens quick actions. Change it in **Settings**.
 
-1. Drag a file from File Explorer or Finder into FlickVert. In the app, you can also choose an image with **Browse**.
-2. While holding the left mouse button, tap and release `Shift` to open the format wheel.
-3. Move to a format and release the file. Press `Escape` to cancel.
+## How the drag wheel works
 
-Files dropped from File Explorer or Finder are saved in the same folder as the source. Images chosen with **Browse** are saved to `Downloads/FlickVert`, because the system picker does not provide their source path. FlickVert never replaces an existing file: if the name is taken, it adds a number such as `photo (2).webp`.
+1. Start dragging a file from File Explorer or Finder with the left mouse button.
+2. While still holding the mouse button, press and release **Shift**. The format wheel opens under the pointer.
+3. Move over a format and release the mouse button to convert. Press **Esc** to cancel.
 
-### What it converts
+The wheel needs a file drag that starts in Explorer or Finder. Selecting a file with **Browse** does not start this gesture.
 
-- **Images:** PNG, JPEG, WebP, GIF, and BMP to PNG, JPEG, or WebP.
-- **Audio and video:** with FFmpeg installed.
-- **Text documents and ebooks:** with Pandoc installed.
-- **Office documents to PDF:** with LibreOffice installed.
-- **Camera RAW images:** with ImageMagick installed.
+## Supported formats
 
-Image conversion is built in. Other conversion engines are optional and installed separately. FlickVert processes files locally and does not upload them. Animated GIFs are converted from the first frame.
+| Files | Available formats | Notes |
+| --- | --- | --- |
+| Images | PNG, JPEG, WebP | Built in; GIF and BMP can be used as input. Animated GIFs use their first frame. |
+| Audio and video | Depends on FFmpeg | Install FFmpeg separately. |
+| Text documents and ebooks | Depends on Pandoc | Install Pandoc separately. |
+| Office documents to PDF | Depends on LibreOffice | Install LibreOffice separately. |
+| Camera RAW | Depends on ImageMagick | Install ImageMagick separately. |
 
-### Install from source
+## Where files are saved
 
-Prebuilt installers are not published yet. To run the development version, install Node.js 24, Rust stable, and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/), then run:
+- Files dropped from Explorer or Finder are saved beside their originals.
+- Images selected with **Browse** are saved to `Downloads/FlickVert`.
+- Existing files are kept. If a name is taken, FlickVert adds a number, such as `photo (2).webp`.
 
-```sh
-npm ci
-npm run tauri dev
-```
+## Build from source
 
-FlickVert supports Windows 10/11 and macOS 13 or later. On macOS, allow Accessibility/Input Monitoring for the global Shift-drag gesture; the keyboard shortcut `Control+Option+Space` is an alternative.
-
-## Русский
-
-### Быстрый старт
-
-1. Перетащите файл из Проводника или Finder в FlickVert. В приложении также можно выбрать изображение кнопкой **Browse**.
-2. Удерживая левую кнопку мыши, нажмите и отпустите `Shift`, чтобы открыть круговое меню.
-3. Наведите указатель на формат и отпустите файл. Нажмите `Escape`, чтобы отменить действие.
-
-Файлы, перетащенные из Проводника или Finder, сохраняются в той же папке, что и оригинал. Изображения, выбранные через **Browse**, сохраняются в `Загрузки/FlickVert`: системное окно выбора не передаёт приложению путь к исходной папке. FlickVert не заменяет существующие файлы: если имя занято, добавляется номер, например `photo (2).webp`.
-
-### Поддерживаемые форматы
-
-- **Изображения:** PNG, JPEG, WebP, GIF и BMP в PNG, JPEG или WebP.
-- **Аудио и видео:** нужен установленный FFmpeg.
-- **Текстовые документы и электронные книги:** нужен Pandoc.
-- **Документы Office в PDF:** нужен LibreOffice.
-- **RAW-фотографии:** нужен ImageMagick.
-
-Конвертация изображений встроена. Остальные движки устанавливаются отдельно. Файлы обрабатываются на компьютере и не загружаются в интернет. Из анимированного GIF сохраняется первый кадр.
-
-### Сборка из исходного кода
-
-Готовые установщики пока не публикуются. Для запуска версии разработки установите Node.js 24, стабильный Rust и [зависимости Tauri](https://v2.tauri.app/start/prerequisites/), затем выполните:
+Install Node.js 24, stable Rust, and the [Tauri system prerequisites](https://v2.tauri.app/start/prerequisites/). Then run:
 
 ```sh
 npm ci
 npm run tauri dev
 ```
 
-Поддерживаются Windows 10/11 и macOS 13 или новее. Для жеста Shift-перетаскивания на macOS разрешите FlickVert доступ в «Универсальном доступе»/мониторинге ввода. Быстрый вызов меню: `Control+Option+Space`.
+FlickVert supports Windows 10/11 and macOS 13 or later. On macOS, allow Accessibility and Input Monitoring access for the Shift drag wheel. The configured keyboard shortcut is an alternative for opening quick actions.
 
-## 中文
+## Privacy
 
-### 快速开始
+Files are processed locally and are never uploaded. Optional conversion engines run on your device.
 
-1. 从文件资源管理器或 Finder 将文件拖入 FlickVert。也可以在应用中通过 **Browse** 选择图片。
-2. 按住鼠标左键拖动文件时，轻按并松开 `Shift` 打开格式环形菜单。
-3. 将指针移到目标格式后松开文件。按 `Escape` 可取消。
+## Languages
 
-从文件资源管理器或 Finder 拖入的文件会保存在源文件所在的文件夹中。通过 **Browse** 选择的图片会保存到 `Downloads/FlickVert`，因为系统文件选择器不会向应用提供源文件夹路径。FlickVert 不会覆盖已有文件；如果文件名已存在，会自动添加序号，例如 `photo (2).webp`。
-
-### 支持的格式
-
-- **图片：** PNG、JPEG、WebP、GIF 和 BMP，可转换为 PNG、JPEG 或 WebP。
-- **音频和视频：** 需要安装 FFmpeg。
-- **文本和电子书文档：** 需要安装 Pandoc。
-- **Office 文档转 PDF：** 需要安装 LibreOffice。
-- **相机 RAW 图片：** 需要安装 ImageMagick。
-
-图片转换功能已内置，其他转换引擎需单独安装。文件仅在本机处理，不会上传。动画 GIF 只转换第一帧。
-
-### 从源代码运行
-
-目前尚未发布预编译安装包。运行开发版本前，请安装 Node.js 24、稳定版 Rust 以及 [Tauri 所需组件](https://v2.tauri.app/start/prerequisites/)，然后执行：
-
-```sh
-npm ci
-npm run tauri dev
-```
-
-支持 Windows 10/11 和 macOS 13 或更高版本。在 macOS 上使用全局 Shift 拖放手势时，需要在系统设置中允许辅助功能 / 输入监控权限。也可以使用快捷键 `Control+Option+Space` 打开菜单。
-
----
-
-Built with Tauri 2, Rust, React, TypeScript, and Vite. See [LICENSE](LICENSE) for licensing details.
+- [Русский](README.ru.md)
+- [简体中文](README.zh-CN.md)
