@@ -157,10 +157,13 @@ export default function App() {
         try {
           let path: string
           if (supported(item.file)) {
-            const blob = await convertImage(item.file, { format, quality, width: preferences.width, height: preferences.height })
+            const source = item.path
+              ? new File([Uint8Array.from(await invoke<number[]>('read_dropped_file', { inputPath: item.path }))], item.file.name, { type: item.file.type })
+              : item.file
+            const blob = await convertImage(source, { format, quality, width: preferences.width, height: preferences.height })
             const selected = formats.find((entry) => entry.value === format)!
             const name = `${item.file.name.replace(/\.[^.]+$/, '')}.${selected.ext}`
-            path = await invoke<string>('save_output', { fileName: name, bytes: Array.from(new Uint8Array(await blob.arrayBuffer())) })
+            path = await invoke<string>('save_output', { fileName: name, inputPath: item.path, bytes: Array.from(new Uint8Array(await blob.arrayBuffer())) })
           } else {
             const outputExtension = isMedia(item.file) ? item.file.type.startsWith('audio/') ? audioFormat : videoFormat : isDocument(item.file) || isOffice(item.file) ? documentFormat : 'png'
             path = await invoke<string>('convert_file', { inputPath: item.path, outputExtension })
@@ -208,7 +211,7 @@ export default function App() {
           <div className="settings-title"><div><h2>{tr('Output settings')}</h2><p>{tr('These settings apply to every image in the queue.')}</p></div><span className="settings-step">{tr('FORMAT')}</span></div>
           <div className="controls"><label className="field"><span>{tr('Convert to')}</span><select value={format} onChange={(event) => updatePreferences({ format: event.target.value as Format })}>{formats.map((entry) => <option key={entry.value} value={entry.value}>{entry.label}</option>)}</select></label>
             {format !== 'image/png' ? <label className="quality-field"><span>{tr('Quality')} <strong>{quality}%</strong></span><input type="range" min="40" max="100" value={quality} onChange={(event) => updatePreferences({ quality: Number(event.target.value) })}/></label> : <div className="quality-field lossless"><span>{tr('Quality')}</span><div>{tr('Lossless')}</div></div>}
-            <div className="destination"><span>{tr('Save location')}</span><div><Icon name="file" size={15}/> {tr('Downloads / FlickVert')}</div></div>
+            <div className="destination"><span>{tr('Save location')}</span><div><Icon name="file" size={15}/> {tr(items.length && items.every((item) => item.path) ? 'Same folder as original' : items.some((item) => item.path) ? 'Save location varies' : 'Downloads / FlickVert')}</div></div>
             <label className="field"><span>{tr('Max width')}</span><input type="number" min="1" max="32768" placeholder="Original" value={preferences.width ?? ''} onChange={(event) => updatePreferences({ width: event.target.value ? Number(event.target.value) : undefined })}/></label>
             <label className="field"><span>{tr('Max height')}</span><input type="number" min="1" max="32768" placeholder="Original" value={preferences.height ?? ''} onChange={(event) => updatePreferences({ height: event.target.value ? Number(event.target.value) : undefined })}/></label>
             {items.some((item) => item.path && item.file.type.startsWith('video/')) && <label className="field"><span>{tr('Video format')}</span><select value={videoFormat} onChange={(event) => setVideoFormat(event.target.value)}>{['mp4', 'webm', 'mkv'].map((value) => <option key={value} value={value}>{value.toUpperCase()}</option>)}</select></label>}

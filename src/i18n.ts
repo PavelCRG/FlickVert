@@ -7,6 +7,7 @@ const messages = {
   'Processed on this device': ['Processed on this device', 'Обработка на этом устройстве'], 'PRIVATE BY DESIGN': ['PRIVATE BY DESIGN', 'КОНФИДЕНЦИАЛЬНОСТЬ'],
   'File conversion': ['File conversion', 'Конвертация файлов'], 'Add images, choose a format and save the result.': ['Add images, choose a format and save the result.', 'Добавьте изображения, выберите формат и сохраните результат.'],
   'Images · PNG, JPEG, WebP': ['Images · PNG, JPEG, WebP', 'Изображения · PNG, JPEG, WebP'], 'Drop files here': ['Drop files here', 'Перетащите файлы сюда'],
+  'Same folder as original': ['Same folder as original', 'Та же папка, что и оригинал'], 'Save location varies': ['Save location varies', 'Папка зависит от файла'],
   'or': ['or', 'или'], 'browse your computer': ['browse your computer', 'выберите на компьютере'],
   'Files are processed on your device and never uploaded': ['Files are processed on your device and never uploaded', 'Файлы обрабатываются на устройстве и никуда не отправляются'],
   'File queue': ['File queue', 'Очередь файлов'], 'Clear queue': ['Clear queue', 'Очистить очередь'], 'Your files will appear here': ['Your files will appear here', 'Здесь появятся файлы'],

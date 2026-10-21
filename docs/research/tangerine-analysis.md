@@ -12,7 +12,7 @@ The product advertises a much broader catalog than FlickVert currently supports:
 
 - Keep the familiar drag, tap Shift, drop-on-format flow.
 - Show only conversions available for the file type and installed local engines.
-- Keep processing on-device and preserve FlickVert's existing unique-output naming and `Downloads/FlickVert` destination.
+- Keep processing on-device and preserve FlickVert's unique-output naming; save dropped inputs beside their source.
 - Use a compact FV lettermark and native system typography, surfaces, and accent color.
 - Keep the current keyboard shortcut as an alternative to the global gesture.
 

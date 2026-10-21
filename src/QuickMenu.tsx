@@ -83,6 +83,7 @@ export default function QuickMenu() {
       const blob = await convertImage(input, { format: outputType, quality: preferences.quality, width: preferences.width, height: preferences.height })
       return invoke<string>('save_output', {
         fileName: `${stem}.${format.extension}`,
+        inputPath: file.path,
         bytes: Array.from(new Uint8Array(await blob.arrayBuffer())),
       })
     }

@@ -232,11 +232,7 @@ fn convert_file(
             .and_then(|value| value.to_str())
             .unwrap_or("converted");
         let name = format!("{stem}.{output_extension}");
-        let downloads = app
-            .path()
-            .download_dir()
-            .map_err(|error| error.to_string())?;
-        let destination = files::output_directory(&downloads).map_err(|error| error.to_string())?;
+        let destination = input.parent().ok_or("Input folder not found")?;
         files::write_output_file(&destination, &name, &output_temp)
             .map(|path| path.to_string_lossy().into_owned())
             .map_err(|error| error.to_string())
@@ -342,12 +338,29 @@ fn output_directory(app: tauri::AppHandle) -> Result<String, String> {
 }
 
 #[tauri::command]
-fn save_output(app: tauri::AppHandle, file_name: String, bytes: Vec<u8>) -> Result<String, String> {
-    let downloads = app
-        .path()
-        .download_dir()
-        .map_err(|error| error.to_string())?;
-    let directory = files::output_directory(&downloads).map_err(|error| error.to_string())?;
+fn save_output(
+    app: tauri::AppHandle,
+    file_name: String,
+    bytes: Vec<u8>,
+    input_path: Option<String>,
+    dropped: tauri::State<'_, DroppedFiles>,
+) -> Result<String, String> {
+    let directory = if let Some(path) = input_path {
+        let input = fs::canonicalize(path).map_err(|error| error.to_string())?;
+        if !dropped.0.lock().unwrap().contains(&input) {
+            return Err("Select the input file by dropping it into FlickVert".into());
+        }
+        input
+            .parent()
+            .ok_or("Input folder not found")?
+            .to_path_buf()
+    } else {
+        let downloads = app
+            .path()
+            .download_dir()
+            .map_err(|error| error.to_string())?;
+        files::output_directory(&downloads).map_err(|error| error.to_string())?
+    };
     files::write_output(&directory, &file_name, &bytes)
         .map(|path| path.to_string_lossy().into_owned())
         .map_err(|error| error.to_string())
