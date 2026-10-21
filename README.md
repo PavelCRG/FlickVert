@@ -18,6 +18,7 @@
 - Keep files on the device. Outputs go to `Downloads/FlickVert`; an existing output is kept and the new file gets a numbered name.
 - Use Russian or English, and follow the system's light/dark appearance or choose one explicitly.
 - Open the tray/menu-bar menu or quick action wheel with `Ctrl+Alt+Space` (Control+Option+Space on macOS).
+- While dragging a file with the left mouse button, tap and release `Shift` to open a format wheel at the pointer. Drop on a format to convert; `Escape` cancels. The quick wheel uses formats supported by the installed local engines and saves results to `Downloads/FlickVert`.
 
 ### Format notes
 
@@ -25,6 +26,11 @@
 - Transparent areas are filled with white when converting to JPEG.
 - Optional engines are detected on `PATH`: FFmpeg for audio/video, Pandoc for DOCX/ODT/Markdown/HTML/EPUB/RTF/TXT, LibreOffice for Office-to-PDF, and ImageMagick for common camera RAW files. FlickVert does not download or install tools.
 - PDF input and editing, spreadsheet/presentation output formats other than PDF, archives, and subtitles are not implemented yet. Unsupported files remain unchanged.
+- On macOS, the global Shift-drag gesture needs Accessibility/Input Monitoring permission. The keyboard shortcut remains available without it.
+
+## Product references
+
+FlickVert uses the quick, pointer-centered conversion flow popularized by [Tangerine for Mac](https://tangerineformac.com/) as a behavior reference. This implementation currently covers local file conversion through the engines listed above; Tangerine's larger set of file actions and advanced editing tools are not part of FlickVert.
 
 ## Build and run
 

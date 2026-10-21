@@ -9,15 +9,19 @@ use tauri::{
 };
 use tauri_plugin_global_shortcut::GlobalShortcutExt;
 mod files;
+mod input;
 mod operations;
 mod quick_window;
 
 const QUICK_WIDTH: u32 = 400;
-const QUICK_HEIGHT: u32 = 360;
+const QUICK_HEIGHT: u32 = 400;
 static MEDIA_TEMP_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 #[derive(Default)]
 struct DroppedFiles(Mutex<HashSet<PathBuf>>);
+
+#[derive(Default)]
+struct DragTrigger(Mutex<bool>);
 
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -88,6 +92,58 @@ fn inspect_dropped_files(
 #[tauri::command]
 fn engine_status() -> operations::Engines {
     operations::all_engine_status()
+}
+
+#[tauri::command]
+fn take_drag_trigger(trigger: tauri::State<'_, DragTrigger>) -> bool {
+    std::mem::take(&mut *trigger.0.lock().unwrap())
+}
+
+#[tauri::command]
+fn quick_formats(
+    input_path: String,
+    dropped: tauri::State<'_, DroppedFiles>,
+) -> Result<Vec<String>, String> {
+    let input = fs::canonicalize(input_path).map_err(|error| error.to_string())?;
+    if !dropped.0.lock().unwrap().contains(&input) {
+        return Err("Select the input file by dropping it into FlickVert".into());
+    }
+    let extension = input
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    if ["png", "jpg", "jpeg", "webp", "gif", "bmp"].contains(&extension.as_str()) {
+        return Ok(["png", "jpg", "webp"].map(str::to_owned).to_vec());
+    }
+    Ok(operations::output_extensions_for(
+        &extension,
+        operations::all_engine_status(),
+    ))
+}
+
+#[tauri::command]
+fn read_dropped_file(
+    input_path: String,
+    dropped: tauri::State<'_, DroppedFiles>,
+) -> Result<Vec<u8>, String> {
+    let input = fs::canonicalize(input_path).map_err(|error| error.to_string())?;
+    if !dropped.0.lock().unwrap().contains(&input) {
+        return Err("Select the input file by dropping it into FlickVert".into());
+    }
+    let extension = input
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    if !["png", "jpg", "jpeg", "webp", "gif", "bmp"].contains(&extension.as_str()) {
+        return Err("Only supported images can be read by the quick converter".into());
+    }
+    let metadata = fs::metadata(&input).map_err(|error| error.to_string())?;
+    if metadata.len() > 128 * 1024 * 1024 {
+        return Err("Image is larger than 128 MB".into());
+    }
+    fs::read(input).map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -196,26 +252,9 @@ fn show_main(app: &AppHandle) {
     }
 }
 
-fn show_quick(app: &AppHandle) {
-    let window = match app.get_webview_window("quick") {
-        Some(window) => window,
-        None => match WebviewWindowBuilder::new(app, "quick", WebviewUrl::App("index.html".into()))
-            .title("FlickVert Quick Actions")
-            .inner_size(QUICK_WIDTH as f64, QUICK_HEIGHT as f64)
-            .resizable(false)
-            .decorations(false)
-            .transparent(true)
-            .always_on_top(true)
-            .skip_taskbar(true)
-            .visible(false)
-            .build()
-        {
-            Ok(window) => window,
-            Err(error) => {
-                eprintln!("Could not open quick actions: {error}");
-                return;
-            }
-        },
+fn show_quick(app: &AppHandle, activate: bool) {
+    let Some(window) = app.get_webview_window("quick") else {
+        return;
     };
     if let Ok(cursor) = app.cursor_position() {
         if let Ok(Some(monitor)) = app.monitor_from_point(cursor.x, cursor.y) {
@@ -226,7 +265,10 @@ fn show_quick(app: &AppHandle) {
                 (QUICK_HEIGHT as f64 * scale).ceil() as u32,
             );
             let position = quick_window::clamp_window_position(
-                (cursor.x as i32, cursor.y as i32),
+                (
+                    cursor.x as i32 - physical_size.0 as i32 / 2,
+                    cursor.y as i32 - physical_size.1 as i32 / 2,
+                ),
                 physical_size,
                 quick_window::Rect {
                     x: area.position.x,
@@ -244,8 +286,17 @@ fn show_quick(app: &AppHandle) {
         QUICK_WIDTH as f64,
         QUICK_HEIGHT as f64,
     )));
+    let _ = window.set_focusable(activate);
     let _ = window.show();
-    let _ = window.set_focus();
+    if activate {
+        let _ = window.set_focus();
+    }
+}
+
+pub(crate) fn show_drag_quick(app: &AppHandle) {
+    *app.state::<DragTrigger>().0.lock().unwrap() = true;
+    show_quick(app, false);
+    let _ = app.emit("flickvert://drag-wheel-open", ());
 }
 
 #[tauri::command]
@@ -273,7 +324,7 @@ fn register_shortcut(app: AppHandle, shortcut: String) -> Result<(), String> {
     app.global_shortcut()
         .on_shortcut(shortcut, |handle, _, event| {
             if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
-                show_quick(handle);
+                show_quick(handle, true);
             }
         })
         .map_err(|error| error.to_string())
@@ -318,12 +369,32 @@ fn main() {
             save_output,
             quick_action,
             register_shortcut,
+            take_drag_trigger,
+            quick_formats,
+            read_dropped_file,
             inspect_dropped_files,
             engine_status,
             convert_file
         ])
         .setup(|app| {
             app.manage(DroppedFiles::default());
+            app.manage(DragTrigger::default());
+            match WebviewWindowBuilder::new(app, "quick", WebviewUrl::App("index.html".into()))
+                .title("FlickVert Quick Actions")
+                .inner_size(QUICK_WIDTH as f64, QUICK_HEIGHT as f64)
+                .resizable(false)
+                .decorations(false)
+                .transparent(true)
+                .always_on_top(true)
+                .skip_taskbar(true)
+                .focused(false)
+                .focusable(false)
+                .visible(false)
+                .build()
+            {
+                Ok(_) => {}
+                Err(error) => eprintln!("Could not prepare quick actions: {error}"),
+            }
             let tray = tray_menu(app.handle()).and_then(|menu| {
                 let icon = app
                     .default_window_icon()
@@ -337,7 +408,7 @@ fn main() {
                     .show_menu_on_left_click(false)
                     .on_menu_event(|app, event| match event.id().as_ref() {
                         "show" => show_main(app),
-                        "quick" => show_quick(app),
+                        "quick" => show_quick(app, true),
                         "settings" => {
                             show_main(app);
                             let _ = app.emit("flickvert://quick-action", "settings");
@@ -355,6 +426,7 @@ fn main() {
                     eprintln!("Tray unavailable; keep FlickVert open to access it: {error}")
                 }
             }
+            input::start(app.handle().clone());
             Ok(())
         })
         .on_window_event(|window, event| {

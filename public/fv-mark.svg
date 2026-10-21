@@ -1,28 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 176 120" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 48" fill="none">
   <defs>
-    <linearGradient id="front" x1="36" y1="22" x2="125" y2="94" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#77A5FF"/>
-      <stop offset=".48" stop-color="#3975F6"/>
-      <stop offset="1" stop-color="#2052C9"/>
+    <linearGradient id="f" x1="10" y1="7" x2="37" y2="40" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFC36A"/>
+      <stop offset="1" stop-color="#F07835"/>
     </linearGradient>
-    <linearGradient id="side" x1="48" y1="54" x2="142" y2="108" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#1A3D99"/>
-      <stop offset="1" stop-color="#102B70"/>
+    <linearGradient id="v" x1="41" y1="8" x2="78" y2="39" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF9B52"/>
+      <stop offset="1" stop-color="#E45B2D"/>
     </linearGradient>
-    <filter id="shadow" x="8" y="4" width="164" height="112" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
-      <feOffset dy="4"/>
-      <feComponentTransfer><feFuncA type="linear" slope=".22"/></feComponentTransfer>
-      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
   </defs>
-  <g filter="url(#shadow)">
-    <g transform="translate(6 8)" fill="url(#side)">
-      <path d="M24 19h61v8H32v22h43v8H32v30h-8V19Z"/>
-      <path d="M88 19h13l21 51 21-51h13l-30 68h-9L88 19Z"/>
-    </g>
-    <path d="M24 19h61v8H32v22h43v8H32v30h-8V19Z" fill="url(#front)"/>
-    <path d="M88 19h13l21 51 21-51h13l-30 68h-9L88 19Z" fill="url(#front)"/>
-    <path d="M29 22h50m23 3 15 36" stroke="#FFF" stroke-opacity=".55" stroke-width="2" stroke-linecap="round"/>
-  </g>
+  <path d="M9 7h29v7H17v8h17v7H17v12H9V7Z" fill="#A84626" opacity=".55" transform="translate(0 2)"/>
+  <path d="m41 7 11 26L64 7h9L55 41h-7L32 7h9Z" fill="#A84626" opacity=".55" transform="translate(0 2)"/>
+  <path d="M9 5h29v7H17v8h17v7H17v12H9V5Z" fill="url(#f)"/>
+  <path d="m41 5 11 26L64 5h9L55 39h-7L32 5h9Z" fill="url(#v)"/>
+  <path d="M13 8h19M45 9l6 14" stroke="#FFF" stroke-opacity=".72" stroke-width="1.5" stroke-linecap="round"/>
 </svg>

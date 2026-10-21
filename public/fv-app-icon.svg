@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="tile" x1="55" y1="20" x2="438" y2="500" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFB65E"/>
+      <stop offset=".52" stop-color="#F47B38"/>
+      <stop offset="1" stop-color="#D94F2D"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="112" y1="127" x2="391" y2="384" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF"/>
+      <stop offset="1" stop-color="#FFF2DC"/>
+    </linearGradient>
+  </defs>
+  <path d="M110 12h292a98 98 0 0 1 98 98v292a98 98 0 0 1-98 98H110a98 98 0 0 1-98-98V110a98 98 0 0 1 98-98Z" fill="#A93D27" opacity=".38" transform="translate(0 8)"/>
+  <path d="M110 4h292a98 98 0 0 1 98 98v292a98 98 0 0 1-98 98H110a98 98 0 0 1-98-98V102a98 98 0 0 1 98-98Z" fill="url(#tile)"/>
+  <path d="M109 150h135v38H151v52h83v37h-83v91h-42V150Z" fill="#A84228" opacity=".55" transform="translate(0 10)"/>
+  <path d="m252 150 54 143 54-143h47l-78 218h-46l-78-218h47Z" fill="#A84228" opacity=".55" transform="translate(0 10)"/>
+  <path d="M109 142h135v38H151v52h83v37h-83v91h-42V142Z" fill="url(#shine)"/>
+  <path d="m252 142 54 143 54-143h47l-78 218h-46l-78-218h47Z" fill="url(#shine)"/>
+  <path d="M127 158h94M273 160l35 94" stroke="#FFF" stroke-opacity=".84" stroke-width="8" stroke-linecap="round"/>
+</svg>

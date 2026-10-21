@@ -88,6 +88,18 @@ pub fn operation_for(
         .find(|operation| operation.output_extensions.contains(&output_extension))
 }
 
+pub fn output_extensions_for(extension: &str, engines: Engines) -> Vec<String> {
+    let mut outputs = Vec::new();
+    for operation in operations_for(extension, engines) {
+        for output in operation.output_extensions {
+            if !outputs.iter().any(|existing| existing == output) {
+                outputs.push((*output).to_owned());
+            }
+        }
+    }
+    outputs
+}
+
 pub fn all_engine_status() -> Engines {
     Engines {
         ffmpeg: find_executable("ffmpeg").is_some(),
