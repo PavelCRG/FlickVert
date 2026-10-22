@@ -94,6 +94,16 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    let unlisten: (() => void) | undefined
+    let disposed = false
+    void listen<Omit<HistoryEntry, 'id'>>('flickvert://job-completed', ({ payload }) => {
+      if (typeof payload.fileName !== 'string' || typeof payload.output !== 'string' || !Number.isFinite(payload.size)) return
+      setHistory((current) => [{ id: crypto.randomUUID(), ...payload }, ...current].slice(0, 100))
+    }).then((stop) => { if (disposed) stop(); else unlisten = stop })
+    return () => { disposed = true; unlisten?.() }
+  }, [])
+
+  useEffect(() => {
     void invoke('register_shortcut', { shortcut: preferences.shortcut })
       .then(() => setShortcutError(false))
       .catch(() => setShortcutError(true))

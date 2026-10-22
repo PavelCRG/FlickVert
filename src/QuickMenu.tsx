@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 import { invoke } from '@tauri-apps/api/core'
-import { listen } from '@tauri-apps/api/event'
+import { emit, listen } from '@tauri-apps/api/event'
 import { convertImage, fitWithin } from './conversion/images'
 import { loadSettings } from './settings'
 import { t, type MessageKey } from './i18n'
@@ -137,7 +137,11 @@ export default function QuickMenu() {
     setStatus(tr('Converting...'))
     try {
       const outputs: string[] = []
-      for (const file of items) outputs.push(await convertTo(file, format))
+      for (const file of items) {
+        const output = await convertTo(file, format)
+        outputs.push(output)
+        await emit('flickvert://job-completed', { fileName: file.name, size: file.size, output })
+      }
       setStatus(`${tr('Saved')} · ${outputs.length}`)
       window.setTimeout(hide, 650)
     } catch (error) {
@@ -174,11 +178,12 @@ export default function QuickMenu() {
         const quality = actionId === 'compress' ? Math.min(loadSettings().quality, 76) / 100 : loadSettings().quality / 100
         const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((result) => result ? resolve(result) : reject(new Error('Image processing failed')), format, quality))
         const suffix = actionId === 'resize' ? '-resized' : actionId === 'rotate' ? '-rotated' : actionId === 'flip' ? '-flipped' : actionId === 'grayscale' ? '-grayscale' : actionId === 'square' ? '-square' : '-compressed'
-        await invoke('save_output', {
+        const output = await invoke<string>('save_output', {
           fileName: `${file.name.replace(/\.[^.]+$/, '')}${suffix}.${extension === 'jpeg' ? 'jpg' : extension}`,
           inputPath: file.path,
           bytes: Array.from(new Uint8Array(await blob.arrayBuffer())),
         })
+        await emit('flickvert://job-completed', { fileName: file.name, size: file.size, output })
       }
       setStatus(tr('Saved'))
       window.setTimeout(hide, 650)
@@ -196,7 +201,10 @@ export default function QuickMenu() {
     dropHandled.current = true
     setStatus(tr('Processing...'))
     try {
-      for (const file of items) await invoke<string>('process_media_tool', { inputPath: file.path, actionId })
+      for (const file of items) {
+        const output = await invoke<string>('process_media_tool', { inputPath: file.path, actionId })
+        await emit('flickvert://job-completed', { fileName: file.name, size: file.size, output })
+      }
       setStatus(tr('Saved'))
       window.setTimeout(hide, 650)
     } catch (error) {
