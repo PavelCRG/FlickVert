@@ -70,7 +70,8 @@ Install Node.js 24, stable Rust, and the [Tauri system prerequisites](https://v2
 
 ```sh
 npm ci
-npm run tauri dev
+npm run build
+npm run dev
 ```
 
 FlickVert supports Windows 10/11 and macOS 13 or later. On macOS, allow Accessibility and Input Monitoring access for the Shift drag wheel. The configured keyboard shortcut is an alternative for opening quick actions.

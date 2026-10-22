@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "identifier": "app.flickvert.desktop",
   "build": {
-    "beforeDevCommand": "npm run dev",
-    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": null,
+    "devUrl": null,
     "beforeBuildCommand": "npm run build",
     "frontendDist": "../dist"
   },

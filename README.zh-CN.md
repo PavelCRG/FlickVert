@@ -71,7 +71,8 @@ FlickVert 可与文件资源管理器和 Finder 配合使用。将文件拖入�
 
 ```sh
 npm ci
-npm run tauri dev
+npm run build
+npm run dev
 ```
 
 支持 Windows 10/11 和 macOS 13 或更高版本。在 macOS 上，若要使用 Shift 拖放转盘，请允许 FlickVert 使用辅助功能和输入监控权限。也可以使用已配置的快捷键打开快捷菜单。
