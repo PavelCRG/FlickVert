@@ -219,7 +219,7 @@ export default function QuickMenu() {
       const size = await getCurrentWindow().innerSize()
       if (wheelModeRef.current === 'actions') {
         const index = selectedSector(point, size, fileActions.length)
-        if (index >= 0 && received.length === 1) await choose(fileActions[index].id)
+        if (index >= 0 && received.length && (fileActions[index].id === 'copy-to-folder' || received.length === 1)) await choose(fileActions[index].id)
         return
       }
       if (wheelModeRef.current === 'tools') {
@@ -298,10 +298,10 @@ export default function QuickMenu() {
         await runTool(actionId, filesRef.current)
         return
       } else if (actionId === 'copy-to-folder' || actionId === 'move-to-folder') {
-        const path = filesRef.current[0]?.path
-        if (!path) return
-        const output = await invoke<string>(actionId === 'copy-to-folder' ? 'copy_to_flickvert_folder' : 'move_to_flickvert_folder', { inputPath: path })
-        setStatus(`${tr(actionId === 'copy-to-folder' ? 'Copied to FlickVert' : 'Moved to FlickVert')}: ${output.split(/[\\/]/).pop()}`)
+        const items = actionId === 'copy-to-folder' ? filesRef.current : filesRef.current.slice(0, 1)
+        if (!items.length) return
+        for (const file of items) await invoke<string>(actionId === 'copy-to-folder' ? 'copy_to_flickvert_folder' : 'move_to_flickvert_folder', { inputPath: file.path })
+        setStatus(actionId === 'copy-to-folder' ? `${tr('Copied files')}: ${items.length}` : tr('Moved to FlickVert'))
       } else if (actionId === 'reveal' || actionId === 'copy-path') {
         const path = filesRef.current[0]?.path
         if (!path) return
@@ -334,7 +334,7 @@ export default function QuickMenu() {
       <div className="quick-center"><img className="quick-monogram" src="/fv-mark.svg" alt="FlickVert"/><span>{status || (files.length ? tr('No formats available') : dragMode ? tr('Drag a file here') : tr('Choose an action'))}</span></div>
       {(dragMode ? wheelMode === 'actions' ? fileActions : wheelMode === 'tools' ? toolActionsFor(files, ffmpegAvailable) : quickActions : quickActions).map((action, index, entries) => {
         const angle = (index / entries.length) * Math.PI * 2 - Math.PI / 2
-        const needsOneFile = ['copy-to-folder', 'move-to-folder', 'reveal', 'copy-path'].includes(action.id)
+        const needsOneFile = ['move-to-folder', 'reveal', 'copy-path'].includes(action.id)
         const imageTool = allToolActions.some((tool) => tool.id === action.id)
         const unavailableTool = imageTool && dragMode && !toolActionsFor(files, ffmpegAvailable).some((tool) => tool.id === action.id)
         return <button key={action.id} className={`quick-action action-${action.id}${active === index ? ' active' : ''}`} style={{ left: `${50 + Math.cos(angle) * 34}%`, top: `${50 + Math.sin(angle) * 34}%` }} onClick={() => void choose(action.id)} disabled={(needsOneFile && files.length !== 1) || unavailableTool}><span>{action.glyph}</span><small>{tr(action.label)}</small></button>

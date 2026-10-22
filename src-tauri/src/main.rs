@@ -77,7 +77,7 @@ fn file_mime(extension: &str) -> Option<&'static str> {
         | "rst" | "tex" | "xls" | "xlsx" | "ods" | "ppt" | "pptx" | "odp" | "csv" => {
             Some("application/octet-stream")
         }
-        _ => None,
+        _ => Some("application/octet-stream"),
     }
 }
 
@@ -92,8 +92,12 @@ fn inspect_dropped_files(
         .filter_map(|path| {
             let path = fs::canonicalize(path).ok()?;
             let metadata = fs::metadata(&path).ok()?;
-            let extension = path.extension()?.to_str()?.to_ascii_lowercase();
-            let mime = file_mime(&extension)?;
+            let extension = path
+                .extension()
+                .and_then(|value| value.to_str())
+                .unwrap_or("")
+                .to_ascii_lowercase();
+            let mime = file_mime(&extension).unwrap_or("application/octet-stream");
             if !metadata.is_file() {
                 return None;
             }
