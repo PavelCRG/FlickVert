@@ -262,6 +262,91 @@ fn convert_file(
     result
 }
 
+#[tauri::command]
+fn process_media_tool(
+    app: AppHandle,
+    input_path: String,
+    action_id: String,
+    dropped: tauri::State<'_, DroppedFiles>,
+) -> Result<String, String> {
+    let input = selected_dropped_file(&input_path, &dropped)?;
+    let extension = input
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    let is_video = operations::is_video_input(&extension);
+    let is_audio = operations::is_audio_input(&extension);
+    let output_extension = match (is_video, is_audio, action_id.as_str()) {
+        (true, _, "compress-video") => "mp4",
+        (true, _, "mute-video") => &extension,
+        (true, _, "extract-audio") => "mp3",
+        (true, _, "video-thumbnail") => "jpg",
+        (_, true, "compress-audio" | "normalize-audio") => "m4a",
+        _ => return Err("This tool is not available for the selected media".into()),
+    };
+    let ffmpeg = operations::find_executable("ffmpeg").ok_or("FFmpeg is not installed")?;
+    let work_root = app
+        .path()
+        .app_cache_dir()
+        .map_err(|error| error.to_string())?
+        .join("media-work");
+    fs::create_dir_all(&work_root).map_err(|error| error.to_string())?;
+    let work_dir = loop {
+        let candidate = work_root.join(format!(
+            "{}-{}",
+            std::process::id(),
+            MEDIA_TEMP_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+        ));
+        match fs::create_dir(&candidate) {
+            Ok(()) => break candidate,
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(error.to_string()),
+        }
+    };
+    let result = (|| {
+        let output_temp = work_dir.join(format!("result.{output_extension}"));
+        let args = operations::ffmpeg_tool_args(&action_id, &input, &output_temp)
+            .ok_or("Unknown media tool")?;
+        let output = operations::run(&ffmpeg, &args).map_err(|error| error.to_string())?;
+        if !output.status.success() {
+            let message = String::from_utf8_lossy(&output.stderr).trim().to_owned();
+            return Err(if message.is_empty() {
+                "FFmpeg could not process this file".into()
+            } else {
+                message
+            });
+        }
+        if !output_temp.is_file()
+            || fs::metadata(&output_temp)
+                .map_err(|error| error.to_string())?
+                .len()
+                == 0
+        {
+            return Err("FFmpeg did not create an output file".into());
+        }
+        let stem = input
+            .file_stem()
+            .and_then(|value| value.to_str())
+            .unwrap_or("media");
+        let suffix = match action_id.as_str() {
+            "compress-video" | "compress-audio" => "compressed",
+            "mute-video" => "muted",
+            "extract-audio" => "audio",
+            "video-thumbnail" => "thumbnail",
+            "normalize-audio" => "normalized",
+            _ => return Err("Unknown media tool".into()),
+        };
+        let name = format!("{stem}-{suffix}.{output_extension}");
+        let destination = input.parent().ok_or("Input folder not found")?;
+        files::write_output_file(destination, &name, &output_temp)
+            .map(|path| path.to_string_lossy().into_owned())
+            .map_err(|error| error.to_string())
+    })();
+    let _ = fs::remove_dir_all(work_dir);
+    result
+}
+
 fn show_main(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
@@ -557,7 +642,8 @@ fn main() {
             read_dropped_file,
             inspect_dropped_files,
             engine_status,
-            convert_file
+            convert_file,
+            process_media_tool
         ])
         .setup(|app| {
             app.manage(DroppedFiles::default());

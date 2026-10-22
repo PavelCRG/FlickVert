@@ -43,6 +43,8 @@ jobs:
           @'
           Run FlickVert.exe. Drag a file into the app, or hold a file and tap/release Shift for conversion, Ctrl for image tools, or Alt for file actions. The actions wheel can copy or move files to Downloads/FlickVert.
 
+          With FFmpeg installed, the tools wheel also supports video compression, mute, audio extraction, thumbnails, audio compression and loudness normalization.
+
           Files are processed locally. FFmpeg, Pandoc, ImageMagick and LibreOffice are optional and must be installed separately for their formats. Windows 10/11 requires Microsoft Edge WebView2 Runtime.
 
           Closing the main window keeps FlickVert in the notification area. Use the tray menu to reopen the app or quit.

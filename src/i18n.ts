@@ -1,6 +1,7 @@
 import type { Language } from './settings'
 
 const messages = {
+  'Mute video': ['Mute video', '\u041e\u0442\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u0437\u0432\u0443\u043a'], 'Extract audio': ['Extract audio', '\u0418\u0437\u0432\u043b\u0435\u0447\u044c \u0430\u0443\u0434\u0438\u043e'], 'Create thumbnail': ['Create thumbnail', '\u0421\u043e\u0437\u0434\u0430\u0442\u044c \u043c\u0438\u043d\u0438\u0430\u0442\u044e\u0440\u0443'], 'Normalize audio': ['Normalize audio', '\u041d\u043e\u0440\u043c\u0430\u043b\u0438\u0437\u043e\u0432\u0430\u0442\u044c \u0433\u0440\u043e\u043c\u043a\u043e\u0441\u0442\u044c'],
   'Copy to FlickVert': ['Copy to FlickVert', '\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0432 FlickVert'], 'Move to FlickVert': ['Move to FlickVert', '\u041f\u0435\u0440\u0435\u043c\u0435\u0441\u0442\u0438\u0442\u044c \u0432 FlickVert'], 'Copied to FlickVert': ['Copied to FlickVert', '\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u043d\u043e \u0432 FlickVert'], 'Moved to FlickVert': ['Moved to FlickVert', '\u041f\u0435\u0440\u0435\u043c\u0435\u0449\u0435\u043d\u043e \u0432 FlickVert'],
   'Rotate': ['Rotate', '\u041f\u043e\u0432\u0435\u0440\u043d\u0443\u0442\u044c'], 'Flip': ['Flip', '\u041e\u0442\u0440\u0430\u0437\u0438\u0442\u044c'], 'Grayscale': ['Grayscale', '\u0427\u0451\u0440\u043d\u043e-\u0431\u0435\u043b\u044b\u0439'], 'Square crop': ['Square crop', '\u041a\u0432\u0430\u0434\u0440\u0430\u0442\u043d\u0430\u044f \u043e\u0431\u0440\u0435\u0437\u043a\u0430'], 'Compress': ['Compress', '\u0421\u0436\u0430\u0442\u044c'], 'Processing...': ['Processing...', '\u041e\u0431\u0440\u0430\u0431\u043e\u0442\u043a\u0430...'],
   'Convert files': ['Convert files', 'Конвертация файлов'], 'History': ['History', 'История'], 'Settings': ['Settings', 'Настройки'], 'Resize': ['Resize', 'Изменить размер'], 'Choose an action': ['Choose an action', 'Выберите действие'], 'Show in folder': ['Show in folder', 'Показать в папке'], 'Copy path': ['Copy path', 'Копировать путь'], 'Path copied': ['Path copied', 'Путь скопирован'], 'Resizing...': ['Resizing...', 'Изменение размера...'],
@@ -40,6 +41,7 @@ const messages = {
 
 export type MessageKey = keyof typeof messages
 const chinese: { [K in keyof typeof messages]: string } = {
+  'Mute video': '\u89c6\u9891\u9759\u97f3', 'Extract audio': '\u63d0\u53d6\u97f3\u9891', 'Create thumbnail': '\u521b\u5efa\u7f29\u7565\u56fe', 'Normalize audio': '\u97f3\u9891\u54cd\u5ea6\u6807\u51c6\u5316',
   'Copy to FlickVert': '\u590d\u5236\u5230 FlickVert', 'Move to FlickVert': '\u79fb\u52a8\u5230 FlickVert', 'Copied to FlickVert': '\u5df2\u590d\u5236\u5230 FlickVert', 'Moved to FlickVert': '\u5df2\u79fb\u52a8\u5230 FlickVert',
   'Rotate': '\u65cb\u8f6c', 'Flip': '\u7ffb\u8f6c', 'Grayscale': '\u7070\u5ea6', 'Square crop': '\u6b63\u65b9\u5f62\u88c1\u526a', 'Compress': '\u538b\u7f29', 'Processing...': '\u6b63\u5728\u5904\u7406...',
   'Convert files': '转换文件', 'History': '历史记录', 'Settings': '设置', 'Resize': '调整大小', 'Choose an action': '选择操作', 'Show in folder': '在文件夹中显示', 'Copy path': '复制路径', 'Path copied': '路径已复制', 'Resizing...': '正在调整大小...',

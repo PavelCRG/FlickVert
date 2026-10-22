@@ -25,12 +25,30 @@ const toolActions = [
   { id: 'square', label: 'Square crop' as const, glyph: '□' },
   { id: 'compress', label: 'Compress' as const, glyph: '◒' },
 ]
+const videoToolActions = [
+  { id: 'compress-video', label: 'Compress' as const, glyph: '◒' },
+  { id: 'mute-video', label: 'Mute video' as const, glyph: '◖' },
+  { id: 'extract-audio', label: 'Extract audio' as const, glyph: '♫' },
+  { id: 'video-thumbnail', label: 'Create thumbnail' as const, glyph: '▣' },
+]
+const audioToolActions = [
+  { id: 'compress-audio', label: 'Compress' as const, glyph: '◒' },
+  { id: 'normalize-audio', label: 'Normalize audio' as const, glyph: '▂' },
+]
+const allToolActions = [...toolActions, ...videoToolActions, ...audioToolActions]
 const fileActions = [
   { id: 'copy-to-folder', label: 'Copy to FlickVert' as const, glyph: '⧉' },
   { id: 'move-to-folder', label: 'Move to FlickVert' as const, glyph: '⇥' },
   { id: 'reveal', label: 'Show in folder' as const, glyph: '↗' },
   { id: 'copy-path', label: 'Copy path' as const, glyph: '⎘' },
 ]
+
+function toolActionsFor(files: NativeFile[], ffmpegAvailable: boolean) {
+  if (files.length && files.every((file) => imageExtensions.includes(file.extension))) return toolActions
+  if (ffmpegAvailable && files.length && files.every((file) => file.mime.startsWith('video/'))) return videoToolActions
+  if (ffmpegAvailable && files.length && files.every((file) => file.mime.startsWith('audio/'))) return audioToolActions
+  return []
+}
 
 function outputLabel(extension: string) {
   return extension === 'jpg' ? 'JPEG' : extension.toUpperCase()
@@ -54,9 +72,11 @@ export default function QuickMenu() {
   const [formats, setFormats] = useState<Format[]>([])
   const [active, setActive] = useState(-1)
   const [status, setStatus] = useState('')
+  const [ffmpegAvailable, setFfmpegAvailable] = useState(false)
   const dragModeRef = useRef(false)
   const wheelModeRef = useRef<'convert' | 'tools' | 'actions'>('convert')
   const filesRef = useRef<NativeFile[]>([])
+  const ffmpegAvailableRef = useRef(false)
   const formatsRef = useRef<Format[]>([])
   const dropHandled = useRef(false)
   const hideTimer = useRef<number | undefined>(undefined)
@@ -169,7 +189,20 @@ export default function QuickMenu() {
   }
 
   async function runTool(actionId: string, items: NativeFile[]) {
-    await processImages(items, actionId)
+    if (toolActions.some((action) => action.id === actionId)) {
+      await processImages(items, actionId)
+      return
+    }
+    dropHandled.current = true
+    setStatus(tr('Processing...'))
+    try {
+      for (const file of items) await invoke<string>('process_media_tool', { inputPath: file.path, actionId })
+      setStatus(tr('Saved'))
+      window.setTimeout(hide, 650)
+    } catch (error) {
+      setStatus(`${tr('Could not convert')}: ${String(error).slice(0, 100)}`)
+      dropHandled.current = false
+    }
   }
 
   async function dropFiles(paths: string[], point: Position) {
@@ -182,8 +215,9 @@ export default function QuickMenu() {
         return
       }
       if (wheelModeRef.current === 'tools') {
-        const index = selectedSector(point, size, toolActions.length)
-        if (index >= 0 && received.every((file) => imageExtensions.includes(file.extension))) await runTool(toolActions[index].id, received)
+        const actions = toolActionsFor(received, ffmpegAvailableRef.current)
+        const index = selectedSector(point, size, actions.length)
+        if (index >= 0) await runTool(actions[index].id, received)
         return
       }
       const index = selectedSector(point, size, options.length)
@@ -199,6 +233,7 @@ export default function QuickMenu() {
     let disposed = false
     const stops: (() => void)[] = []
     const addStop = (stop: () => void) => { if (disposed) stop(); else stops.push(stop) }
+    void invoke<{ ffmpeg: boolean }>('engine_status').then(({ ffmpeg }) => { ffmpegAvailableRef.current = ffmpeg; setFfmpegAvailable(ffmpeg) }).catch(() => {})
 
     void getCurrentWindow().onFocusChanged(({ payload }) => {
       if (!payload) {
@@ -228,7 +263,7 @@ export default function QuickMenu() {
         if (hideTimer.current !== undefined) window.clearTimeout(hideTimer.current)
         void refreshFiles(payload.paths).catch((error) => setStatus(String(error)))
       } else if (payload.type === 'over') {
-        void getCurrentWindow().innerSize().then((size) => setActive(selectedSector(payload.position, size, wheelModeRef.current === 'tools' ? toolActions.length : wheelModeRef.current === 'actions' ? fileActions.length : formatsRef.current.length)))
+        void getCurrentWindow().innerSize().then((size) => setActive(selectedSector(payload.position, size, wheelModeRef.current === 'tools' ? toolActionsFor(filesRef.current, ffmpegAvailableRef.current).length : wheelModeRef.current === 'actions' ? fileActions.length : formatsRef.current.length)))
       } else if (payload.type === 'drop') {
         if (hideTimer.current !== undefined) window.clearTimeout(hideTimer.current)
         dropHandled.current = true
@@ -251,7 +286,7 @@ export default function QuickMenu() {
       if (actionId === 'resize' && dragModeRef.current && filesRef.current.length) {
         await runTool(actionId, filesRef.current)
         return
-      } else if (toolActions.some((action) => action.id === actionId) && dragModeRef.current && filesRef.current.length) {
+      } else if (allToolActions.some((action) => action.id === actionId) && dragModeRef.current && filesRef.current.length) {
         await runTool(actionId, filesRef.current)
         return
       } else if (actionId === 'copy-to-folder' || actionId === 'move-to-folder') {
@@ -289,11 +324,11 @@ export default function QuickMenu() {
       })}
     </div> : <div className="quick-orbit quick-actions">
       <div className="quick-center"><img className="quick-monogram" src="/fv-mark.svg" alt="FlickVert"/><span>{status || (files.length ? tr('No formats available') : dragMode ? tr('Drag a file here') : tr('Choose an action'))}</span></div>
-      {(dragMode ? wheelMode === 'actions' ? fileActions : wheelMode === 'tools' ? toolActions : quickActions : quickActions).map((action, index, entries) => {
+      {(dragMode ? wheelMode === 'actions' ? fileActions : wheelMode === 'tools' ? toolActionsFor(files, ffmpegAvailable) : quickActions : quickActions).map((action, index, entries) => {
         const angle = (index / entries.length) * Math.PI * 2 - Math.PI / 2
         const needsOneFile = ['copy-to-folder', 'move-to-folder', 'reveal', 'copy-path'].includes(action.id)
-        const imageTool = toolActions.some((tool) => tool.id === action.id)
-        const unavailableTool = imageTool && dragMode && (!files.length || files.some((file) => !imageExtensions.includes(file.extension)))
+        const imageTool = allToolActions.some((tool) => tool.id === action.id)
+        const unavailableTool = imageTool && dragMode && !toolActionsFor(files, ffmpegAvailable).some((tool) => tool.id === action.id)
         return <button key={action.id} className={`quick-action action-${action.id}${active === index ? ' active' : ''}`} style={{ left: `${50 + Math.cos(angle) * 34}%`, top: `${50 + Math.sin(angle) * 34}%` }} onClick={() => void choose(action.id)} disabled={(needsOneFile && files.length !== 1) || unavailableTool}><span>{action.glyph}</span><small>{tr(action.label)}</small></button>
       })}
     </div>}

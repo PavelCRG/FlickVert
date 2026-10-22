@@ -73,6 +73,18 @@ const OFFICE_PDF: Operation = Operation {
     output_extensions: &["pdf"],
 };
 
+pub fn is_audio_input(extension: &str) -> bool {
+    AUDIO
+        .input_extensions
+        .contains(&extension.to_ascii_lowercase().as_str())
+}
+
+pub fn is_video_input(extension: &str) -> bool {
+    VIDEO
+        .input_extensions
+        .contains(&extension.to_ascii_lowercase().as_str())
+}
+
 pub fn operations_for(extension: &str, engines: Engines) -> Vec<Operation> {
     let extension = extension.to_ascii_lowercase();
     [
@@ -160,6 +172,35 @@ pub fn ffmpeg_args(input: &Path, output: &Path) -> Vec<OsString> {
         .map(OsString::from)
         .chain([input.as_os_str().to_owned(), output.as_os_str().to_owned()])
         .collect()
+}
+
+pub fn ffmpeg_tool_args(action: &str, input: &Path, output: &Path) -> Option<Vec<OsString>> {
+    let mut args = ["-nostdin", "-hide_banner", "-loglevel", "error", "-y"]
+        .into_iter()
+        .map(OsString::from)
+        .collect::<Vec<_>>();
+    let options: &[&str] = match action {
+        "compress-video" => &[
+            "-c:v", "libx264", "-crf", "28", "-preset", "medium", "-c:a", "aac", "-b:a", "128k",
+        ],
+        "mute-video" => &["-c:v", "copy", "-an"],
+        "extract-audio" => &["-vn", "-c:a", "libmp3lame", "-q:a", "3"],
+        "video-thumbnail" => &[],
+        "compress-audio" => &["-vn", "-c:a", "aac", "-b:a", "128k"],
+        "normalize-audio" => &["-af", "loudnorm", "-c:a", "aac", "-b:a", "192k"],
+        _ => return None,
+    };
+    if action == "video-thumbnail" {
+        args.extend(["-ss", "00:00:01", "-i"].into_iter().map(OsString::from));
+        args.push(input.as_os_str().to_owned());
+        args.extend(["-frames:v", "1"].into_iter().map(OsString::from));
+    } else {
+        args.push(OsString::from("-i"));
+        args.push(input.as_os_str().to_owned());
+        args.extend(options.iter().map(OsString::from));
+    }
+    args.push(output.as_os_str().to_owned());
+    Some(args)
 }
 
 pub fn run(executable: &Path, args: &[OsString]) -> io::Result<Output> {
