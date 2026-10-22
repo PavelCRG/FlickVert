@@ -12,11 +12,17 @@ type NativeFile = { path: string; name: string; size: number; extension: string;
 type Format = { extension: string; label: string }
 type Position = { x: number; y: number }
 const imageExtensions = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp']
-const actions = [
+const quickActions = [
   { id: 'convert', label: 'Convert' as const, glyph: '↔' },
   { id: 'resize', label: 'Resize' as const, glyph: '⌗' },
   { id: 'settings', label: 'Settings' as const, glyph: '⚙' },
+]
+const toolActions = [
+  { id: 'resize', label: 'Resize' as const, glyph: '⌗' },
+]
+const fileActions = [
   { id: 'reveal', label: 'Show in folder' as const, glyph: '↗' },
+  { id: 'copy-path', label: 'Copy path' as const, glyph: '⎘' },
 ]
 
 function outputLabel(extension: string) {
@@ -36,24 +42,32 @@ export default function QuickMenu() {
   const settings = loadSettings()
   const tr = (key: MessageKey) => t(settings.language, key)
   const [dragMode, setDragMode] = useState(false)
+  const [wheelMode, setWheelMode] = useState<'convert' | 'tools' | 'actions'>('convert')
   const [files, setFiles] = useState<NativeFile[]>([])
   const [formats, setFormats] = useState<Format[]>([])
   const [active, setActive] = useState(-1)
   const [status, setStatus] = useState('')
   const dragModeRef = useRef(false)
+  const wheelModeRef = useRef<'convert' | 'tools' | 'actions'>('convert')
   const filesRef = useRef<NativeFile[]>([])
   const formatsRef = useRef<Format[]>([])
   const dropHandled = useRef(false)
   const hideTimer = useRef<number | undefined>(undefined)
 
-  function setWheelMode(value: boolean) {
+  function setDragVisible(value: boolean) {
     dragModeRef.current = value
     setDragMode(value)
   }
 
+  function setActiveWheelMode(value: 'convert' | 'tools' | 'actions') {
+    wheelModeRef.current = value
+    setWheelMode(value)
+  }
+
   function hide() {
     if (hideTimer.current !== undefined) window.clearTimeout(hideTimer.current)
-    setWheelMode(false)
+    setDragVisible(false)
+    setActiveWheelMode('convert')
     setActive(-1)
     void getCurrentWindow().hide()
   }
@@ -68,7 +82,7 @@ export default function QuickMenu() {
     formatsRef.current = options
     setFiles(received)
     setFormats(options)
-    setWheelMode(true)
+    setDragVisible(true)
     setStatus('')
     dropHandled.current = false
     return { received, options }
@@ -105,12 +119,46 @@ export default function QuickMenu() {
     }
   }
 
+  async function resizeFiles(items: NativeFile[]) {
+    dropHandled.current = true
+    setStatus(tr('Resizing...'))
+    try {
+      for (const file of items) {
+        if (!imageExtensions.includes(file.extension)) throw new Error('Resize is available for images')
+        const bytes = await invoke<number[]>('read_dropped_file', { inputPath: file.path })
+        const input = new File([Uint8Array.from(bytes)], file.name, { type: file.mime })
+        const extension = ['png', 'jpg', 'jpeg', 'webp'].includes(file.extension) ? file.extension : 'webp'
+        const format = extension === 'png' ? 'image/png' : extension === 'jpg' || extension === 'jpeg' ? 'image/jpeg' : 'image/webp'
+        const blob = await convertImage(input, { format, quality: loadSettings().quality, width: 1920, height: 1920 })
+        await invoke('save_output', {
+          fileName: `${file.name.replace(/\.[^.]+$/, '')}-resized.${extension === 'jpeg' ? 'jpg' : extension}`,
+          inputPath: file.path,
+          bytes: Array.from(new Uint8Array(await blob.arrayBuffer())),
+        })
+      }
+      setStatus(tr('Saved'))
+      window.setTimeout(hide, 650)
+    } catch (error) {
+      setStatus(`${tr('Could not convert')}: ${String(error).slice(0, 100)}`)
+      dropHandled.current = false
+    }
+  }
+
   async function dropFiles(paths: string[], point: Position) {
     try {
       const { received, options } = await refreshFiles(paths)
       const size = await getCurrentWindow().innerSize()
+      if (wheelModeRef.current === 'actions') {
+        const index = selectedSector(point, size, fileActions.length)
+        if (index >= 0 && received.length === 1) await choose(fileActions[index].id)
+        return
+      }
+      if (wheelModeRef.current === 'tools') {
+        if (selectedSector(point, size, toolActions.length) >= 0 && received.every((file) => imageExtensions.includes(file.extension))) await resizeFiles(received)
+        return
+      }
       const index = selectedSector(point, size, options.length)
-      if (index >= 0 && received.length) await convertFiles(received, options[index])
+      if (wheelModeRef.current === 'convert' && index >= 0 && received.length) await convertFiles(received, options[index])
     } catch (error) {
       setStatus(String(error).slice(0, 160))
     }
@@ -132,7 +180,10 @@ export default function QuickMenu() {
     }).then(addStop)
     void listen('flickvert://drag-wheel-open', async () => {
       const opened = await invoke<boolean>('take_drag_trigger').catch(() => false)
-      if (opened) { setWheelMode(true); setStatus(''); dropHandled.current = false }
+      if (opened) { setDragVisible(true); setActiveWheelMode('convert'); setStatus(''); dropHandled.current = false }
+    }).then(addStop)
+    void listen<string>('flickvert://drag-wheel-mode', ({ payload }) => {
+      if (payload === 'tools' || payload === 'actions' || payload === 'convert') setActiveWheelMode(payload)
     }).then(addStop)
     void listen('flickvert://drag-ended', () => {
       if (dropHandled.current) return
@@ -140,7 +191,7 @@ export default function QuickMenu() {
     }).then(addStop)
     void listen('flickvert://cancel-drag-wheel', hide).then(addStop)
     void invoke<boolean>('take_drag_trigger').then((opened) => {
-      if (opened) { setWheelMode(true); dropHandled.current = false }
+      if (opened) { setDragVisible(true); dropHandled.current = false }
     }).catch(() => {})
 
     void getCurrentWebview().onDragDropEvent(({ payload }) => {
@@ -168,10 +219,14 @@ export default function QuickMenu() {
 
   async function choose(actionId: string) {
     try {
-      if (actionId === 'reveal') {
+      if (actionId === 'resize' && dragModeRef.current && filesRef.current.length) {
+        await resizeFiles(filesRef.current)
+        return
+      } else if (actionId === 'reveal' || actionId === 'copy-path') {
         const path = filesRef.current[0]?.path
         if (!path) return
-        await invoke('reveal_dropped_file', { inputPath: path })
+        await invoke(actionId === 'reveal' ? 'reveal_dropped_file' : 'copy_dropped_file_path', { inputPath: path })
+        setStatus(tr(actionId === 'reveal' ? 'Show in folder' : 'Path copied'))
       } else {
         await invoke('quick_action', { actionId })
       }
@@ -183,7 +238,7 @@ export default function QuickMenu() {
 
   return <main className={`quick-shell${dragMode ? ' drag-mode' : ''}`} aria-label="FlickVert quick actions">
     <header><img src="/fv-mark.svg" alt=""/><span>FlickVert</span><kbd>ESC</kbd></header>
-    {formats.length > 0 ? <div className="quick-orbit" aria-label={tr('Select output format')}>
+    {formats.length > 0 && wheelMode === 'convert' ? <div className="quick-orbit" aria-label={tr('Select output format')}>
       <div className="quick-center"><img className="quick-monogram" src="/fv-mark.svg" alt="FlickVert"/><span>{files.length === 1 ? files[0].name : `${files.length} ${tr('files')}`}</span></div>
       {formats.map((format, index) => {
         const angle = (index / formats.length) * Math.PI * 2 - Math.PI / 2
@@ -196,9 +251,11 @@ export default function QuickMenu() {
       })}
     </div> : <div className="quick-orbit quick-actions">
       <div className="quick-center"><img className="quick-monogram" src="/fv-mark.svg" alt="FlickVert"/><span>{status || (files.length ? tr('No formats available') : dragMode ? tr('Drag a file here') : tr('Choose an action'))}</span></div>
-      {actions.map((action, index) => {
-        const angle = (index / actions.length) * Math.PI * 2 - Math.PI / 2
-        return <button key={action.id} className={`quick-action action-${action.id}`} style={{ left: `${50 + Math.cos(angle) * 34}%`, top: `${50 + Math.sin(angle) * 34}%` }} onClick={() => void choose(action.id)} disabled={action.id === 'reveal' && files.length !== 1}><span>{action.glyph}</span><small>{tr(action.label)}</small></button>
+      {(dragMode ? wheelMode === 'actions' ? fileActions : wheelMode === 'tools' ? toolActions : quickActions : quickActions).map((action, index, entries) => {
+        const angle = (index / entries.length) * Math.PI * 2 - Math.PI / 2
+        const needsOneFile = action.id === 'reveal' || action.id === 'copy-path'
+        const cannotResize = action.id === 'resize' && dragMode && (!files.length || files.some((file) => !imageExtensions.includes(file.extension)))
+        return <button key={action.id} className={`quick-action action-${action.id}`} style={{ left: `${50 + Math.cos(angle) * 34}%`, top: `${50 + Math.sin(angle) * 34}%` }} onClick={() => void choose(action.id)} disabled={(needsOneFile && files.length !== 1) || cannotResize}><span>{action.glyph}</span><small>{tr(action.label)}</small></button>
       })}
     </div>}
     <footer>{status || (formats.length ? `${tr('Drop on a format')} · ${files.length} ${tr(files.length === 1 ? 'file' : 'files')}` : dragMode ? tr('Drag a file here') : tr('Choose an action'))}</footer>

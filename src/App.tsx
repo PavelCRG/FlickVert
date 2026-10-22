@@ -8,6 +8,7 @@ import { t, type MessageKey } from './i18n'
 
 type Format = 'image/png' | 'image/jpeg' | 'image/webp'
 type Item = { id: string; file: File; size: number; path?: string; status: 'ready' | 'done' | 'error'; output?: string; error?: string }
+type HistoryEntry = { id: string; fileName: string; size: number; output: string }
 type NativeFile = { path: string; name: string; size: number; extension: string; mime: string }
 type Engines = { ffmpeg: boolean; pandoc: boolean; imagemagick: boolean; libreoffice: boolean }
 const formats: { value: Format; label: string; ext: string }[] = [
@@ -26,6 +27,17 @@ const isDocument = (file: File) => documentExtensions.includes(extensionOf(file)
 const isOffice = (file: File) => officeExtensions.includes(extensionOf(file))
 const isRaw = (file: File) => rawExtensions.includes(extensionOf(file))
 const sizeOf = (bytes: number) => bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`
+
+function loadHistory(): HistoryEntry[] {
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem('flickvert-history') || '[]')
+    return Array.isArray(value) ? value.filter((entry): entry is HistoryEntry => {
+      if (!entry || typeof entry !== 'object') return false
+      const row = entry as Record<string, unknown>
+      return typeof row.id === 'string' && typeof row.fileName === 'string' && typeof row.output === 'string' && Number.isFinite(row.size)
+    }).slice(0, 100) : []
+  } catch { return [] }
+}
 
 function Icon({ name, size = 18 }: { name: string; size?: number }) {
   const common = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
@@ -48,6 +60,7 @@ function Icon({ name, size = 18 }: { name: string; size?: number }) {
 
 export default function App() {
   const [items, setItems] = useState<Item[]>([])
+  const [history, setHistory] = useState<HistoryEntry[]>(loadHistory)
   const [preferences, setPreferences] = useState<AppSettings>(loadSettings)
   const { format, quality, appearance: theme, language } = preferences
   const [section, setSection] = useState<'convert' | 'history' | 'settings'>('convert')
@@ -69,7 +82,6 @@ export default function App() {
   }
   const ready = items.filter((item) => item.status === 'ready' && canConvert(item)).length
   const done = items.filter((item) => item.status === 'done').length
-  const completed = items.filter((item) => item.status === 'done')
 
   useEffect(() => {
     let unlisten: (() => void) | undefined
@@ -94,6 +106,10 @@ export default function App() {
   useEffect(() => {
     if (isTauri()) void invoke<Engines>('engine_status').then(setEngines)
   }, [])
+
+  useEffect(() => {
+    try { localStorage.setItem('flickvert-history', JSON.stringify(history)) } catch {}
+  }, [history])
 
   useEffect(() => {
     if (!engines.pandoc && engines.libreoffice) setDocumentFormat('pdf')
@@ -168,6 +184,7 @@ export default function App() {
             const outputExtension = isMedia(item.file) ? item.file.type.startsWith('audio/') ? audioFormat : videoFormat : isDocument(item.file) || isOffice(item.file) ? documentFormat : 'png'
             path = await invoke<string>('convert_file', { inputPath: item.path, outputExtension })
           }
+          setHistory((current) => [{ id: crypto.randomUUID(), fileName: item.file.name, size: item.size, output: path }, ...current].slice(0, 100))
           setItems((current) => current.map((row) => row.id === item.id ? { ...row, status: 'done', output: path } : row))
         } catch (error) {
           setItems((current) => current.map((row) => row.id === item.id ? { ...row, status: 'error', error: String(error).slice(0, 240) } : row))
@@ -222,7 +239,7 @@ export default function App() {
         </section>
         <footer className="action-bar"><div className="action-hint">{items.length === 0 ? tr('Add images to get started') : ready === 0 ? tr('No supported images in the queue') : `${ready} ${tr(ready === 1 ? 'item' : 'items')} ${tr('Ready to convert').toLowerCase()}`}</div><button className="primary-button" onClick={convert} disabled={ready === 0 || converting}><Icon name="convert" size={17}/>{converting ? tr('Converting...') : done > 0 && ready === 0 ? tr('Done') : tr('Convert')}<span className="button-count">{ready || ''}</span></button></footer>
       </div>}
-      {section === 'history' && <div className="page simple-page"><p className="eyebrow">{tr('RECENT WORK')}</p><h1>{tr('History')}</h1><p className="subtitle">{tr('Conversions completed during this session.')}</p>{completed.length ? <div className="file-list history-list">{completed.map((item) => <article className="file-row" key={item.id}><div className="file-icon"><Icon name="check" size={18}/></div><div className="file-info"><strong title={item.output}>{item.output}</strong><span>{typeOf(item.file)} <i/> {sizeOf(item.size)}</span></div><span className="status done">{tr('Converted')}</span></article>)}</div> : <div className="empty-queue history-empty"><div className="empty-glyph"><Icon name="history" size={21}/></div><div><strong>{tr('No completed conversions yet')}</strong><p>{tr('Converted files will appear here until you close FlickVert')}</p></div></div>}<button className="secondary-button" onClick={() => setSection('convert')}>{tr('Back to conversion')}</button></div>}
+      {section === 'history' && <div className="page simple-page"><p className="eyebrow">{tr('RECENT WORK')}</p><h1>{tr('History')}</h1><p className="subtitle">{tr('Recent conversions are stored on this device.')}</p>{history.length ? <div className="file-list history-list">{history.map((item) => <article className="file-row" key={item.id}><div className="file-icon"><Icon name="check" size={18}/></div><div className="file-info"><strong title={item.output}>{item.output}</strong><span>{item.fileName} <i/> {sizeOf(item.size)}</span></div><span className="status done">{tr('Converted')}</span></article>)}</div> : <div className="empty-queue history-empty"><div className="empty-glyph"><Icon name="history" size={21}/></div><div><strong>{tr('No completed conversions yet')}</strong><p>{tr('Completed conversions will appear here.')}</p></div></div>}<button className="secondary-button" onClick={() => setSection('convert')}>{tr('Back to conversion')}</button></div>}
       {section === 'settings' && <div className="page simple-page"><p className="eyebrow">{tr('MAKE IT YOURS')}</p><h1>{tr('Settings')}</h1><p className="subtitle">{tr('Choose how FlickVert looks.')}</p><h2 className="preference-heading">{tr('Appearance')}</h2><div className="theme-options">{(['system', 'light', 'dark'] as const).map((appearance) => <button key={appearance} className={theme === appearance ? 'theme-option selected' : 'theme-option'} onClick={() => updatePreferences({ appearance })}>{tr(appearance === 'system' ? 'System' : appearance === 'light' ? 'Light' : 'Dark')}</button>)}</div><h2 className="preference-heading">{tr('Language')}</h2><div className="theme-options"><button className={language === 'en' ? 'theme-option selected' : 'theme-option'} onClick={() => updatePreferences({ language: 'en' })}>{tr('English')}</button><button className={language === 'ru' ? 'theme-option selected' : 'theme-option'} onClick={() => updatePreferences({ language: 'ru' })}>{tr('Russian')}</button></div><h2 className="preference-heading">{tr('Quick shortcut')}</h2><label className="field shortcut-field"><select value={preferences.shortcut} onChange={(event) => { void updateShortcut(event.target.value) }}><option value="CTRL+ALT+SPACE">Ctrl + Alt + Space</option><option value="CTRL+SHIFT+SPACE">Ctrl + Shift + Space</option><option value="ALT+SHIFT+SPACE">Alt + Shift + Space</option></select></label>{shortcutError && <p className="shortcut-error">{tr('Shortcut unavailable. Use the tray menu.')}</p>}<h2 className="preference-heading">{tr('Conversion engines')}</h2><div className="engine-status">{[['FFmpeg', engines.ffmpeg], ['Pandoc', engines.pandoc], ['ImageMagick', engines.imagemagick], ['LibreOffice', engines.libreoffice]].map(([name, available]) => <div key={String(name)}><span>{name}</span><span className={available ? 'engine-found' : ''}>{tr(available ? 'Detected' : 'Not detected on PATH')}</span></div>)}</div><div className="settings-note"><Icon name="lock" size={17}/> {tr('Your files stay on this device. Processing runs locally.')}</div><p className="tray-hint">{tr('Closing the window keeps FlickVert in the tray. Choose Show FlickVert in its menu to reopen it.')}</p></div>}
     </main>
     {dragging && <div className="drag-overlay"><div><Icon name="plus" size={30}/><strong>{tr('Drop files to add them')}</strong></div></div>}

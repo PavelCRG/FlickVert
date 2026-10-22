@@ -7,21 +7,38 @@ struct Gesture {
     start: (f64, f64),
     left_down: bool,
     dragging: bool,
-    shift_down: bool,
+    modifiers: [bool; 3],
     wheel_open: bool,
+}
+
+#[derive(Clone, Copy)]
+enum WheelMode {
+    Convert,
+    Tools,
+    Actions,
+}
+
+impl WheelMode {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Convert => "convert",
+            Self::Tools => "tools",
+            Self::Actions => "actions",
+        }
+    }
 }
 
 enum InputEvent {
     Move(f64, f64),
     LeftDown(f64, f64),
     LeftUp,
-    ShiftDown,
-    ShiftUp,
+    ModifierDown(WheelMode),
+    ModifierUp(WheelMode),
     Escape,
 }
 
 enum Action {
-    Open,
+    Open(WheelMode),
     End,
     Cancel,
 }
@@ -68,25 +85,25 @@ fn handle(event: InputEvent) {
             InputEvent::LeftUp => {
                 state.left_down = false;
                 state.dragging = false;
+                state.modifiers = [false; 3];
                 if std::mem::take(&mut state.wheel_open) {
                     Some(Action::End)
                 } else {
                     None
                 }
             }
-            InputEvent::ShiftDown => {
-                state.shift_down = true;
+            InputEvent::ModifierDown(mode) => {
+                state.modifiers[mode as usize] = true;
                 None
             }
-            InputEvent::ShiftUp => {
-                // shortcut: use Sweetch's left-drag + Shift gesture; support right-click after adding native file selection.
-                let tapped_during_drag = std::mem::take(&mut state.shift_down)
+            InputEvent::ModifierUp(mode) => {
+                let tapped_during_drag = std::mem::take(&mut state.modifiers[mode as usize])
                     && state.left_down
                     && state.dragging
                     && !state.wheel_open;
                 if tapped_during_drag {
                     state.wheel_open = true;
-                    Some(Action::Open)
+                    Some(Action::Open(mode))
                 } else {
                     None
                 }
@@ -99,7 +116,12 @@ fn handle(event: InputEvent) {
         }
     };
     match action {
-        Some(Action::Open) => crate::show_drag_quick(app),
+        Some(Action::Open(mode)) => {
+            crate::show_drag_quick(app);
+            if !matches!(mode, WheelMode::Convert) {
+                let _ = app.emit("flickvert://drag-wheel-mode", mode.name());
+            }
+        }
         Some(Action::End) => {
             let _ = app.emit("flickvert://drag-ended", ());
         }
@@ -112,7 +134,7 @@ fn handle(event: InputEvent) {
 
 #[cfg(windows)]
 mod windows {
-    use super::{handle, InputEvent};
+    use super::{handle, InputEvent, WheelMode};
     use std::{ffi::c_void, mem, ptr, thread};
 
     type Hook = *mut c_void;
@@ -165,6 +187,12 @@ mod windows {
     const VK_SHIFT: u32 = 0x10;
     const VK_LSHIFT: u32 = 0xa0;
     const VK_RSHIFT: u32 = 0xa1;
+    const VK_CONTROL: u32 = 0x11;
+    const VK_LCONTROL: u32 = 0xa2;
+    const VK_RCONTROL: u32 = 0xa3;
+    const VK_MENU: u32 = 0x12;
+    const VK_LMENU: u32 = 0xa4;
+    const VK_RMENU: u32 = 0xa5;
     const VK_ESCAPE: u32 = 0x1b;
 
     #[link(name = "user32")]
@@ -223,10 +251,22 @@ mod windows {
             let input = &*(data as *const KeyData);
             match (message as u32, input.key) {
                 (WM_KEYDOWN | WM_SYSKEYDOWN, VK_SHIFT | VK_LSHIFT | VK_RSHIFT) => {
-                    handle(InputEvent::ShiftDown)
+                    handle(InputEvent::ModifierDown(WheelMode::Convert))
                 }
                 (WM_KEYUP | WM_SYSKEYUP, VK_SHIFT | VK_LSHIFT | VK_RSHIFT) => {
-                    handle(InputEvent::ShiftUp)
+                    handle(InputEvent::ModifierUp(WheelMode::Convert))
+                }
+                (WM_KEYDOWN | WM_SYSKEYDOWN, VK_CONTROL | VK_LCONTROL | VK_RCONTROL) => {
+                    handle(InputEvent::ModifierDown(WheelMode::Tools))
+                }
+                (WM_KEYUP | WM_SYSKEYUP, VK_CONTROL | VK_LCONTROL | VK_RCONTROL) => {
+                    handle(InputEvent::ModifierUp(WheelMode::Tools))
+                }
+                (WM_KEYDOWN | WM_SYSKEYDOWN, VK_MENU | VK_LMENU | VK_RMENU) => {
+                    handle(InputEvent::ModifierDown(WheelMode::Actions))
+                }
+                (WM_KEYUP | WM_SYSKEYUP, VK_MENU | VK_LMENU | VK_RMENU) => {
+                    handle(InputEvent::ModifierUp(WheelMode::Actions))
                 }
                 (WM_KEYDOWN | WM_SYSKEYDOWN, VK_ESCAPE) => handle(InputEvent::Escape),
                 _ => {}
@@ -238,7 +278,7 @@ mod windows {
 
 #[cfg(target_os = "macos")]
 mod macos {
-    use super::{handle, InputEvent};
+    use super::{handle, InputEvent, WheelMode};
     use std::{ffi::c_void, thread};
 
     #[repr(C)]
@@ -306,8 +346,20 @@ mod macos {
             1 => handle(InputEvent::LeftDown(point.x, point.y)),
             2 => handle(InputEvent::LeftUp),
             6 => handle(InputEvent::Move(point.x, point.y)),
-            12 if CGEventGetFlags(event) & (1 << 17) != 0 => handle(InputEvent::ShiftDown),
-            12 => handle(InputEvent::ShiftUp),
+            12 => {
+                let flags = CGEventGetFlags(event);
+                for (mode, bit) in [
+                    (WheelMode::Convert, 1 << 17),
+                    (WheelMode::Tools, 1 << 20),
+                    (WheelMode::Actions, 1 << 19),
+                ] {
+                    handle(if flags & bit != 0 {
+                        InputEvent::ModifierDown(mode)
+                    } else {
+                        InputEvent::ModifierUp(mode)
+                    });
+                }
+            }
             10 if CGEventGetIntegerValueField(event, 9) == 53 => handle(InputEvent::Escape),
             _ => {}
         }

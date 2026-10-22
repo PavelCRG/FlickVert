@@ -1,7 +1,7 @@
 import type { Language } from './settings'
 
 const messages = {
-  'Convert files': ['Convert files', 'Конвертация файлов'], 'History': ['History', 'История'], 'Settings': ['Settings', 'Настройки'], 'Resize': ['Resize', 'Изменить размер'], 'Choose an action': ['Choose an action', 'Выберите действие'], 'Show in folder': ['Show in folder', 'Показать в папке'],
+  'Convert files': ['Convert files', 'Конвертация файлов'], 'History': ['History', 'История'], 'Settings': ['Settings', 'Настройки'], 'Resize': ['Resize', 'Изменить размер'], 'Choose an action': ['Choose an action', 'Выберите действие'], 'Show in folder': ['Show in folder', 'Показать в папке'], 'Copy path': ['Copy path', 'Копировать путь'], 'Path copied': ['Path copied', 'Путь скопирован'], 'Resizing...': ['Resizing...', 'Изменение размера...'],
   'Select output format': ['Select output format', 'Выберите формат'], 'Drag a file here': ['Drag a file here', 'Перетащите сюда файл'], 'Drop on a format': ['Drop on a format', 'Отпустите на формате'], 'Saved': ['Saved', 'Сохранено'], 'No formats available': ['No formats available', 'Нет доступных форматов'], 'file': ['file', 'файл'], 'files': ['files', 'файлов'],
   'Workspace': ['Workspace', 'Рабочая область'], 'Your files stay here': ['Your files stay here', 'Файлы остаются на устройстве'],
   'Processed on this device': ['Processed on this device', 'Обработка на этом устройстве'], 'PRIVATE BY DESIGN': ['PRIVATE BY DESIGN', 'КОНФИДЕНЦИАЛЬНОСТЬ'],
@@ -18,8 +18,8 @@ const messages = {
   'Save location': ['Save location', 'Папка сохранения'], 'Downloads / FlickVert': ['Downloads / FlickVert', 'Загрузки / FlickVert'],
   'Add images to get started': ['Add images to get started', 'Добавьте изображения'], 'No supported images in the queue': ['No supported images in the queue', 'Нет изображений для конвертации'],
   'image': ['image', 'изображение'], 'images': ['images', 'изображений'], 'Converting...': ['Converting...', 'Конвертация...'], 'Done': ['Done', 'Готово'], 'Convert': ['Convert', 'Конвертировать'],
-  'RECENT WORK': ['RECENT WORK', 'НЕДАВНИЕ ФАЙЛЫ'], 'Conversions completed during this session.': ['Conversions completed during this session.', 'Завершённые конвертации за этот сеанс.'],
-  'No completed conversions yet': ['No completed conversions yet', 'Пока нет завершённых конвертаций'], 'Converted files will appear here until you close FlickVert': ['Converted files will appear here until you close FlickVert', 'Здесь будут файлы до закрытия FlickVert'],
+  'RECENT WORK': ['RECENT WORK', 'НЕДАВНИЕ ФАЙЛЫ'], 'Recent conversions are stored on this device.': ['Recent conversions are stored on this device.', 'Недавние конвертации хранятся на этом устройстве.'],
+  'No completed conversions yet': ['No completed conversions yet', 'Пока нет завершённых конвертаций'], 'Completed conversions will appear here.': ['Completed conversions will appear here.', 'Здесь будут отображаться завершённые конвертации.'],
   'Converted': ['Converted', 'Готово'], 'Back to conversion': ['Back to conversion', 'Назад к конвертации'], 'MAKE IT YOURS': ['MAKE IT YOURS', 'ПЕРСОНАЛЬНЫЕ НАСТРОЙКИ'],
   'Choose how FlickVert looks.': ['Choose how FlickVert looks.', 'Настройте внешний вид FlickVert.'], 'Appearance': ['Appearance', 'Оформление'], 'System': ['System', 'Системное'], 'Light': ['Light', 'Светлое'], 'Dark': ['Dark', 'Тёмное'],
   'Language': ['Language', 'Язык'], 'English': ['English', 'Английский'], 'Russian': ['Russian', 'Русский'], 'System appearance': ['System appearance', 'Как в системе'],

@@ -1,6 +1,13 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::{collections::HashSet, fs, path::Path, path::PathBuf, process::{Command, Output}, sync::Mutex};
+use std::{
+    collections::HashSet,
+    fs,
+    io::Write,
+    path::{Path, PathBuf},
+    process::{Command, Output, Stdio},
+    sync::Mutex,
+};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
@@ -319,7 +326,11 @@ fn reveal_dropped_file(
 
 #[cfg(target_os = "windows")]
 fn reveal_in_file_manager(path: &Path) -> std::io::Result<()> {
-    Command::new("explorer.exe").arg("/select,").arg(path).spawn().map(|_| ())
+    Command::new("explorer.exe")
+        .arg("/select,")
+        .arg(path)
+        .spawn()
+        .map(|_| ())
 }
 
 #[cfg(target_os = "macos")]
@@ -329,7 +340,73 @@ fn reveal_in_file_manager(path: &Path) -> std::io::Result<()> {
 
 #[cfg(not(any(target_os = "windows", target_os = "macos")))]
 fn reveal_in_file_manager(path: &Path) -> std::io::Result<()> {
-    Command::new("xdg-open").arg(path.parent().unwrap_or(path)).spawn().map(|_| ())
+    Command::new("xdg-open")
+        .arg(path.parent().unwrap_or(path))
+        .spawn()
+        .map(|_| ())
+}
+
+#[tauri::command]
+fn copy_dropped_file_path(
+    input_path: String,
+    dropped: tauri::State<'_, DroppedFiles>,
+) -> Result<(), String> {
+    let path = fs::canonicalize(input_path).map_err(|error| error.to_string())?;
+    if !dropped.0.lock().unwrap().contains(&path) || !path.is_file() {
+        return Err("Select the file by dropping it into FlickVert".into());
+    }
+    copy_path_to_clipboard(&path.to_string_lossy())
+}
+
+#[cfg(windows)]
+fn copy_path_to_clipboard(path: &str) -> Result<(), String> {
+    let mut child = Command::new("powershell.exe")
+        .args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            "[Console]::InputEncoding = [System.Text.Encoding]::UTF8; $s = [Console]::In.ReadToEnd(); Set-Clipboard -Value $s",
+        ])
+        .stdin(Stdio::piped())
+        .spawn()
+        .map_err(|error| error.to_string())?;
+    child
+        .stdin
+        .take()
+        .ok_or("Could not access the clipboard process")?
+        .write_all(path.as_bytes())
+        .map_err(|error| error.to_string())?;
+    child
+        .wait()
+        .map_err(|error| error.to_string())?
+        .success()
+        .then_some(())
+        .ok_or_else(|| "Could not copy the path to the clipboard".into())
+}
+
+#[cfg(target_os = "macos")]
+fn copy_path_to_clipboard(path: &str) -> Result<(), String> {
+    let mut child = Command::new("pbcopy")
+        .stdin(Stdio::piped())
+        .spawn()
+        .map_err(|error| error.to_string())?;
+    child
+        .stdin
+        .take()
+        .ok_or("Could not access the clipboard process")?
+        .write_all(path.as_bytes())
+        .map_err(|error| error.to_string())?;
+    child
+        .wait()
+        .map_err(|error| error.to_string())?
+        .success()
+        .then_some(())
+        .ok_or_else(|| "Could not copy the path to the clipboard".into())
+}
+
+#[cfg(not(any(windows, target_os = "macos")))]
+fn copy_path_to_clipboard(_: &str) -> Result<(), String> {
+    Err("Clipboard access is not supported on this platform".into())
 }
 
 #[tauri::command]
@@ -409,6 +486,7 @@ fn main() {
             save_output,
             quick_action,
             reveal_dropped_file,
+            copy_dropped_file_path,
             register_shortcut,
             take_drag_trigger,
             quick_formats,
