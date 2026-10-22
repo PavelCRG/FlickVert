@@ -39,6 +39,7 @@ enum InputEvent {
 
 enum Action {
     Open(WheelMode),
+    Switch(WheelMode),
     End,
     Cancel,
 }
@@ -56,6 +57,73 @@ pub fn start(app: AppHandle) {
     macos::start();
 }
 
+impl Gesture {
+    fn transition(&mut self, event: InputEvent) -> Option<Action> {
+        match event {
+            InputEvent::Move(x, y) => {
+                self.cursor = (x, y);
+                if self.left_down
+                    && !self.dragging
+                    && ((x - self.start.0).abs() >= 8.0 || (y - self.start.1).abs() >= 8.0)
+                {
+                    self.dragging = true;
+                }
+                if self.dragging && !self.wheel_open {
+                    let mode = [WheelMode::Actions, WheelMode::Tools, WheelMode::Convert]
+                        .into_iter()
+                        .find(|mode| self.modifiers[*mode as usize]);
+                    if let Some(mode) = mode {
+                        self.wheel_open = true;
+                        return Some(Action::Open(mode));
+                    }
+                }
+                None
+            }
+            InputEvent::LeftDown(x, y) => {
+                self.cursor = (x, y);
+                self.start = (x, y);
+                self.left_down = true;
+                self.dragging = false;
+                None
+            }
+            InputEvent::LeftUp => {
+                self.left_down = false;
+                self.dragging = false;
+                self.modifiers = [false; 3];
+                if std::mem::take(&mut self.wheel_open) {
+                    Some(Action::End)
+                } else {
+                    None
+                }
+            }
+            InputEvent::ModifierDown(mode) => {
+                if std::mem::replace(&mut self.modifiers[mode as usize], true)
+                    || !self.left_down
+                    || !self.dragging
+                {
+                    return None;
+                }
+                if self.wheel_open {
+                    Some(Action::Switch(mode))
+                } else {
+                    self.wheel_open = true;
+                    Some(Action::Open(mode))
+                }
+            }
+            InputEvent::ModifierUp(mode) => {
+                self.modifiers[mode as usize] = false;
+                None
+            }
+            InputEvent::Escape if self.wheel_open => {
+                self.wheel_open = false;
+                self.modifiers = [false; 3];
+                Some(Action::Cancel)
+            }
+            InputEvent::Escape => None,
+        }
+    }
+}
+
 fn handle(event: InputEvent) {
     let (Some(app), Some(gesture)) = (APP.get(), GESTURE.get()) else {
         return;
@@ -64,72 +132,27 @@ fn handle(event: InputEvent) {
         let Ok(mut state) = gesture.lock() else {
             return;
         };
-        match event {
-            InputEvent::Move(x, y) => {
-                state.cursor = (x, y);
-                if state.left_down
-                    && !state.dragging
-                    && ((x - state.start.0).abs() >= 8.0 || (y - state.start.1).abs() >= 8.0)
-                {
-                    state.dragging = true;
-                }
-                None
-            }
-            InputEvent::LeftDown(x, y) => {
-                state.cursor = (x, y);
-                state.start = (x, y);
-                state.left_down = true;
-                state.dragging = false;
-                None
-            }
-            InputEvent::LeftUp => {
-                state.left_down = false;
-                state.dragging = false;
-                state.modifiers = [false; 3];
-                if std::mem::take(&mut state.wheel_open) {
-                    Some(Action::End)
-                } else {
-                    None
-                }
-            }
-            InputEvent::ModifierDown(mode) => {
-                state.modifiers[mode as usize] = true;
-                None
-            }
-            InputEvent::ModifierUp(mode) => {
-                let tapped_during_drag = std::mem::take(&mut state.modifiers[mode as usize])
-                    && state.left_down
-                    && state.dragging
-                    && !state.wheel_open;
-                if tapped_during_drag {
-                    state.wheel_open = true;
-                    Some(Action::Open(mode))
-                } else {
-                    None
-                }
-            }
-            InputEvent::Escape if state.wheel_open => {
-                state.wheel_open = false;
-                Some(Action::Cancel)
-            }
-            InputEvent::Escape => None,
-        }
+        state.transition(event)
     };
-    match action {
-        Some(Action::Open(mode)) => {
-            crate::show_drag_quick(app);
+    let Some(action) = action else { return };
+    let app = app.clone();
+    let _ = app.clone().run_on_main_thread(move || match action {
+        Action::Open(mode) => {
+            crate::show_drag_quick(&app);
             if !matches!(mode, WheelMode::Convert) {
                 let _ = app.emit("flickvert://drag-wheel-mode", mode.name());
             }
         }
-        Some(Action::End) => {
+        Action::Switch(mode) => {
+            let _ = app.emit("flickvert://drag-wheel-mode", mode.name());
+        }
+        Action::End => {
             let _ = app.emit("flickvert://drag-ended", ());
         }
-        Some(Action::Cancel) => {
+        Action::Cancel => {
             let _ = app.emit("flickvert://cancel-drag-wheel", ());
         }
-        None => {}
-    }
+    });
 }
 
 #[cfg(windows)]
@@ -364,5 +387,50 @@ mod macos {
             _ => {}
         }
         event
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn opens_wheel_when_modifier_is_pressed_during_drag() {
+        let mut gesture = Gesture::default();
+        assert!(gesture
+            .transition(InputEvent::LeftDown(10.0, 10.0))
+            .is_none());
+        assert!(gesture.transition(InputEvent::Move(20.0, 10.0)).is_none());
+        assert!(matches!(
+            gesture.transition(InputEvent::ModifierDown(WheelMode::Convert)),
+            Some(Action::Open(WheelMode::Convert))
+        ));
+        assert!(gesture
+            .transition(InputEvent::ModifierUp(WheelMode::Convert))
+            .is_none());
+    }
+
+    #[test]
+    fn opens_wheel_when_drag_starts_with_modifier_held() {
+        let mut gesture = Gesture::default();
+        gesture.transition(InputEvent::ModifierDown(WheelMode::Convert));
+        gesture.transition(InputEvent::LeftDown(10.0, 10.0));
+        assert!(gesture.transition(InputEvent::Move(16.0, 10.0)).is_none());
+        assert!(matches!(
+            gesture.transition(InputEvent::Move(20.0, 10.0)),
+            Some(Action::Open(WheelMode::Convert))
+        ));
+    }
+
+    #[test]
+    fn switches_wheel_while_dragging() {
+        let mut gesture = Gesture::default();
+        gesture.transition(InputEvent::LeftDown(10.0, 10.0));
+        gesture.transition(InputEvent::Move(20.0, 10.0));
+        gesture.transition(InputEvent::ModifierDown(WheelMode::Convert));
+        assert!(matches!(
+            gesture.transition(InputEvent::ModifierDown(WheelMode::Tools)),
+            Some(Action::Switch(WheelMode::Tools))
+        ));
     }
 }

@@ -36,12 +36,12 @@ Closing the window exits FlickVert. The tray icon and shortcut are available whi
 
 The default shortcut, **Ctrl+Alt+Space**, opens quick actions. Change it in **Settings**.
 
-While dragging, tap and release **Ctrl** (Windows) or **Command** (macOS) for tools, or **Alt/Option** for file actions. The tools wheel can resize, rotate, flip, grayscale, square-crop, compress images, or combine up to 100 images into a PDF. With FFmpeg installed, it also offers video compression, mute, audio extraction, thumbnails, audio compression, and loudness normalization. Actions can create or safely extract ZIP archives, copy or move selected files and folders to `Downloads/FlickVert`, reveal one item in Explorer/Finder, copy its path, or open its folder in a terminal.
+While dragging, press **Ctrl** (Windows) or **Command** (macOS) for tools, or **Alt/Option** for file actions. The tools wheel can resize, rotate, flip, grayscale, square-crop, compress images, or combine up to 100 images into a PDF. With FFmpeg installed, it also offers video compression, mute, audio extraction, thumbnails, audio compression, and loudness normalization. Actions can create or safely extract ZIP archives, copy or move selected files and folders to `Downloads/FlickVert`, reveal one item in Explorer/Finder, copy its path, or open its folder in a terminal.
 
 ## How the drag wheel works
 
 1. Start dragging a file from File Explorer or Finder with the left mouse button.
-2. While still holding the mouse button, press and release **Shift**. The format wheel opens under the pointer.
+2. While still holding the mouse button, press **Shift**. The format wheel opens under the pointer; you can then release Shift.
 3. Move over a format and release the mouse button to convert. Press **Esc** to cancel.
 
 The wheel needs a file drag that starts in Explorer or Finder. Selecting a file with **Browse** does not start this gesture.

@@ -41,7 +41,7 @@ jobs:
           Copy-Item 'src-tauri/target/x86_64-pc-windows-msvc/release/flickvert.exe' (Join-Path $package 'FlickVert.exe')
           Copy-Item 'README.md','README.ru.md','README.zh-CN.md' $package
           @'
-          Run FlickVert.exe. Drag files or folders, then tap/release Shift for conversion, Ctrl for tools, or Alt for file actions. Image tools can combine up to 100 images into a PDF; the actions wheel can create/extract ZIP archives, copy/move selected files and folders to Downloads/FlickVert, or open the selected folder in Windows Terminal (PowerShell is the fallback).
+          Run FlickVert.exe. Drag files or folders, then press Shift for conversion, Ctrl for tools, or Alt for file actions. Image tools can combine up to 100 images into a PDF; the actions wheel can create/extract ZIP archives, copy/move selected files and folders to Downloads/FlickVert, or open the selected folder in Windows Terminal (PowerShell is the fallback).
 
           With FFmpeg installed, the tools wheel also supports video compression, mute, audio extraction, thumbnails, audio compression and loudness normalization.
 

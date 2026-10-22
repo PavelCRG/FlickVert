@@ -450,81 +450,6 @@ fn show_main(app: &AppHandle) {
         let _ = window.show();
         let _ = window.set_focus();
     }
-    #[cfg(windows)]
-    show_native_main();
-}
-
-#[cfg(windows)]
-fn show_native_main() {
-    use std::{ffi::c_void, slice};
-    type Hwnd = *mut c_void;
-    #[link(name = "user32")]
-    extern "system" {
-        fn EnumWindows(
-            callback: Option<unsafe extern "system" fn(Hwnd, isize) -> i32>,
-            data: isize,
-        ) -> i32;
-        fn GetWindowThreadProcessId(hwnd: Hwnd, process_id: *mut u32) -> u32;
-        fn GetClassNameW(hwnd: Hwnd, class_name: *mut u16, max_count: i32) -> i32;
-        fn ShowWindow(hwnd: Hwnd, command: i32) -> i32;
-        fn SetForegroundWindow(hwnd: Hwnd) -> i32;
-        fn SetWindowPos(
-            hwnd: Hwnd,
-            after: Hwnd,
-            x: i32,
-            y: i32,
-            width: i32,
-            height: i32,
-            flags: u32,
-        ) -> i32;
-    }
-    unsafe extern "system" fn visit(hwnd: Hwnd, data: isize) -> i32 {
-        let target_id = unsafe { *(data as *const u32) };
-        let mut process_id = 0;
-        unsafe { GetWindowThreadProcessId(hwnd, &mut process_id) };
-        if process_id == target_id {
-            let mut class_name = [0u16; 64];
-            let length =
-                unsafe { GetClassNameW(hwnd, class_name.as_mut_ptr(), class_name.len() as i32) };
-            // shortcut: targets Tao's Windows class; update if Tauri changes its window backend.
-            if String::from_utf16_lossy(unsafe {
-                slice::from_raw_parts(class_name.as_ptr(), length as usize)
-            }) == "global_hotkey_app"
-            {
-                unsafe {
-                    ShowWindow(hwnd, 9);
-                    SetWindowPos(hwnd, (-1isize) as _, 0, 0, 0, 0, 0x0043);
-                    if SetForegroundWindow(hwnd) != 0 {
-                        SetWindowPos(hwnd, (-2isize) as _, 0, 0, 0, 0, 0x0043);
-                    }
-                }
-            }
-        }
-        1
-    }
-    let process_id = std::process::id();
-    unsafe {
-        EnumWindows(Some(visit), &process_id as *const u32 as isize);
-    }
-}
-
-#[cfg(windows)]
-fn remove_native_topmost(hwnd: *mut std::ffi::c_void) {
-    #[link(name = "user32")]
-    extern "system" {
-        fn SetWindowPos(
-            hwnd: *mut std::ffi::c_void,
-            after: *mut std::ffi::c_void,
-            x: i32,
-            y: i32,
-            width: i32,
-            height: i32,
-            flags: u32,
-        ) -> i32;
-    }
-    unsafe {
-        SetWindowPos(hwnd, (-2isize) as _, 0, 0, 0, 0, 0x0043);
-    }
 }
 
 fn show_quick(app: &AppHandle, activate: bool) {
@@ -540,10 +465,7 @@ fn show_quick(app: &AppHandle, activate: bool) {
                 (QUICK_HEIGHT as f64 * scale).ceil() as u32,
             );
             let position = quick_window::clamp_window_position(
-                (
-                    cursor.x as i32 - physical_size.0 as i32 / 2,
-                    cursor.y as i32 - physical_size.1 as i32 / 2,
-                ),
+                (cursor.x as i32, cursor.y as i32),
                 physical_size,
                 quick_window::Rect {
                     x: area.position.x,
@@ -916,8 +838,6 @@ fn main() {
                 .center()
                 .visible(true)
                 .build()?;
-            #[cfg(windows)]
-            show_native_main();
             app.manage(DroppedFiles::default());
             app.manage(DragTrigger::default());
             match WebviewWindowBuilder::new(app, "quick", WebviewUrl::App("index.html".into()))
@@ -971,12 +891,6 @@ fn main() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            #[cfg(windows)]
-            if matches!(event, tauri::WindowEvent::Focused(true)) {
-                if let Ok(hwnd) = window.hwnd() {
-                    remove_native_topmost(hwnd.0);
-                }
-            }
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 if window.label() == "main" {
                     window.app_handle().exit(0);
@@ -991,8 +905,6 @@ fn main() {
                 let window = webview.window();
                 let _ = window.show();
                 let _ = window.set_focus();
-                #[cfg(windows)]
-                show_native_main();
             }
         })
         .build(tauri::generate_context!())
