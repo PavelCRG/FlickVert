@@ -12,6 +12,8 @@
 
 FlickVert 可与文件资源管理器和 Finder 配合使用。将文件拖入应用，选择格式，然后在本机保存转换结果。
 
+<p align="center"><a href="https://github.com/PavelCRG/FlickVert/releases/latest"><strong>下载适用于 Windows 或 macOS 的 FlickVert →</strong></a></p>
+
 ## 目录
 
 - [快速开始](#快速开始)

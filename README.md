@@ -12,6 +12,8 @@
 
 FlickVert sits beside File Explorer and Finder. Drop a file onto the app, choose a format, and save the result on your device.
 
+<p align="center"><a href="https://github.com/PavelCRG/FlickVert/releases/latest"><strong>Download FlickVert for Windows or macOS →</strong></a></p>
+
 ## Contents
 
 - [Quick start](#quick-start)

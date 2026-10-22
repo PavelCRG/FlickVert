@@ -12,6 +12,8 @@
 
 FlickVert работает рядом с Проводником и Finder. Перетащите файл в приложение, выберите формат и сохраните результат на своём устройстве.
 
+<p align="center"><a href="https://github.com/PavelCRG/FlickVert/releases/latest"><strong>Скачать FlickVert для Windows или macOS →</strong></a></p>
+
 ## Содержание
 
 - [Быстрый старт](#быстрый-старт)
