@@ -36,7 +36,7 @@ Closing the window keeps FlickVert running in the notification area so the drag 
 
 The default shortcut, **Ctrl+Alt+Space**, opens quick actions. Change it in **Settings**.
 
-While dragging, tap and release **Ctrl** (Windows) or **Command** (macOS) for image resize, or **Alt** for file actions. Release the mouse on a wheel segment to apply it. Resize writes a `-resized` copy, capped at 1920 by 1920; Actions can reveal one file in Explorer/Finder or copy its path.
+While dragging, tap and release **Ctrl** (Windows) or **Command** (macOS) for image tools, or **Alt** for file actions. The tools wheel can resize, rotate, flip, grayscale, square-crop, or compress images. Release the mouse on a wheel segment to apply it; results are saved beside the original with a suffix. Actions can reveal one file in Explorer/Finder or copy its path.
 
 ## How the drag wheel works
 

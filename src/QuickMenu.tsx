@@ -3,7 +3,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
-import { convertImage } from './conversion/images'
+import { convertImage, fitWithin } from './conversion/images'
 import { loadSettings } from './settings'
 import { t, type MessageKey } from './i18n'
 import './quick-menu.css'
@@ -18,7 +18,12 @@ const quickActions = [
   { id: 'settings', label: 'Settings' as const, glyph: '⚙' },
 ]
 const toolActions = [
-  { id: 'resize', label: 'Resize' as const, glyph: '⌗' },
+  { id: 'resize', label: 'Resize' as const, glyph: '↔' },
+  { id: 'rotate', label: 'Rotate' as const, glyph: '↻' },
+  { id: 'flip', label: 'Flip' as const, glyph: '⇋' },
+  { id: 'grayscale', label: 'Grayscale' as const, glyph: '◐' },
+  { id: 'square', label: 'Square crop' as const, glyph: '□' },
+  { id: 'compress', label: 'Compress' as const, glyph: '◒' },
 ]
 const fileActions = [
   { id: 'reveal', label: 'Show in folder' as const, glyph: '↗' },
@@ -119,19 +124,36 @@ export default function QuickMenu() {
     }
   }
 
-  async function resizeFiles(items: NativeFile[]) {
+  async function processImages(items: NativeFile[], actionId: string) {
     dropHandled.current = true
-    setStatus(tr('Resizing...'))
+    setStatus(tr(actionId === 'resize' ? 'Resizing...' : 'Processing...'))
     try {
       for (const file of items) {
-        if (!imageExtensions.includes(file.extension)) throw new Error('Resize is available for images')
+        if (!imageExtensions.includes(file.extension)) throw new Error('Image tools are available for images')
         const bytes = await invoke<number[]>('read_dropped_file', { inputPath: file.path })
         const input = new File([Uint8Array.from(bytes)], file.name, { type: file.mime })
-        const extension = ['png', 'jpg', 'jpeg', 'webp'].includes(file.extension) ? file.extension : 'webp'
+        const bitmap = await createImageBitmap(input)
+        const side = Math.min(bitmap.width, bitmap.height)
+        const size = actionId === 'resize' ? fitWithin(bitmap.width, bitmap.height, 1920, 1920) : actionId === 'square' ? { width: side, height: side } : actionId === 'rotate' ? { width: bitmap.height, height: bitmap.width } : { width: bitmap.width, height: bitmap.height }
+        const canvas = document.createElement('canvas')
+        canvas.width = size.width
+        canvas.height = size.height
+        const context = canvas.getContext('2d')
+        if (!context) { bitmap.close(); throw new Error('Could not create image canvas') }
+        if (actionId === 'compress') { context.fillStyle = '#fff'; context.fillRect(0, 0, size.width, size.height) }
+        if (actionId === 'rotate') { context.translate(size.width, 0); context.rotate(Math.PI / 2) }
+        if (actionId === 'flip') { context.translate(size.width, 0); context.scale(-1, 1) }
+        if (actionId === 'grayscale') context.filter = 'grayscale(1)'
+        if (actionId === 'square') context.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, side, side)
+        else context.drawImage(bitmap, 0, 0, bitmap.width, bitmap.height)
+        bitmap.close()
+        const extension = actionId === 'compress' ? 'jpg' : ['png', 'jpg', 'jpeg', 'webp'].includes(file.extension) ? file.extension : 'webp'
         const format = extension === 'png' ? 'image/png' : extension === 'jpg' || extension === 'jpeg' ? 'image/jpeg' : 'image/webp'
-        const blob = await convertImage(input, { format, quality: loadSettings().quality, width: 1920, height: 1920 })
+        const quality = actionId === 'compress' ? Math.min(loadSettings().quality, 76) / 100 : loadSettings().quality / 100
+        const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((result) => result ? resolve(result) : reject(new Error('Image processing failed')), format, quality))
+        const suffix = actionId === 'resize' ? '-resized' : actionId === 'rotate' ? '-rotated' : actionId === 'flip' ? '-flipped' : actionId === 'grayscale' ? '-grayscale' : actionId === 'square' ? '-square' : '-compressed'
         await invoke('save_output', {
-          fileName: `${file.name.replace(/\.[^.]+$/, '')}-resized.${extension === 'jpeg' ? 'jpg' : extension}`,
+          fileName: `${file.name.replace(/\.[^.]+$/, '')}${suffix}.${extension === 'jpeg' ? 'jpg' : extension}`,
           inputPath: file.path,
           bytes: Array.from(new Uint8Array(await blob.arrayBuffer())),
         })
@@ -144,6 +166,10 @@ export default function QuickMenu() {
     }
   }
 
+  async function runTool(actionId: string, items: NativeFile[]) {
+    await processImages(items, actionId)
+  }
+
   async function dropFiles(paths: string[], point: Position) {
     try {
       const { received, options } = await refreshFiles(paths)
@@ -154,7 +180,8 @@ export default function QuickMenu() {
         return
       }
       if (wheelModeRef.current === 'tools') {
-        if (selectedSector(point, size, toolActions.length) >= 0 && received.every((file) => imageExtensions.includes(file.extension))) await resizeFiles(received)
+        const index = selectedSector(point, size, toolActions.length)
+        if (index >= 0 && received.every((file) => imageExtensions.includes(file.extension))) await runTool(toolActions[index].id, received)
         return
       }
       const index = selectedSector(point, size, options.length)
@@ -199,7 +226,7 @@ export default function QuickMenu() {
         if (hideTimer.current !== undefined) window.clearTimeout(hideTimer.current)
         void refreshFiles(payload.paths).catch((error) => setStatus(String(error)))
       } else if (payload.type === 'over') {
-        void getCurrentWindow().innerSize().then((size) => setActive(selectedSector(payload.position, size, formatsRef.current.length)))
+        void getCurrentWindow().innerSize().then((size) => setActive(selectedSector(payload.position, size, wheelModeRef.current === 'tools' ? toolActions.length : wheelModeRef.current === 'actions' ? fileActions.length : formatsRef.current.length)))
       } else if (payload.type === 'drop') {
         if (hideTimer.current !== undefined) window.clearTimeout(hideTimer.current)
         dropHandled.current = true
@@ -220,7 +247,10 @@ export default function QuickMenu() {
   async function choose(actionId: string) {
     try {
       if (actionId === 'resize' && dragModeRef.current && filesRef.current.length) {
-        await resizeFiles(filesRef.current)
+        await runTool(actionId, filesRef.current)
+        return
+      } else if (toolActions.some((action) => action.id === actionId) && dragModeRef.current && filesRef.current.length) {
+        await runTool(actionId, filesRef.current)
         return
       } else if (actionId === 'reveal' || actionId === 'copy-path') {
         const path = filesRef.current[0]?.path
@@ -254,8 +284,9 @@ export default function QuickMenu() {
       {(dragMode ? wheelMode === 'actions' ? fileActions : wheelMode === 'tools' ? toolActions : quickActions : quickActions).map((action, index, entries) => {
         const angle = (index / entries.length) * Math.PI * 2 - Math.PI / 2
         const needsOneFile = action.id === 'reveal' || action.id === 'copy-path'
-        const cannotResize = action.id === 'resize' && dragMode && (!files.length || files.some((file) => !imageExtensions.includes(file.extension)))
-        return <button key={action.id} className={`quick-action action-${action.id}`} style={{ left: `${50 + Math.cos(angle) * 34}%`, top: `${50 + Math.sin(angle) * 34}%` }} onClick={() => void choose(action.id)} disabled={(needsOneFile && files.length !== 1) || cannotResize}><span>{action.glyph}</span><small>{tr(action.label)}</small></button>
+        const imageTool = toolActions.some((tool) => tool.id === action.id)
+        const unavailableTool = imageTool && dragMode && (!files.length || files.some((file) => !imageExtensions.includes(file.extension)))
+        return <button key={action.id} className={`quick-action action-${action.id}${active === index ? ' active' : ''}`} style={{ left: `${50 + Math.cos(angle) * 34}%`, top: `${50 + Math.sin(angle) * 34}%` }} onClick={() => void choose(action.id)} disabled={(needsOneFile && files.length !== 1) || unavailableTool}><span>{action.glyph}</span><small>{tr(action.label)}</small></button>
       })}
     </div>}
     <footer>{status || (formats.length ? `${tr('Drop on a format')} · ${files.length} ${tr(files.length === 1 ? 'file' : 'files')}` : dragMode ? tr('Drag a file here') : tr('Choose an action'))}</footer>
