@@ -331,10 +331,10 @@ export default function QuickMenu() {
         await emit('flickvert://job-completed', { fileName: file.name, size: file.size, output })
         setStatus(`${tr('Archive extracted')}: ${output.split(/[\\/]/).pop()}`)
       } else if (actionId === 'copy-to-folder' || actionId === 'move-to-folder') {
-        const items = actionId === 'copy-to-folder' ? filesRef.current : filesRef.current.slice(0, 1)
+        const items = filesRef.current
         if (!items.length) return
         for (const file of items) await invoke<string>(actionId === 'copy-to-folder' ? 'copy_to_flickvert_folder' : 'move_to_flickvert_folder', { inputPath: file.path })
-        setStatus(actionId === 'copy-to-folder' ? `${tr('Copied files')}: ${items.length}` : tr('Moved to FlickVert'))
+        setStatus(`${tr(actionId === 'copy-to-folder' ? 'Copied files' : 'Moved files')}: ${items.length}`)
       } else if (actionId === 'reveal' || actionId === 'copy-path') {
         const path = filesRef.current[0]?.path
         if (!path) return
@@ -372,7 +372,7 @@ export default function QuickMenu() {
       <div className="quick-center"><img className="quick-monogram" src="/fv-mark.svg" alt="FlickVert"/><span>{status || (files.length ? tr('No formats available') : dragMode ? tr('Drag a file here') : tr('Choose an action'))}</span></div>
       {(dragMode ? wheelMode === 'actions' ? fileActions : wheelMode === 'tools' ? toolActionsFor(files, ffmpegAvailable) : quickActions : quickActions).map((action, index, entries) => {
         const angle = (index / entries.length) * Math.PI * 2 - Math.PI / 2
-        const needsOneFile = ['extract-zip', 'move-to-folder', 'reveal', 'copy-path', 'open-terminal'].includes(action.id)
+        const needsOneFile = ['extract-zip', 'reveal', 'copy-path', 'open-terminal'].includes(action.id)
         const imageTool = allToolActions.some((tool) => tool.id === action.id)
         const unavailableTool = imageTool && dragMode && !toolActionsFor(files, ffmpegAvailable).some((tool) => tool.id === action.id)
         const unavailableArchive = dragMode && (action.id === 'create-zip' ? files.length === 0 : action.id === 'extract-zip' && (files.length !== 1 || files[0]?.extension !== 'zip'))
