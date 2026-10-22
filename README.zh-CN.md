@@ -50,6 +50,7 @@ FlickVert 可与文件资源管理器和 Finder 配合使用。将文件拖入�
 
 | 文件类型 | 格式 | 说明 |
 | --- | --- | --- |
+| 其他图像 | HEIC、TIFF、AVIF、SVG、相机 RAW | 需要 ImageMagick。 |
 | 图片 | PNG、JPEG、WebP | 内置转换；可使用 GIF 和 BMP 作为输入。动画 GIF 仅转换第一帧。 |
 | 音频和视频 | 取决于 FFmpeg | 需要单独安装 FFmpeg。 |
 | 字幕 | SRT、VTT、ASS | 需要 FFmpeg，可在这些字幕格式之间转换。 |

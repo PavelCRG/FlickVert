@@ -50,7 +50,7 @@ The wheel needs a file drag that starts in Explorer or Finder. Selecting a file 
 
 | Files | Available formats | Notes |
 | --- | --- | --- |
-| Images | PNG, JPEG, WebP | Built in; GIF and BMP can be used as input. Animated GIFs use their first frame. |
+| Images | PNG, JPEG, WebP, GIF, BMP, HEIC, TIFF, AVIF, SVG, camera RAW | PNG/JPEG/WebP are built in. HEIC, TIFF, AVIF, SVG, and RAW need ImageMagick. |
 | Audio and video | Depends on FFmpeg | Install FFmpeg separately. |
 | Subtitles | SRT, VTT, ASS | Requires FFmpeg; converts between these subtitle formats. |
 | Text documents and ebooks | Depends on Pandoc | Install Pandoc separately. |

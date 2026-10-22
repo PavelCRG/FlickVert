@@ -19,14 +19,14 @@ const formats: { value: Format; label: string; ext: string }[] = [
 const imageTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/bmp']
 const documentExtensions = ['docx', 'odt', 'md', 'markdown', 'html', 'htm', 'epub', 'rtf', 'txt', 'rst', 'tex']
 const officeExtensions = ['doc', 'xls', 'xlsx', 'ods', 'ppt', 'pptx', 'odp', 'csv']
-const rawExtensions = ['cr2', 'cr3', 'nef', 'arw', 'raf', 'dng', 'orf', 'rw2']
+const imageMagickExtensions = ['cr2', 'cr3', 'nef', 'arw', 'raf', 'dng', 'orf', 'rw2', 'avif', 'heic', 'heif', 'svg', 'tif', 'tiff']
 const subtitleExtensions = ['ass', 'srt', 'ssa', 'vtt']
 const supported = (file: File) => imageTypes.includes(file.type)
 const isMedia = (file: File) => file.type.startsWith('audio/') || file.type.startsWith('video/')
 const extensionOf = (file: File) => file.name.split('.').pop()?.toLowerCase() ?? ''
 const isDocument = (file: File) => documentExtensions.includes(extensionOf(file))
 const isOffice = (file: File) => officeExtensions.includes(extensionOf(file))
-const isRaw = (file: File) => rawExtensions.includes(extensionOf(file))
+const isImageMagick = (file: File) => imageMagickExtensions.includes(extensionOf(file))
 const isSubtitle = (file: File) => subtitleExtensions.includes(extensionOf(file))
 const sizeOf = (bytes: number) => bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`
 
@@ -179,7 +179,7 @@ export default function App() {
     } catch { setShortcutError(true) }
   }
   const tr = (key: MessageKey) => t(language, key)
-  const typeOf = (file: File) => tr(supported(file) || isRaw(file) ? 'Image' : file.type.startsWith('video/') ? 'Video' : file.type.startsWith('audio/') ? 'Audio' : isSubtitle(file) ? 'Subtitle' : isDocument(file) || isOffice(file) ? 'Document' : file.type === 'application/pdf' ? 'PDF document' : 'File')
+  const typeOf = (file: File) => tr(supported(file) || isImageMagick(file) ? 'Image' : file.type.startsWith('video/') ? 'Video' : file.type.startsWith('audio/') ? 'Audio' : isSubtitle(file) ? 'Subtitle' : isDocument(file) || isOffice(file) ? 'Document' : file.type === 'application/pdf' ? 'PDF document' : 'File')
 
   async function convert() {
     const work = items.filter((item) => item.status === 'ready' && canConvert(item))
@@ -237,7 +237,7 @@ export default function App() {
           {items.length === 0 ? <div className="empty-queue"><div className="empty-glyph"><Icon name="file" size={21}/></div><div><strong>{tr('Your files will appear here')}</strong><p>{tr('Add one or more files to get started')}</p></div></div> : <div className="file-list">{items.map((item) => <article className="file-row" key={item.id}>
             <div className="file-icon"><Icon name={supported(item.file) ? 'image' : 'file'} size={19}/></div><div className="file-info"><strong title={item.file.name}>{item.file.name}</strong><span>{typeOf(item.file)} <i/> {sizeOf(item.size)}</span></div>
             {item.status === 'ready' && !supported(item.file) && item.outputFormats && item.outputFormats.length > 0 && <label className="field file-format"><span className="sr-only">{tr('Convert to')}</span><select aria-label={`${tr('Convert to')} ${item.file.name}`} value={item.outputExtension ?? ''} onChange={(event) => setItems((current) => current.map((row) => row.id === item.id ? { ...row, outputExtension: event.target.value } : row))}>{item.outputFormats.map((extension) => <option key={extension} value={extension}>{extension.toUpperCase()}</option>)}</select></label>}
-            {item.status === 'done' ? <span className="status done"><Icon name="check" size={14}/>{item.output ?? tr('Done')}</span> : item.status === 'error' ? <span className="status error" title={item.error}>{tr('Could not convert')}</span> : canConvert(item) ? <span className="status ready">{tr('Ready to convert')}</span> : <span className="status unavailable">{(isMedia(item.file) || isSubtitle(item.file)) ? item.path ? tr('FFmpeg unavailable') : tr(isSubtitle(item.file) ? 'Drop a subtitle from Finder or Explorer' : 'Drop media from Finder or Explorer') : isRaw(item.file) ? tr('ImageMagick unavailable') : isDocument(item.file) || isOffice(item.file) ? tr(documentFormat === 'pdf' ? 'LibreOffice unavailable' : 'Pandoc unavailable') : tr('Format not supported')}</span>}
+            {item.status === 'done' ? <span className="status done"><Icon name="check" size={14}/>{item.output ?? tr('Done')}</span> : item.status === 'error' ? <span className="status error" title={item.error}>{tr('Could not convert')}</span> : canConvert(item) ? <span className="status ready">{tr('Ready to convert')}</span> : <span className="status unavailable">{(isMedia(item.file) || isSubtitle(item.file)) ? item.path ? tr('FFmpeg unavailable') : tr(isSubtitle(item.file) ? 'Drop a subtitle from Finder or Explorer' : 'Drop media from Finder or Explorer') : isImageMagick(item.file) ? tr('ImageMagick unavailable') : isDocument(item.file) || isOffice(item.file) ? tr(documentFormat === 'pdf' ? 'LibreOffice unavailable' : 'Pandoc unavailable') : tr('Format not supported')}</span>}
             <button className="remove-button" onClick={() => setItems((current) => current.filter((row) => row.id !== item.id))} aria-label={`Remove ${item.file.name}`}><Icon name="close" size={17}/></button>
           </article>)}</div>}
         </section>

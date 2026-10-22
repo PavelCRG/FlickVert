@@ -64,6 +64,11 @@ const RAW: Operation = Operation {
     input_extensions: &["cr2", "cr3", "nef", "arw", "raf", "dng", "orf", "rw2"],
     output_extensions: &["png", "jpg", "tiff"],
 };
+const IMAGE: Operation = Operation {
+    engine: Engine::ImageMagick,
+    input_extensions: &["avif", "heic", "heif", "svg", "tif", "tiff"],
+    output_extensions: &["png", "jpg", "tiff", "webp"],
+};
 const OFFICE_PDF: Operation = Operation {
     engine: Engine::LibreOffice,
     input_extensions: &[
@@ -90,7 +95,7 @@ pub fn operations_for(extension: &str, engines: Engines) -> Vec<Operation> {
     [
         (engines.ffmpeg, [&AUDIO, &VIDEO, &SUBTITLE][..].to_vec()),
         (engines.pandoc, vec![&DOCUMENT]),
-        (engines.imagemagick, vec![&RAW]),
+        (engines.imagemagick, vec![&RAW, &IMAGE]),
         (engines.libreoffice, vec![&OFFICE_PDF]),
     ]
     .into_iter()
