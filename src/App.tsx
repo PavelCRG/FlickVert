@@ -7,7 +7,7 @@ import { loadSettings, saveSettings, type AppSettings } from './settings'
 import { t, type MessageKey } from './i18n'
 
 type Format = 'image/png' | 'image/jpeg' | 'image/webp'
-type Item = { id: string; file: File; size: number; path?: string; status: 'ready' | 'done' | 'error'; output?: string; error?: string }
+type Item = { id: string; file: File; size: number; path?: string; outputFormats?: string[]; outputExtension?: string; status: 'ready' | 'done' | 'error'; output?: string; error?: string }
 type HistoryEntry = { id: string; fileName: string; size: number; output: string }
 type NativeFile = { path: string; name: string; size: number; extension: string; mime: string }
 type Engines = { ffmpeg: boolean; pandoc: boolean; imagemagick: boolean; libreoffice: boolean }
@@ -70,19 +70,11 @@ export default function App() {
   const [converting, setConverting] = useState(false)
   const [shortcutError, setShortcutError] = useState(false)
   const [engines, setEngines] = useState<Engines>({ ffmpeg: false, pandoc: false, imagemagick: false, libreoffice: false })
-  const [videoFormat, setVideoFormat] = useState('mp4')
-  const [audioFormat, setAudioFormat] = useState('mp3')
   const [documentFormat, setDocumentFormat] = useState('html')
-  const [subtitleFormat, setSubtitleFormat] = useState('vtt')
   const input = useRef<HTMLInputElement>(null)
   const canConvert = (item: Item) => {
     if (supported(item.file)) return true
-    if (!item.path) return false
-    if (isMedia(item.file)) return engines.ffmpeg
-    if (isSubtitle(item.file)) return engines.ffmpeg
-    if (isRaw(item.file)) return engines.imagemagick
-    if (documentFormat === 'pdf') return engines.libreoffice && (isDocument(item.file) || isOffice(item.file))
-    return isDocument(item.file) && engines.pandoc
+    return Boolean(item.path && item.outputExtension && item.outputFormats?.includes(item.outputExtension))
   }
   const ready = items.filter((item) => item.status === 'ready' && canConvert(item)).length
   const done = items.filter((item) => item.status === 'done').length
@@ -151,6 +143,16 @@ export default function App() {
       }
       return next
     })
+    void Promise.all(files.map(async (entry): Promise<{ path: string; outputFormats: string[]; outputExtension?: string }> => {
+      try {
+        const outputFormats = await invoke<string[]>('quick_formats', { inputPath: entry.path })
+        const preferred = entry.mime.startsWith('audio/') ? 'mp3' : entry.mime.startsWith('video/') ? 'mp4' : 'pdf'
+        return { path: entry.path, outputFormats, outputExtension: outputFormats.includes(preferred) ? preferred : outputFormats[0] }
+      } catch { return { path: entry.path, outputFormats: [], outputExtension: undefined } }
+    })).then((results) => setItems((current) => current.map((item) => {
+      const result = results.find((entry) => entry.path === item.path)
+      return result ? { ...item, outputFormats: result.outputFormats, outputExtension: result.outputFormats.includes(item.outputExtension ?? '') ? item.outputExtension : result.outputExtension } : item
+    })))
   }
   function onDrop(event: DragEvent<HTMLElement>) { event.preventDefault(); setDragging(false); addFiles(event.dataTransfer.files) }
   function onPick(event: ChangeEvent<HTMLInputElement>) { if (event.target.files) addFiles(event.target.files); event.target.value = '' }
@@ -185,7 +187,7 @@ export default function App() {
             const name = `${item.file.name.replace(/\.[^.]+$/, '')}.${selected.ext}`
             path = await invoke<string>('save_output', { fileName: name, inputPath: item.path, bytes: Array.from(new Uint8Array(await blob.arrayBuffer())) })
           } else {
-            const outputExtension = isMedia(item.file) ? item.file.type.startsWith('audio/') ? audioFormat : videoFormat : isSubtitle(item.file) ? subtitleFormat : isDocument(item.file) || isOffice(item.file) ? documentFormat : 'png'
+            const outputExtension = item.outputExtension ?? 'png'
             path = await invoke<string>('convert_file', { inputPath: item.path, outputExtension })
           }
           setHistory((current) => [{ id: crypto.randomUUID(), fileName: item.file.name, size: item.size, output: path }, ...current].slice(0, 100))
@@ -224,6 +226,7 @@ export default function App() {
           <div className="section-heading"><div><h2>{tr('File queue')}</h2><span className="count">{items.length}</span></div>{items.length > 0 && <button className="text-button" onClick={() => setItems([])}>{tr('Clear queue')}</button>}</div>
           {items.length === 0 ? <div className="empty-queue"><div className="empty-glyph"><Icon name="file" size={21}/></div><div><strong>{tr('Your files will appear here')}</strong><p>{tr('Add one or more files to get started')}</p></div></div> : <div className="file-list">{items.map((item) => <article className="file-row" key={item.id}>
             <div className="file-icon"><Icon name={supported(item.file) ? 'image' : 'file'} size={19}/></div><div className="file-info"><strong title={item.file.name}>{item.file.name}</strong><span>{typeOf(item.file)} <i/> {sizeOf(item.size)}</span></div>
+            {item.status === 'ready' && !supported(item.file) && item.outputFormats && item.outputFormats.length > 0 && <label className="field file-format"><span className="sr-only">{tr('Convert to')}</span><select aria-label={`${tr('Convert to')} ${item.file.name}`} value={item.outputExtension ?? ''} onChange={(event) => setItems((current) => current.map((row) => row.id === item.id ? { ...row, outputExtension: event.target.value } : row))}>{item.outputFormats.map((extension) => <option key={extension} value={extension}>{extension.toUpperCase()}</option>)}</select></label>}
             {item.status === 'done' ? <span className="status done"><Icon name="check" size={14}/>{item.output ?? tr('Done')}</span> : item.status === 'error' ? <span className="status error" title={item.error}>{tr('Could not convert')}</span> : canConvert(item) ? <span className="status ready">{tr('Ready to convert')}</span> : <span className="status unavailable">{(isMedia(item.file) || isSubtitle(item.file)) ? item.path ? tr('FFmpeg unavailable') : tr(isSubtitle(item.file) ? 'Drop a subtitle from Finder or Explorer' : 'Drop media from Finder or Explorer') : isRaw(item.file) ? tr('ImageMagick unavailable') : isDocument(item.file) || isOffice(item.file) ? tr(documentFormat === 'pdf' ? 'LibreOffice unavailable' : 'Pandoc unavailable') : tr('Format not supported')}</span>}
             <button className="remove-button" onClick={() => setItems((current) => current.filter((row) => row.id !== item.id))} aria-label={`Remove ${item.file.name}`}><Icon name="close" size={17}/></button>
           </article>)}</div>}
@@ -235,10 +238,6 @@ export default function App() {
             <div className="destination"><span>{tr('Save location')}</span><div><Icon name="file" size={15}/> {tr(items.length && items.every((item) => item.path) ? 'Same folder as original' : items.some((item) => item.path) ? 'Save location varies' : 'Downloads / FlickVert')}</div></div>
             <label className="field"><span>{tr('Max width')}</span><input type="number" min="1" max="32768" placeholder="Original" value={preferences.width ?? ''} onChange={(event) => updatePreferences({ width: event.target.value ? Number(event.target.value) : undefined })}/></label>
             <label className="field"><span>{tr('Max height')}</span><input type="number" min="1" max="32768" placeholder="Original" value={preferences.height ?? ''} onChange={(event) => updatePreferences({ height: event.target.value ? Number(event.target.value) : undefined })}/></label>
-            {items.some((item) => item.path && item.file.type.startsWith('video/')) && <label className="field"><span>{tr('Video format')}</span><select value={videoFormat} onChange={(event) => setVideoFormat(event.target.value)}>{['mp4', 'webm', 'mkv', 'mov', 'avi', 'gif', 'wmv', 'mp3'].map((value) => <option key={value} value={value}>{value.toUpperCase()}</option>)}</select></label>}
-            {items.some((item) => item.path && item.file.type.startsWith('audio/')) && <label className="field"><span>{tr('Audio format')}</span><select value={audioFormat} onChange={(event) => setAudioFormat(event.target.value)}>{['mp3', 'wav', 'm4a', 'flac', 'ogg', 'aac', 'aiff', 'wma'].map((value) => <option key={value} value={value}>{value.toUpperCase()}</option>)}</select></label>}
-            {items.some((item) => item.path && isSubtitle(item.file)) && <label className="field"><span>{tr('Subtitle format')}</span><select value={subtitleFormat} onChange={(event) => setSubtitleFormat(event.target.value)}>{['srt', 'vtt', 'ass'].map((value) => <option key={value} value={value}>{value.toUpperCase()}</option>)}</select></label>}
-            {items.some((item) => item.path && (isDocument(item.file) || isOffice(item.file))) && <label className="field"><span>{tr('Document format')}</span><select value={documentFormat} onChange={(event) => setDocumentFormat(event.target.value)}>{[...(engines.libreoffice ? ['pdf'] : []), ...(engines.pandoc ? ['docx', 'odt', 'md', 'html', 'epub', 'rtf', 'txt', 'rst', 'tex'] : [])].map((value) => <option key={value} value={value}>{value.toUpperCase()}</option>)}</select></label>}
           </div>
           {items.some((item) => item.file.type === 'image/gif' && item.status === 'ready') && <p className="animated-note">{tr('Animated GIFs are converted using the first frame.')}</p>}
         </section>
