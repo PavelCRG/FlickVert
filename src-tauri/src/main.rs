@@ -653,6 +653,61 @@ fn copy_dropped_file_path(
 }
 
 #[tauri::command]
+fn open_terminal(
+    input_path: String,
+    dropped: tauri::State<'_, DroppedFiles>,
+) -> Result<(), String> {
+    let path = selected_dropped_path(&input_path, &dropped)?;
+    let directory = if path.is_dir() {
+        path.as_path()
+    } else {
+        path.parent().ok_or("File has no parent folder")?
+    };
+    if !directory.is_dir() {
+        return Err("The selected folder no longer exists".into());
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        match Command::new("wt.exe")
+            .args(operations::windows_terminal_args(directory))
+            .spawn()
+        {
+            Ok(_) => Ok(()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                Command::new("powershell.exe")
+                    .args(["-NoExit"])
+                    .current_dir(directory)
+                    .spawn()
+                    .map(|_| ())
+                    .map_err(|error| error.to_string())
+            }
+            Err(error) => Err(error.to_string()),
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        const SCRIPT: &str = r#"on run argv
+ tell application "Terminal" to do script "cd " & quoted form of (POSIX path of (item 1 of argv))
+ activate
+end run"#;
+        Command::new("osascript")
+            .arg("-e")
+            .arg(SCRIPT)
+            .arg(directory)
+            .spawn()
+            .map(|_| ())
+            .map_err(|error| error.to_string())
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    {
+        Err("Terminal action is available only on Windows and macOS".into())
+    }
+}
+
+#[tauri::command]
 fn copy_to_flickvert_folder(
     app: AppHandle,
     input_path: String,
@@ -838,6 +893,7 @@ fn main() {
             quick_action,
             reveal_dropped_file,
             copy_dropped_file_path,
+            open_terminal,
             copy_to_flickvert_folder,
             move_to_flickvert_folder,
             register_shortcut,

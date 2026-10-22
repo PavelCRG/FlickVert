@@ -45,6 +45,7 @@ const fileActions = [
   { id: 'move-to-folder', label: 'Move to FlickVert' as const, glyph: '⇥' },
   { id: 'reveal', label: 'Show in folder' as const, glyph: '↗' },
   { id: 'copy-path', label: 'Copy path' as const, glyph: '⎘' },
+  { id: 'open-terminal', label: 'Open Terminal' as const, glyph: '>_' },
 ]
 
 function toolActionsFor(files: NativeFile[], ffmpegAvailable: boolean) {
@@ -339,10 +340,15 @@ export default function QuickMenu() {
         if (!path) return
         await invoke(actionId === 'reveal' ? 'reveal_dropped_file' : 'copy_dropped_file_path', { inputPath: path })
         setStatus(tr(actionId === 'reveal' ? 'Show in folder' : 'Path copied'))
+      } else if (actionId === 'open-terminal') {
+        const path = filesRef.current[0]?.path
+        if (!path) return
+        await invoke('open_terminal', { inputPath: path })
+        setStatus(tr('Terminal opened'))
       } else {
         await invoke('quick_action', { actionId })
       }
-      if (['create-zip', 'extract-zip', 'copy-to-folder', 'move-to-folder', 'reveal', 'copy-path'].includes(actionId)) window.setTimeout(hide, 650)
+      if (['create-zip', 'extract-zip', 'copy-to-folder', 'move-to-folder', 'reveal', 'copy-path', 'open-terminal'].includes(actionId)) window.setTimeout(hide, 650)
       else await getCurrentWindow().hide()
     } catch (error) {
       setStatus(String(error).slice(0, 120))
@@ -366,7 +372,7 @@ export default function QuickMenu() {
       <div className="quick-center"><img className="quick-monogram" src="/fv-mark.svg" alt="FlickVert"/><span>{status || (files.length ? tr('No formats available') : dragMode ? tr('Drag a file here') : tr('Choose an action'))}</span></div>
       {(dragMode ? wheelMode === 'actions' ? fileActions : wheelMode === 'tools' ? toolActionsFor(files, ffmpegAvailable) : quickActions : quickActions).map((action, index, entries) => {
         const angle = (index / entries.length) * Math.PI * 2 - Math.PI / 2
-        const needsOneFile = ['extract-zip', 'move-to-folder', 'reveal', 'copy-path'].includes(action.id)
+        const needsOneFile = ['extract-zip', 'move-to-folder', 'reveal', 'copy-path', 'open-terminal'].includes(action.id)
         const imageTool = allToolActions.some((tool) => tool.id === action.id)
         const unavailableTool = imageTool && dragMode && !toolActionsFor(files, ffmpegAvailable).some((tool) => tool.id === action.id)
         const unavailableArchive = dragMode && (action.id === 'create-zip' ? files.length === 0 : action.id === 'extract-zip' && (files.length !== 1 || files[0]?.extension !== 'zip'))

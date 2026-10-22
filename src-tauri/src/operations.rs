@@ -171,6 +171,10 @@ pub fn libreoffice_args(input: &Path, output_dir: &Path) -> Vec<OsString> {
         .collect()
 }
 
+pub fn windows_terminal_args(directory: &Path) -> [OsString; 2] {
+    [OsString::from("-d"), directory.as_os_str().to_owned()]
+}
+
 pub fn ffmpeg_args(input: &Path, output: &Path) -> Vec<OsString> {
     ["-nostdin", "-hide_banner", "-loglevel", "error", "-y", "-i"]
         .into_iter()
@@ -326,6 +330,14 @@ mod tests {
             ]
             .map(OsString::from)
             .to_vec()
+        );
+    }
+
+    #[test]
+    fn windows_terminal_arguments_preserve_directory_paths_with_spaces() {
+        assert_eq!(
+            windows_terminal_args(Path::new("C:/My Files")),
+            ["-d", "C:/My Files"].map(OsString::from)
         );
     }
 }

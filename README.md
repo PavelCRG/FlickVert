@@ -36,7 +36,7 @@ Closing the window keeps FlickVert running in the notification area so the drag 
 
 The default shortcut, **Ctrl+Alt+Space**, opens quick actions. Change it in **Settings**.
 
-While dragging, tap and release **Ctrl** (Windows) or **Command** (macOS) for tools, or **Alt** for file actions. The tools wheel can resize, rotate, flip, grayscale, square-crop, compress images, or combine up to 100 images into a PDF. With FFmpeg installed, it also offers video compression, mute, audio extraction, thumbnails, audio compression, and loudness normalization. Actions can create or safely extract ZIP archives, copy selected files and folders or move one file or folder to `Downloads/FlickVert`, reveal one item in Explorer/Finder, or copy one path.
+While dragging, tap and release **Ctrl** (Windows) or **Command** (macOS) for tools, or **Alt/Option** for file actions. The tools wheel can resize, rotate, flip, grayscale, square-crop, compress images, or combine up to 100 images into a PDF. With FFmpeg installed, it also offers video compression, mute, audio extraction, thumbnails, audio compression, and loudness normalization. Actions can create or safely extract ZIP archives, copy selected files and folders or move one item to `Downloads/FlickVert`, reveal one item in Explorer/Finder, copy its path, or open its folder in a terminal.
 
 ## How the drag wheel works
 
