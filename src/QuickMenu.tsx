@@ -4,6 +4,7 @@ import { getCurrentWebview } from '@tauri-apps/api/webview'
 import { invoke } from '@tauri-apps/api/core'
 import { emit, listen } from '@tauri-apps/api/event'
 import { convertImage, fitWithin } from './conversion/images'
+import { imagesToPdf } from './conversion/pdf'
 import { loadSettings } from './settings'
 import { t, type MessageKey } from './i18n'
 import './quick-menu.css'
@@ -18,6 +19,7 @@ const quickActions = [
   { id: 'settings', label: 'Settings' as const, glyph: '⚙' },
 ]
 const toolActions = [
+  { id: 'images-to-pdf', label: 'Images to PDF' as const, glyph: 'PDF' },
   { id: 'resize', label: 'Resize' as const, glyph: '↔' },
   { id: 'rotate', label: 'Rotate' as const, glyph: '↻' },
   { id: 'flip', label: 'Flip' as const, glyph: '⇋' },
@@ -156,6 +158,22 @@ export default function QuickMenu() {
     dropHandled.current = true
     setStatus(tr(actionId === 'resize' ? 'Resizing...' : 'Processing...'))
     try {
+      if (actionId === 'images-to-pdf') {
+        if (items.length > 100) throw new Error('Select up to 100 images')
+        if (items.reduce((size, file) => size + file.size, 0) > 32 * 1024 * 1024) throw new Error('Images exceed the 32 MB limit')
+        const inputs: File[] = []
+        for (const file of items) {
+          const bytes = await invoke<number[]>('read_dropped_file', { inputPath: file.path })
+          inputs.push(new File([Uint8Array.from(bytes)], file.name, { type: file.mime }))
+        }
+        const bytes = await imagesToPdf(inputs, loadSettings().quality)
+        const name = items.length === 1 ? items[0].name.replace(/\.[^.]+$/, '') : 'images'
+        const output = await invoke<string>('save_output', { fileName: `${name}.pdf`, inputPath: items[0].path, bytes: Array.from(bytes) })
+        await emit('flickvert://job-completed', { fileName: `${name}.pdf`, size: bytes.length, output })
+        setStatus(tr('PDF created'))
+        window.setTimeout(hide, 650)
+        return
+      }
       for (const file of items) {
         if (!imageExtensions.includes(file.extension)) throw new Error('Image tools are available for images')
         const bytes = await invoke<number[]>('read_dropped_file', { inputPath: file.path })

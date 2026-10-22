@@ -1,6 +1,7 @@
 import type { Language } from './settings'
 
 const messages = {
+  'Images to PDF': ['Images to PDF', 'Изображения в PDF'], 'PDF created': ['PDF created', 'PDF создан'],
   'Create ZIP': ['Create ZIP', '\u0421\u043e\u0437\u0434\u0430\u0442\u044c ZIP'], 'Extract ZIP': ['Extract ZIP', '\u0420\u0430\u0441\u043f\u0430\u043a\u043e\u0432\u0430\u0442\u044c ZIP'], 'Archive created': ['Archive created', '\u0410\u0440\u0445\u0438\u0432 \u0441\u043e\u0437\u0434\u0430\u043d'], 'Archive extracted': ['Archive extracted', '\u0410\u0440\u0445\u0438\u0432 \u0440\u0430\u0441\u043f\u0430\u043a\u043e\u0432\u0430\u043d'],
   'Copied files': ['Copied files', '\u0424\u0430\u0439\u043b\u044b \u0441\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u043d\u044b'],
   'Mute video': ['Mute video', '\u041e\u0442\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u0437\u0432\u0443\u043a'], 'Extract audio': ['Extract audio', '\u0418\u0437\u0432\u043b\u0435\u0447\u044c \u0430\u0443\u0434\u0438\u043e'], 'Create thumbnail': ['Create thumbnail', '\u0421\u043e\u0437\u0434\u0430\u0442\u044c \u043c\u0438\u043d\u0438\u0430\u0442\u044e\u0440\u0443'], 'Normalize audio': ['Normalize audio', '\u041d\u043e\u0440\u043c\u0430\u043b\u0438\u0437\u043e\u0432\u0430\u0442\u044c \u0433\u0440\u043e\u043c\u043a\u043e\u0441\u0442\u044c'],
@@ -43,6 +44,7 @@ const messages = {
 
 export type MessageKey = keyof typeof messages
 const chinese: { [K in keyof typeof messages]: string } = {
+  'Images to PDF': '图像转 PDF', 'PDF created': 'PDF 已创建',
   'Create ZIP': '\u521b\u5efa ZIP', 'Extract ZIP': '\u89e3\u538b ZIP', 'Archive created': '\u538b\u7f29\u5305\u5df2\u521b\u5efa', 'Archive extracted': '\u538b\u7f29\u5305\u5df2\u89e3\u538b',
   'Copied files': '\u5df2\u590d\u5236\u6587\u4ef6',
   'Mute video': '\u89c6\u9891\u9759\u97f3', 'Extract audio': '\u63d0\u53d6\u97f3\u9891', 'Create thumbnail': '\u521b\u5efa\u7f29\u7565\u56fe', 'Normalize audio': '\u97f3\u9891\u54cd\u5ea6\u6807\u51c6\u5316',
