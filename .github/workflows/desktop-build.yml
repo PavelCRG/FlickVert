@@ -32,6 +32,21 @@ jobs:
       - run: npm run build
       - run: cargo test --locked --manifest-path src-tauri/Cargo.toml
       - run: npm run tauri -- build --target ${{ matrix.target }}
+      - name: Package portable Windows app
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $package = Join-Path $env:RUNNER_TEMP 'FlickVert-portable'
+          New-Item -ItemType Directory -Path $package -Force | Out-Null
+          Copy-Item 'src-tauri/target/x86_64-pc-windows-msvc/release/flickvert.exe' (Join-Path $package 'FlickVert.exe')
+          Copy-Item 'README.md' (Join-Path $package 'README.txt')
+          Compress-Archive -Path (Join-Path $package '*') -DestinationPath (Join-Path $env:RUNNER_TEMP 'FlickVert-Windows-x64-portable.zip') -CompressionLevel Optimal
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Windows'
+        with:
+          name: flickvert-windows-portable
+          path: ${{ runner.temp }}/FlickVert-Windows-x64-portable.zip
+          if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
           name: flickvert-${{ matrix.target }}
@@ -54,11 +69,12 @@ jobs:
         shell: bash
         run: |
           mkdir release-assets
-          find artifacts -type f \( -iname '*.msi' -o -iname '*.exe' -o -iname '*.dmg' \) -print0 \
+          find artifacts -type f \( -iname '*.msi' -o -iname '*.exe' -o -iname '*.dmg' -o -iname '*.zip' \) -print0 \
             | while IFS= read -r -d '' file; do cp "$file" release-assets/; done
           test "$(find release-assets -maxdepth 1 -iname '*.msi' | wc -l)" -eq 1
           test "$(find release-assets -maxdepth 1 -iname '*setup.exe' | wc -l)" -eq 1
           test "$(find release-assets -maxdepth 1 -iname '*.dmg' | wc -l)" -ge 2
+          test "$(find release-assets -maxdepth 1 -iname '*portable.zip' | wc -l)" -eq 1
           (cd release-assets && sha256sum * > SHA256SUMS.txt)
       - uses: softprops/action-gh-release@v2
         with:
