@@ -36,6 +36,8 @@ Closing the window keeps FlickVert running in the notification area so the drag 
 
 The default shortcut, **Ctrl+Alt+Space**, opens quick actions. Change it in **Settings**.
 
+While dragging, tap and release **Ctrl** (Windows) or **Command** (macOS) for image resize, or **Alt** for file actions. Release the mouse on a wheel segment to apply it. Resize writes a `-resized` copy, capped at 1920 by 1920; Actions can reveal one file in Explorer/Finder or copy its path.
+
 ## How the drag wheel works
 
 1. Start dragging a file from File Explorer or Finder with the left mouse button.
@@ -50,6 +52,7 @@ The wheel needs a file drag that starts in Explorer or Finder. Selecting a file 
 | --- | --- | --- |
 | Images | PNG, JPEG, WebP | Built in; GIF and BMP can be used as input. Animated GIFs use their first frame. |
 | Audio and video | Depends on FFmpeg | Install FFmpeg separately. |
+| Subtitles | SRT, VTT, ASS | Requires FFmpeg; converts between these subtitle formats. |
 | Text documents and ebooks | Depends on Pandoc | Install Pandoc separately. |
 | Office documents to PDF | Depends on LibreOffice | Install LibreOffice separately. |
 | Camera RAW | Depends on ImageMagick | Install ImageMagick separately. |

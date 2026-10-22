@@ -36,6 +36,8 @@ FlickVert 可与文件资源管理器和 Finder 配合使用。将文件拖入�
 
 默认快捷键为 **Ctrl+Alt+Space**，用于打开快捷操作菜单。可在 **Settings** 中更改。
 
+拖动文件时，按下并松开 **Ctrl**（Windows）或 **Command**（macOS）可打开图像缩放菜单；按下并松开 **Alt/Option** 可打开文件操作菜单。将文件拖到对应选项上并松开鼠标即可执行。缩放后的图像会以 `-resized` 后缀保存在原文件旁边，最大尺寸为 1920 × 1920。文件操作可在资源管理器/Finder 中定位文件或复制文件路径。
+
 ## 拖放转盘
 
 1. 按住鼠标左键，从文件资源管理器或 Finder 开始拖动文件。
@@ -50,6 +52,7 @@ FlickVert 可与文件资源管理器和 Finder 配合使用。将文件拖入�
 | --- | --- | --- |
 | 图片 | PNG、JPEG、WebP | 内置转换；可使用 GIF 和 BMP 作为输入。动画 GIF 仅转换第一帧。 |
 | 音频和视频 | 取决于 FFmpeg | 需要单独安装 FFmpeg。 |
+| 字幕 | SRT、VTT、ASS | 需要 FFmpeg，可在这些字幕格式之间转换。 |
 | 文本文档和电子书 | 取决于 Pandoc | 需要单独安装 Pandoc。 |
 | Office 文档转 PDF | 取决于 LibreOffice | 需要单独安装 LibreOffice。 |
 | 相机 RAW 图片 | 取决于 ImageMagick | 需要单独安装 ImageMagick。 |

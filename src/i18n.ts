@@ -22,7 +22,7 @@ const messages = {
   'No completed conversions yet': ['No completed conversions yet', 'Пока нет завершённых конвертаций'], 'Completed conversions will appear here.': ['Completed conversions will appear here.', 'Здесь будут отображаться завершённые конвертации.'],
   'Converted': ['Converted', 'Готово'], 'Back to conversion': ['Back to conversion', 'Назад к конвертации'], 'MAKE IT YOURS': ['MAKE IT YOURS', 'ПЕРСОНАЛЬНЫЕ НАСТРОЙКИ'],
   'Choose how FlickVert looks.': ['Choose how FlickVert looks.', 'Настройте внешний вид FlickVert.'], 'Appearance': ['Appearance', 'Оформление'], 'System': ['System', 'Системное'], 'Light': ['Light', 'Светлое'], 'Dark': ['Dark', 'Тёмное'],
-  'Language': ['Language', 'Язык'], 'English': ['English', 'Английский'], 'Russian': ['Russian', 'Русский'], 'System appearance': ['System appearance', 'Как в системе'],
+  'Language': ['Language', 'Язык'], 'English': ['English', 'Английский'], 'Russian': ['Russian', 'Русский'], 'Chinese': ['Chinese', '\u041a\u0438\u0442\u0430\u0439\u0441\u043a\u0438\u0439'], 'System appearance': ['System appearance', 'Как в системе'],
   'Max width': ['Max width', 'Макс. ширина'], 'Max height': ['Max height', 'Макс. высота'], 'Animated GIFs are converted using the first frame.': ['Animated GIFs are converted using the first frame.', 'Анимированные GIF преобразуются только по первому кадру.'],
   'Image': ['Image', 'Изображение'], 'Video': ['Video', 'Видео'], 'Audio': ['Audio', 'Аудио'], 'PDF document': ['PDF document', 'Документ PDF'], 'File': ['File', 'Файл'],
   'Quick shortcut': ['Quick shortcut', 'Быстрый вызов'], 'Shortcut unavailable. Use the tray menu.': ['Shortcut unavailable. Use the tray menu.', 'Сочетание недоступно. Используйте меню в области уведомлений.'],
@@ -31,7 +31,32 @@ const messages = {
   'Browse images or drop audio and video from Finder or Explorer.': ['Browse images or drop audio and video from Finder or Explorer.', 'Выбирайте изображения или перетащите аудио и видео из Finder/Проводника.'],
   'Drop files to add them': ['Drop files to add them', 'Перетащите файлы сюда'], 'Your files stay on this device. Processing runs locally.': ['Your files stay on this device. Processing runs locally.', 'Файлы остаются на устройстве. Обработка выполняется локально.'],
   'Closing the window keeps FlickVert in the tray. Choose Show FlickVert in its menu to reopen it.': ['Closing the window keeps FlickVert in the tray. Choose Show FlickVert in its menu to reopen it.', 'При закрытии FlickVert остаётся в трее. Выберите в его меню «Show FlickVert», чтобы снова открыть окно.'],
+  "Subtitle": ["Subtitle","Субтитры"],
+  "Subtitle format": ["Subtitle format","Формат субтитров"],
+  "Drop a subtitle from Finder or Explorer": ["Drop a subtitle from Finder or Explorer","Перетащите субтитры из Finder или Проводника"],
 } as const
 
 export type MessageKey = keyof typeof messages
-export function t(language: Language, key: MessageKey): string { return messages[key][language === 'ru' ? 1 : 0] }
+const chinese: { [K in keyof typeof messages]: string } = {
+  'Convert files': '转换文件', 'History': '历史记录', 'Settings': '设置', 'Resize': '调整大小', 'Choose an action': '选择操作', 'Show in folder': '在文件夹中显示', 'Copy path': '复制路径', 'Path copied': '路径已复制', 'Resizing...': '正在调整大小...',
+  'Select output format': '选择输出格式', 'Drag a file here': '将文件拖到这里', 'Drop on a format': '放到格式上', 'Saved': '已保存', 'No formats available': '没有可用格式', 'file': '个文件', 'files': '个文件',
+  'Workspace': '工作区', 'Your files stay here': '文件保留在本设备', 'Processed on this device': '在此设备上处理', 'PRIVATE BY DESIGN': '隐私优先',
+  'File conversion': '文件转换', 'Add images, choose a format and save the result.': '添加图像、选择格式并保存结果。', 'Images · PNG, JPEG, WebP': '图像 · PNG、JPEG、WebP', 'Drop files here': '将文件拖到这里',
+  'Same folder as original': '与原文件保存在同一文件夹', 'Save location varies': '保存位置因文件而异', 'or': '或', 'browse your computer': '浏览电脑',
+  'Files are processed on your device and never uploaded': '文件仅在本设备处理，不会上传', 'File queue': '文件队列', 'Clear queue': '清空队列', 'Your files will appear here': '文件会显示在这里',
+  'Add one or more files to get started': '添加一个或多个文件以开始', 'Ready to convert': '准备转换', 'Format not supported': '不支持此格式', 'Could not convert': '转换失败',
+  'Output settings': '输出设置', 'These settings apply to every image in the queue.': '这些设置将应用于队列中的所有图像。', 'FORMAT': '格式', 'Convert to': '转换为', 'Quality': '质量', 'Lossless': '无损',
+  'Save location': '保存位置', 'Downloads / FlickVert': '下载 / FlickVert', 'Add images to get started': '添加图像以开始', 'No supported images in the queue': '队列中没有受支持的图像',
+  'image': '张图像', 'images': '张图像', 'Converting...': '正在转换...', 'Done': '完成', 'Convert': '转换', 'RECENT WORK': '最近任务',
+  'Recent conversions are stored on this device.': '最近的转换记录保存在此设备上。', 'No completed conversions yet': '尚无已完成的转换', 'Completed conversions will appear here.': '已完成的转换会显示在这里。', 'Converted': '已转换', 'Back to conversion': '返回转换', 'MAKE IT YOURS': '个性化设置',
+  'Choose how FlickVert looks.': '选择 FlickVert 的外观。', 'Appearance': '外观', 'System': '跟随系统', 'Light': '浅色', 'Dark': '深色', 'Language': '语言', 'English': '英语', 'Russian': '俄语', 'Chinese': '简体中文', 'System appearance': '系统外观',
+  'Max width': '最大宽度', 'Max height': '最大高度', 'Animated GIFs are converted using the first frame.': '动画 GIF 转换时仅使用第一帧。', 'Image': '图像', 'Video': '视频', 'Audio': '音频', 'PDF document': 'PDF 文档', 'File': '文件',
+  'Quick shortcut': '快捷键', 'Shortcut unavailable. Use the tray menu.': '快捷键不可用，请使用托盘菜单。', 'FFmpeg unavailable': '未检测到 FFmpeg', 'Pandoc unavailable': '未检测到 Pandoc', 'ImageMagick unavailable': '未检测到 ImageMagick', 'LibreOffice unavailable': '未检测到 LibreOffice',
+  'Conversion engines': '转换引擎', 'Detected': '已检测到', 'Not detected on PATH': 'PATH 中未检测到', 'Document format': '文档格式', 'Document': '文档', 'Drop media from Finder or Explorer': '从 Finder 或文件资源管理器拖入媒体',
+  'Video format': '视频格式', 'Audio format': '音频格式', 'item': '个项目', 'items': '个项目', 'Browse images or drop audio and video from Finder or Explorer.': '浏览图像，或从 Finder/文件资源管理器拖入音频和视频。',
+  'Drop files to add them': '拖入文件以添加', 'Your files stay on this device. Processing runs locally.': '文件保留在本设备，所有处理均在本地进行。', 'Closing the window keeps FlickVert in the tray. Choose Show FlickVert in its menu to reopen it.': '关闭窗口后 FlickVert 会继续在系统托盘运行。选择“显示 FlickVert”可重新打开。',
+  "Subtitle": "字幕",
+  "Subtitle format": "字幕格式",
+  "Drop a subtitle from Finder or Explorer": "从 Finder 或文件资源管理器拖入字幕",
+}
+export function t(language: Language, key: MessageKey): string { return language === 'ru' ? messages[key][1] : language === 'zh' ? chinese[key] : messages[key][0] }

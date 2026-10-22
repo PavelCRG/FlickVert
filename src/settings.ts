@@ -1,4 +1,4 @@
-export type Language = 'en' | 'ru'
+export type Language = 'en' | 'ru' | 'zh'
 export type Appearance = 'system' | 'light' | 'dark'
 export type AppSettings = {
   language: Language
@@ -19,7 +19,7 @@ export function normalizeSettings(value: unknown): AppSettings {
   const raw = value as Record<string, unknown>
   const validDimension = (v: unknown) => Number.isInteger(v) && Number(v) > 0 && Number(v) <= 32768 ? Number(v) : undefined
   return {
-    language: raw.language === 'ru' ? 'ru' : 'en',
+    language: raw.language === 'ru' || raw.language === 'zh' ? raw.language : 'en',
     appearance: raw.appearance === 'dark' || raw.appearance === 'light' ? raw.appearance : 'system',
     quality: Number.isInteger(raw.quality) && Number(raw.quality) >= 40 && Number(raw.quality) <= 100 ? Number(raw.quality) : 88,
     format: raw.format === 'image/png' || raw.format === 'image/jpeg' ? raw.format : 'image/webp',

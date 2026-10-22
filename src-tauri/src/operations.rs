@@ -31,13 +31,24 @@ pub struct Engines {
 
 const AUDIO: Operation = Operation {
     engine: Engine::Ffmpeg,
-    input_extensions: &["aac", "flac", "m4a", "mp3", "ogg", "opus", "wav"],
-    output_extensions: &["aac", "flac", "m4a", "mp3", "ogg", "wav"],
+    input_extensions: &[
+        "aac", "aif", "aiff", "caf", "flac", "m4a", "m4b", "mka", "mp3", "oga", "ogg", "opus",
+        "wav", "wma",
+    ],
+    output_extensions: &["aac", "aiff", "flac", "m4a", "mp3", "ogg", "wav", "wma"],
 };
 const VIDEO: Operation = Operation {
     engine: Engine::Ffmpeg,
-    input_extensions: &["avi", "m4v", "mkv", "mov", "mp4", "mpeg", "webm"],
-    output_extensions: &["mkv", "mp4", "webm"],
+    input_extensions: &[
+        "3gp", "avi", "flv", "m2ts", "m4v", "mkv", "mov", "mp4", "mpeg", "mpg", "mts", "ogv", "ts",
+        "vob", "webm", "wmv",
+    ],
+    output_extensions: &["avi", "gif", "mkv", "mov", "mp3", "mp4", "webm", "wmv"],
+};
+const SUBTITLE: Operation = Operation {
+    engine: Engine::Ffmpeg,
+    input_extensions: &["ass", "srt", "ssa", "vtt"],
+    output_extensions: &["ass", "srt", "vtt"],
 };
 const DOCUMENT: Operation = Operation {
     engine: Engine::Pandoc,
@@ -65,7 +76,7 @@ const OFFICE_PDF: Operation = Operation {
 pub fn operations_for(extension: &str, engines: Engines) -> Vec<Operation> {
     let extension = extension.to_ascii_lowercase();
     [
-        (engines.ffmpeg, [&AUDIO, &VIDEO][..].to_vec()),
+        (engines.ffmpeg, [&AUDIO, &VIDEO, &SUBTITLE][..].to_vec()),
         (engines.pandoc, vec![&DOCUMENT]),
         (engines.imagemagick, vec![&RAW]),
         (engines.libreoffice, vec![&OFFICE_PDF]),
