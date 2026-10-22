@@ -977,8 +977,10 @@ fn main() {
                     remove_native_topmost(hwnd.0);
                 }
             }
-            if matches!(event, tauri::WindowEvent::CloseRequested { .. }) {
-                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if window.label() == "main" {
+                    window.app_handle().exit(0);
+                } else {
                     api.prevent_close();
                     let _ = window.hide();
                 }

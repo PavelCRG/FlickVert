@@ -47,7 +47,7 @@ jobs:
 
           Files are processed locally. FFmpeg, Pandoc, ImageMagick and LibreOffice are optional and must be installed separately for their formats. Windows 10/11 requires Microsoft Edge WebView2 Runtime.
 
-          Closing the main window keeps FlickVert in the notification area. Use the tray menu to reopen the app or quit.
+          Closing the main window exits FlickVert. The tray icon and shortcut are available while the app is open.
           '@ | Set-Content (Join-Path $package 'INSTALL.txt') -Encoding utf8
           Compress-Archive -Path (Join-Path $package '*') -DestinationPath (Join-Path $env:RUNNER_TEMP 'FlickVert-Windows-x64-portable.zip') -CompressionLevel Optimal
       - uses: actions/upload-artifact@v4

@@ -426,11 +426,6 @@ button:focus-visible,select:focus-visible,input:focus-visible,.dropzone:focus-vi
   gap:10px;
   color:var(--good);
   font-size:12px}
-.tray-hint{max-width:520px;
-  margin:10px 0 0;
-  color:var(--muted);
-  font-size:12px;
-  line-height:1.5}
 .drag-overlay{position:fixed;
   inset:0;
   z-index:5;

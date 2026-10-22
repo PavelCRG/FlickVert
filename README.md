@@ -30,9 +30,9 @@ FlickVert sits beside File Explorer and Finder. Drop a file onto the app, choose
 2. Pick an output format and start the conversion.
 3. Find the converted file beside the original. Images chosen with **Browse** go to `Downloads/FlickVert`.
 
-## Close and reopen
+## Closing the app
 
-Closing the window keeps FlickVert running in the notification area so the drag wheel and shortcut remain available. Open the tray icon menu and choose **Show FlickVert** to bring the window back. Choose **Quit** there to exit the app.
+Closing the window exits FlickVert. The tray icon and shortcut are available while the app is open.
 
 The default shortcut, **Ctrl+Alt+Space**, opens quick actions. Change it in **Settings**.
 
