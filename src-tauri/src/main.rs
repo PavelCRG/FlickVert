@@ -1,6 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::{collections::HashSet, fs, path::PathBuf, process::Output, sync::Mutex};
+use std::{collections::HashSet, fs, path::Path, path::PathBuf, process::{Command, Output}, sync::Mutex};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
@@ -306,6 +306,33 @@ fn quick_action(app: AppHandle, action_id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn reveal_dropped_file(
+    input_path: String,
+    dropped: tauri::State<'_, DroppedFiles>,
+) -> Result<(), String> {
+    let path = fs::canonicalize(input_path).map_err(|error| error.to_string())?;
+    if !dropped.0.lock().unwrap().contains(&path) || !path.is_file() {
+        return Err("Select the file by dropping it into FlickVert".into());
+    }
+    reveal_in_file_manager(&path).map_err(|error| error.to_string())
+}
+
+#[cfg(target_os = "windows")]
+fn reveal_in_file_manager(path: &Path) -> std::io::Result<()> {
+    Command::new("explorer.exe").arg("/select,").arg(path).spawn().map(|_| ())
+}
+
+#[cfg(target_os = "macos")]
+fn reveal_in_file_manager(path: &Path) -> std::io::Result<()> {
+    Command::new("open").arg("-R").arg(path).spawn().map(|_| ())
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+fn reveal_in_file_manager(path: &Path) -> std::io::Result<()> {
+    Command::new("xdg-open").arg(path.parent().unwrap_or(path)).spawn().map(|_| ())
+}
+
+#[tauri::command]
 fn register_shortcut(app: AppHandle, shortcut: String) -> Result<(), String> {
     let shortcut = match shortcut.as_str() {
         "CTRL+ALT+SPACE" | "CTRL+SHIFT+SPACE" | "ALT+SHIFT+SPACE" => shortcut,
@@ -381,6 +408,7 @@ fn main() {
             output_directory,
             save_output,
             quick_action,
+            reveal_dropped_file,
             register_shortcut,
             take_drag_trigger,
             quick_formats,

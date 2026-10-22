@@ -1,7 +1,7 @@
 import type { Language } from './settings'
 
 const messages = {
-  'Convert files': ['Convert files', 'Конвертация файлов'], 'History': ['History', 'История'], 'Settings': ['Settings', 'Настройки'], 'Resize': ['Resize', 'Изменить размер'], 'Choose an action': ['Choose an action', 'Выберите действие'],
+  'Convert files': ['Convert files', 'Конвертация файлов'], 'History': ['History', 'История'], 'Settings': ['Settings', 'Настройки'], 'Resize': ['Resize', 'Изменить размер'], 'Choose an action': ['Choose an action', 'Выберите действие'], 'Show in folder': ['Show in folder', 'Показать в папке'],
   'Select output format': ['Select output format', 'Выберите формат'], 'Drag a file here': ['Drag a file here', 'Перетащите сюда файл'], 'Drop on a format': ['Drop on a format', 'Отпустите на формате'], 'Saved': ['Saved', 'Сохранено'], 'No formats available': ['No formats available', 'Нет доступных форматов'], 'file': ['file', 'файл'], 'files': ['files', 'файлов'],
   'Workspace': ['Workspace', 'Рабочая область'], 'Your files stay here': ['Your files stay here', 'Файлы остаются на устройстве'],
   'Processed on this device': ['Processed on this device', 'Обработка на этом устройстве'], 'PRIVATE BY DESIGN': ['PRIVATE BY DESIGN', 'КОНФИДЕНЦИАЛЬНОСТЬ'],

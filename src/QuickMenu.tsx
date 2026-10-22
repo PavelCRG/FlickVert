@@ -16,6 +16,7 @@ const actions = [
   { id: 'convert', label: 'Convert' as const, glyph: '↔' },
   { id: 'resize', label: 'Resize' as const, glyph: '⌗' },
   { id: 'settings', label: 'Settings' as const, glyph: '⚙' },
+  { id: 'reveal', label: 'Show in folder' as const, glyph: '↗' },
 ]
 
 function outputLabel(extension: string) {
@@ -166,8 +167,18 @@ export default function QuickMenu() {
   }, [])
 
   async function choose(actionId: string) {
-    await invoke('quick_action', { actionId })
-    await getCurrentWindow().hide()
+    try {
+      if (actionId === 'reveal') {
+        const path = filesRef.current[0]?.path
+        if (!path) return
+        await invoke('reveal_dropped_file', { inputPath: path })
+      } else {
+        await invoke('quick_action', { actionId })
+      }
+      await getCurrentWindow().hide()
+    } catch (error) {
+      setStatus(String(error).slice(0, 120))
+    }
   }
 
   return <main className={`quick-shell${dragMode ? ' drag-mode' : ''}`} aria-label="FlickVert quick actions">
@@ -185,9 +196,9 @@ export default function QuickMenu() {
       })}
     </div> : <div className="quick-orbit quick-actions">
       <div className="quick-center"><img className="quick-monogram" src="/fv-mark.svg" alt="FlickVert"/><span>{status || (files.length ? tr('No formats available') : dragMode ? tr('Drag a file here') : tr('Choose an action'))}</span></div>
-      {!dragMode && actions.map((action, index) => {
+      {actions.map((action, index) => {
         const angle = (index / actions.length) * Math.PI * 2 - Math.PI / 2
-        return <button key={action.id} className={`quick-action action-${action.id}`} style={{ left: `${50 + Math.cos(angle) * 34}%`, top: `${50 + Math.sin(angle) * 34}%` }} onClick={() => void choose(action.id)}><span>{action.glyph}</span><small>{tr(action.label)}</small></button>
+        return <button key={action.id} className={`quick-action action-${action.id}`} style={{ left: `${50 + Math.cos(angle) * 34}%`, top: `${50 + Math.sin(angle) * 34}%` }} onClick={() => void choose(action.id)} disabled={action.id === 'reveal' && files.length !== 1}><span>{action.glyph}</span><small>{tr(action.label)}</small></button>
       })}
     </div>}
     <footer>{status || (formats.length ? `${tr('Drop on a format')} · ${files.length} ${tr(files.length === 1 ? 'file' : 'files')}` : dragMode ? tr('Drag a file here') : tr('Choose an action'))}</footer>
