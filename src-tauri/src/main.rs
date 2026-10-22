@@ -11,6 +11,7 @@ use std::{
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
+    webview::PageLoadEvent,
     AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, Position, Size, WebviewUrl,
     WebviewWindowBuilder,
 };
@@ -39,6 +40,7 @@ struct NativeFile {
     size: u64,
     extension: String,
     mime: &'static str,
+    is_directory: bool,
 }
 
 fn file_mime(extension: &str) -> Option<&'static str> {
@@ -78,7 +80,7 @@ fn file_mime(extension: &str) -> Option<&'static str> {
         | "rst" | "tex" | "xls" | "xlsx" | "ods" | "ppt" | "pptx" | "odp" | "csv" => {
             Some("application/octet-stream")
         }
-        _ => Some("application/octet-stream"),
+        _ => None,
     }
 }
 
@@ -99,7 +101,7 @@ fn inspect_dropped_files(
                 .unwrap_or("")
                 .to_ascii_lowercase();
             let mime = file_mime(&extension).unwrap_or("application/octet-stream");
-            if !metadata.is_file() {
+            if !metadata.is_file() && !metadata.is_dir() {
                 return None;
             }
             let name = path.file_name()?.to_string_lossy().into_owned();
@@ -110,6 +112,7 @@ fn inspect_dropped_files(
                 size: metadata.len(),
                 extension,
                 mime,
+                is_directory: metadata.is_dir(),
             })
         })
         .collect()
@@ -133,6 +136,9 @@ fn quick_formats(
     let input = fs::canonicalize(input_path).map_err(|error| error.to_string())?;
     if !dropped.0.lock().unwrap().contains(&input) {
         return Err("Select the input file by dropping it into FlickVert".into());
+    }
+    if input.is_dir() {
+        return Ok(Vec::new());
     }
     let extension = input
         .extension()
@@ -364,7 +370,7 @@ fn create_zip_archive(
     let mut seen = HashSet::new();
     let mut inputs = Vec::new();
     for input_path in input_paths {
-        let path = selected_dropped_file(&input_path, &dropped)?;
+        let path = selected_dropped_path(&input_path, &dropped)?;
         if seen.insert(path.clone()) {
             inputs.push(path);
         }
@@ -444,6 +450,81 @@ fn show_main(app: &AppHandle) {
         let _ = window.show();
         let _ = window.set_focus();
     }
+    #[cfg(windows)]
+    show_native_main();
+}
+
+#[cfg(windows)]
+fn show_native_main() {
+    use std::{ffi::c_void, slice};
+    type Hwnd = *mut c_void;
+    #[link(name = "user32")]
+    extern "system" {
+        fn EnumWindows(
+            callback: Option<unsafe extern "system" fn(Hwnd, isize) -> i32>,
+            data: isize,
+        ) -> i32;
+        fn GetWindowThreadProcessId(hwnd: Hwnd, process_id: *mut u32) -> u32;
+        fn GetClassNameW(hwnd: Hwnd, class_name: *mut u16, max_count: i32) -> i32;
+        fn ShowWindow(hwnd: Hwnd, command: i32) -> i32;
+        fn SetForegroundWindow(hwnd: Hwnd) -> i32;
+        fn SetWindowPos(
+            hwnd: Hwnd,
+            after: Hwnd,
+            x: i32,
+            y: i32,
+            width: i32,
+            height: i32,
+            flags: u32,
+        ) -> i32;
+    }
+    unsafe extern "system" fn visit(hwnd: Hwnd, data: isize) -> i32 {
+        let target_id = unsafe { *(data as *const u32) };
+        let mut process_id = 0;
+        unsafe { GetWindowThreadProcessId(hwnd, &mut process_id) };
+        if process_id == target_id {
+            let mut class_name = [0u16; 64];
+            let length =
+                unsafe { GetClassNameW(hwnd, class_name.as_mut_ptr(), class_name.len() as i32) };
+            // shortcut: targets Tao's Windows class; update if Tauri changes its window backend.
+            if String::from_utf16_lossy(unsafe {
+                slice::from_raw_parts(class_name.as_ptr(), length as usize)
+            }) == "global_hotkey_app"
+            {
+                unsafe {
+                    ShowWindow(hwnd, 9);
+                    SetWindowPos(hwnd, (-1isize) as _, 0, 0, 0, 0, 0x0043);
+                    if SetForegroundWindow(hwnd) != 0 {
+                        SetWindowPos(hwnd, (-2isize) as _, 0, 0, 0, 0, 0x0043);
+                    }
+                }
+            }
+        }
+        1
+    }
+    let process_id = std::process::id();
+    unsafe {
+        EnumWindows(Some(visit), &process_id as *const u32 as isize);
+    }
+}
+
+#[cfg(windows)]
+fn remove_native_topmost(hwnd: *mut std::ffi::c_void) {
+    #[link(name = "user32")]
+    extern "system" {
+        fn SetWindowPos(
+            hwnd: *mut std::ffi::c_void,
+            after: *mut std::ffi::c_void,
+            x: i32,
+            y: i32,
+            width: i32,
+            height: i32,
+            flags: u32,
+        ) -> i32;
+    }
+    unsafe {
+        SetWindowPos(hwnd, (-2isize) as _, 0, 0, 0, 0, 0x0043);
+    }
 }
 
 fn show_quick(app: &AppHandle, activate: bool) {
@@ -508,36 +589,56 @@ fn reveal_dropped_file(
     input_path: String,
     dropped: tauri::State<'_, DroppedFiles>,
 ) -> Result<(), String> {
-    let path = selected_dropped_file(&input_path, &dropped)?;
+    let path = selected_dropped_path(&input_path, &dropped)?;
     reveal_in_file_manager(&path).map_err(|error| error.to_string())
 }
 
-fn selected_dropped_file(input_path: &str, dropped: &DroppedFiles) -> Result<PathBuf, String> {
+fn selected_dropped_path(input_path: &str, dropped: &DroppedFiles) -> Result<PathBuf, String> {
     let path = fs::canonicalize(input_path).map_err(|error| error.to_string())?;
-    if !dropped.0.lock().unwrap().contains(&path) || !path.is_file() {
-        return Err("Select the file by dropping it into FlickVert".into());
+    if !dropped.0.lock().unwrap().contains(&path) || !path.is_file() && !path.is_dir() {
+        return Err("Select a file or folder by dropping it into FlickVert".into());
+    }
+    Ok(path)
+}
+
+fn selected_dropped_file(input_path: &str, dropped: &DroppedFiles) -> Result<PathBuf, String> {
+    let path = selected_dropped_path(input_path, dropped)?;
+    if !path.is_file() {
+        return Err("Select a file by dropping it into FlickVert".into());
     }
     Ok(path)
 }
 
 #[cfg(target_os = "windows")]
 fn reveal_in_file_manager(path: &Path) -> std::io::Result<()> {
-    Command::new("explorer.exe")
-        .arg("/select,")
-        .arg(path)
-        .spawn()
-        .map(|_| ())
+    let mut command = Command::new("explorer.exe");
+    if path.is_dir() {
+        command.arg(path);
+    } else {
+        command.arg("/select,").arg(path);
+    }
+    command.spawn().map(|_| ())
 }
 
 #[cfg(target_os = "macos")]
 fn reveal_in_file_manager(path: &Path) -> std::io::Result<()> {
-    Command::new("open").arg("-R").arg(path).spawn().map(|_| ())
+    let mut command = Command::new("open");
+    if path.is_dir() {
+        command.arg(path);
+    } else {
+        command.arg("-R").arg(path);
+    }
+    command.spawn().map(|_| ())
 }
 
 #[cfg(not(any(target_os = "windows", target_os = "macos")))]
 fn reveal_in_file_manager(path: &Path) -> std::io::Result<()> {
     Command::new("xdg-open")
-        .arg(path.parent().unwrap_or(path))
+        .arg(if path.is_dir() {
+            path
+        } else {
+            path.parent().unwrap_or(path)
+        })
         .spawn()
         .map(|_| ())
 }
@@ -547,7 +648,7 @@ fn copy_dropped_file_path(
     input_path: String,
     dropped: tauri::State<'_, DroppedFiles>,
 ) -> Result<(), String> {
-    let path = selected_dropped_file(&input_path, &dropped)?;
+    let path = selected_dropped_path(&input_path, &dropped)?;
     copy_path_to_clipboard(&path.to_string_lossy())
 }
 
@@ -557,7 +658,7 @@ fn copy_to_flickvert_folder(
     input_path: String,
     dropped: tauri::State<'_, DroppedFiles>,
 ) -> Result<String, String> {
-    let source = selected_dropped_file(&input_path, &dropped)?;
+    let source = selected_dropped_path(&input_path, &dropped)?;
     let downloads = app
         .path()
         .download_dir()
@@ -567,9 +668,12 @@ fn copy_to_flickvert_folder(
         .file_name()
         .ok_or("File name not found")?
         .to_string_lossy();
-    files::write_output_file(&destination, &name, &source)
-        .map(|path| path.to_string_lossy().into_owned())
-        .map_err(|error| error.to_string())
+    let output = if source.is_dir() {
+        files::copy_directory(&source, &destination).map_err(|error| error.to_string())?
+    } else {
+        files::write_output_file(&destination, &name, &source).map_err(|error| error.to_string())?
+    };
+    Ok(output.to_string_lossy().into_owned())
 }
 
 #[tauri::command]
@@ -578,7 +682,7 @@ fn move_to_flickvert_folder(
     input_path: String,
     dropped: tauri::State<'_, DroppedFiles>,
 ) -> Result<String, String> {
-    let source = selected_dropped_file(&input_path, &dropped)?;
+    let source = selected_dropped_path(&input_path, &dropped)?;
     let downloads = app
         .path()
         .download_dir()
@@ -588,12 +692,20 @@ fn move_to_flickvert_folder(
         .file_name()
         .ok_or("File name not found")?
         .to_string_lossy();
-    let output = files::write_output_file(&destination, &name, &source)
-        .map_err(|error| error.to_string())?;
-    if let Err(error) = fs::remove_file(&source) {
-        let _ = fs::remove_file(&output);
-        return Err(error.to_string());
-    }
+    let output = if source.is_dir() {
+        let output =
+            files::copy_directory(&source, &destination).map_err(|error| error.to_string())?;
+        fs::remove_dir_all(&source).map_err(|error| error.to_string())?;
+        output
+    } else {
+        let output = files::write_output_file(&destination, &name, &source)
+            .map_err(|error| error.to_string())?;
+        if let Err(error) = fs::remove_file(&source) {
+            let _ = fs::remove_file(&output);
+            return Err(error.to_string());
+        }
+        output
+    };
     Ok(output.to_string_lossy().into_owned())
 }
 
@@ -740,6 +852,16 @@ fn main() {
             extract_zip_archive
         ])
         .setup(|app| {
+            WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
+                .title("FlickVert")
+                .inner_size(1120.0, 760.0)
+                .min_inner_size(760.0, 600.0)
+                .resizable(true)
+                .center()
+                .visible(true)
+                .build()?;
+            #[cfg(windows)]
+            show_native_main();
             app.manage(DroppedFiles::default());
             app.manage(DragTrigger::default());
             match WebviewWindowBuilder::new(app, "quick", WebviewUrl::App("index.html".into()))
@@ -793,6 +915,12 @@ fn main() {
             Ok(())
         })
         .on_window_event(|window, event| {
+            #[cfg(windows)]
+            if matches!(event, tauri::WindowEvent::Focused(true)) {
+                if let Ok(hwnd) = window.hwnd() {
+                    remove_native_topmost(hwnd.0);
+                }
+            }
             if matches!(event, tauri::WindowEvent::CloseRequested { .. }) {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
@@ -800,8 +928,22 @@ fn main() {
                 }
             }
         })
-        .run(tauri::generate_context!())
-        .expect("FlickVert failed to start");
+        .on_page_load(|webview, payload| {
+            if webview.label() == "main" && payload.event() == PageLoadEvent::Finished {
+                let window = webview.window();
+                let _ = window.show();
+                let _ = window.set_focus();
+                #[cfg(windows)]
+                show_native_main();
+            }
+        })
+        .build(tauri::generate_context!())
+        .expect("FlickVert failed to start")
+        .run(|app, event| {
+            if matches!(event, tauri::RunEvent::Ready) {
+                show_main(app);
+            }
+        });
 }
 
 #[cfg(test)]

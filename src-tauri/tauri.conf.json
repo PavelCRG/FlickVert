@@ -13,6 +13,7 @@
     "windows": [{
       "label": "main",
       "title": "FlickVert",
+      "create": false,
       "width": 1120,
       "height": 760,
       "minWidth": 760,

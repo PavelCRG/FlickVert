@@ -15,26 +15,89 @@ pub fn create_zip(inputs: &[PathBuf], output: &Path) -> Result<(), String> {
     let mut archive = ZipWriter::new(file);
     let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
     let mut names = HashSet::new();
+    let mut entries = 0;
+    let mut total_size = 0;
     for input in inputs {
         let name = input
             .file_name()
             .ok_or("Input file name not found")?
-            .to_string_lossy()
-            .replace('\\', "/");
-        if name.is_empty() || !names.insert(path_key(&name)) {
-            return Err("Selected files have duplicate archive names".into());
-        }
-        archive
-            .start_file(name, options)
-            .map_err(|error| error.to_string())?;
-        let mut source = File::open(input).map_err(|error| error.to_string())?;
-        io::copy(&mut source, &mut archive).map_err(|error| error.to_string())?;
+            .to_string_lossy();
+        add_to_zip(
+            input,
+            &name,
+            &mut archive,
+            options,
+            &mut names,
+            &mut entries,
+            &mut total_size,
+        )?;
     }
     archive
         .finish()
         .map_err(|error| error.to_string())?
         .sync_all()
         .map_err(|error| error.to_string())
+}
+
+fn add_to_zip(
+    path: &Path,
+    name: &str,
+    archive: &mut ZipWriter<File>,
+    options: SimpleFileOptions,
+    names: &mut HashSet<String>,
+    entries: &mut usize,
+    total_size: &mut u64,
+) -> Result<(), String> {
+    let metadata = fs::symlink_metadata(path).map_err(|error| error.to_string())?;
+    if metadata.file_type().is_symlink() || !metadata.is_file() && !metadata.is_dir() {
+        return Err("ZIP creation does not include links or special files".into());
+    }
+    let normalized = safe_entry_path(name)?;
+    let key = path_key(&normalized.to_string_lossy());
+    if !names.insert(key) {
+        return Err("Selected files have duplicate archive names".into());
+    }
+    *entries += 1;
+    if *entries > MAX_ENTRIES {
+        return Err("ZIP archive exceeds the 20,000 entry limit".into());
+    }
+    if metadata.is_dir() {
+        let directory = format!("{}/", name.trim_end_matches(['/', '\\']));
+        archive
+            .add_directory(&directory, options)
+            .map_err(|error| error.to_string())?;
+        for child in fs::read_dir(path).map_err(|error| error.to_string())? {
+            let child = child.map_err(|error| error.to_string())?;
+            let child_name = format!(
+                "{}/{}",
+                name.trim_end_matches(['/', '\\']),
+                child.file_name().to_string_lossy()
+            );
+            add_to_zip(
+                &child.path(),
+                &child_name,
+                archive,
+                options,
+                names,
+                entries,
+                total_size,
+            )?;
+        }
+    } else {
+        if metadata.len() > MAX_FILE_SIZE {
+            return Err("ZIP file exceeds the 512 MB limit".into());
+        }
+        *total_size = total_size
+            .checked_add(metadata.len())
+            .filter(|size| *size <= MAX_TOTAL_SIZE)
+            .ok_or("ZIP archive exceeds the 2 GB limit")?;
+        archive
+            .start_file(name, options)
+            .map_err(|error| error.to_string())?;
+        let mut source = File::open(path).map_err(|error| error.to_string())?;
+        io::copy(&mut source, archive).map_err(|error| error.to_string())?;
+    }
+    Ok(())
 }
 
 pub fn extract_zip(input: &Path, downloads: &Path, output_name: &str) -> Result<PathBuf, String> {
@@ -199,4 +262,36 @@ fn path_key(path: &str) -> String {
     return path.to_lowercase();
     #[cfg(not(any(windows, target_os = "macos")))]
     path.to_owned()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn zips_folder_contents_with_the_folder_name() {
+        let root = std::env::temp_dir().join(format!(
+            "flickvert-archive-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let folder = root.join("photos");
+        fs::create_dir_all(folder.join("nested")).unwrap();
+        fs::write(folder.join("nested/photo.jpg"), b"photo").unwrap();
+        let output = root.join("photos.zip");
+
+        create_zip(&[folder], &output).unwrap();
+
+        let mut zip = ZipArchive::new(File::open(&output).unwrap()).unwrap();
+        let mut photo = zip.by_name("photos/nested/photo.jpg").unwrap();
+        let mut contents = String::new();
+        io::Read::read_to_string(&mut photo, &mut contents).unwrap();
+        assert_eq!(contents, "photo");
+        drop(photo);
+        drop(zip);
+        fs::remove_dir_all(root).unwrap();
+    }
 }

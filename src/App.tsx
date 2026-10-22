@@ -9,7 +9,7 @@ import { t, type MessageKey } from './i18n'
 type Format = 'image/png' | 'image/jpeg' | 'image/webp'
 type Item = { id: string; file: File; size: number; path?: string; outputFormats?: string[]; outputExtension?: string; status: 'ready' | 'done' | 'error'; output?: string; error?: string }
 type HistoryEntry = { id: string; fileName: string; size: number; output: string }
-type NativeFile = { path: string; name: string; size: number; extension: string; mime: string }
+type NativeFile = { path: string; name: string; size: number; extension: string; mime: string; isDirectory: boolean }
 type Engines = { ffmpeg: boolean; pandoc: boolean; imagemagick: boolean; libreoffice: boolean }
 const formats: { value: Format; label: string; ext: string }[] = [
   { value: 'image/png', label: 'PNG', ext: 'png' },
@@ -144,6 +144,8 @@ export default function App() {
     })
   }
   function addNativeFiles(files: NativeFile[]) {
+    files = files.filter((file) => !file.isDirectory)
+    if (!files.length) return
     setItems((current) => {
       const next = [...current]
       for (const entry of files) {

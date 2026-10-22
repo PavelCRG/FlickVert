@@ -9,7 +9,7 @@ import { loadSettings } from './settings'
 import { t, type MessageKey } from './i18n'
 import './quick-menu.css'
 
-type NativeFile = { path: string; name: string; size: number; extension: string; mime: string }
+type NativeFile = { path: string; name: string; size: number; extension: string; mime: string; isDirectory: boolean }
 type Format = { extension: string; label: string }
 type Position = { x: number; y: number }
 const imageExtensions = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp']
@@ -106,7 +106,7 @@ export default function QuickMenu() {
   async function refreshFiles(paths: string[]) {
     const received = await invoke<NativeFile[]>('inspect_dropped_files', { paths })
     if (!received.length) return { received, options: [] as Format[] }
-    const lists = await Promise.all(received.map((file) => invoke<string[]>('quick_formats', { inputPath: file.path })))
+    const lists = await Promise.all(received.map((file): Promise<string[]> => file.isDirectory ? Promise.resolve([]) : invoke<string[]>('quick_formats', { inputPath: file.path })))
     const common = lists[0].filter((extension) => lists.every((list) => list.includes(extension)))
     const options = common.map((extension) => ({ extension, label: outputLabel(extension) }))
     filesRef.current = received

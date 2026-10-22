@@ -86,6 +86,81 @@ pub fn write_output_file(
     })
 }
 
+pub fn copy_directory(source: &Path, destination: &Path) -> Result<PathBuf, FileError> {
+    let source = fs::canonicalize(source)?;
+    if !fs::metadata(&source)?.is_dir() {
+        return Err(
+            std::io::Error::new(io::ErrorKind::InvalidInput, "Source is not a folder").into(),
+        );
+    }
+    fs::create_dir_all(destination)?;
+    let destination = fs::canonicalize(destination)?;
+    if destination.starts_with(&source) {
+        return Err(std::io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "Cannot copy a folder into itself",
+        )
+        .into());
+    }
+    let name = source
+        .file_name()
+        .ok_or(FileError::InvalidName)?
+        .to_string_lossy();
+    for _ in 0..100 {
+        let output = unique_output_path(&destination, &name)?;
+        match fs::create_dir(&output) {
+            Ok(()) => {
+                if let Err(error) = copy_directory_contents(&source, &output) {
+                    let _ = fs::remove_dir_all(&output);
+                    return Err(error.into());
+                }
+                return Ok(output);
+            }
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(error.into()),
+        }
+    }
+    Err(io::Error::new(
+        io::ErrorKind::AlreadyExists,
+        "Too many folder name collisions",
+    )
+    .into())
+}
+
+fn copy_directory_contents(source: &Path, destination: &Path) -> io::Result<()> {
+    let mut pending = vec![(source.to_owned(), destination.to_owned())];
+    while let Some((source, destination)) = pending.pop() {
+        for entry in fs::read_dir(source)? {
+            let entry = entry?;
+            let kind = entry.file_type()?;
+            let output = destination.join(entry.file_name());
+            if kind.is_symlink() {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "Folder contains a symbolic link",
+                ));
+            } else if kind.is_dir() {
+                fs::create_dir(&output)?;
+                pending.push((entry.path(), output));
+            } else if kind.is_file() {
+                let mut input = File::open(entry.path())?;
+                let mut output = OpenOptions::new()
+                    .write(true)
+                    .create_new(true)
+                    .open(output)?;
+                io::copy(&mut input, &mut output)?;
+                output.sync_all()?;
+            } else {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "Folder contains a special file",
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
 fn write_output_with(
     directory: &Path,
     file_name: &str,
@@ -219,6 +294,27 @@ mod tests {
         assert_eq!(fs::read(output).unwrap(), b"converted data");
         assert_eq!(fs::read(root.join("photo.mp4")).unwrap(), b"keep");
         let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn copies_nested_directory_contents_without_overwriting_existing_items() {
+        let root = dir();
+        let source = root.join("source");
+        fs::create_dir_all(source.join("nested")).unwrap();
+        fs::write(source.join("nested/photo.jpg"), b"photo").unwrap();
+        let destination = root.join("destination");
+        fs::create_dir_all(destination.join("source")).unwrap();
+        fs::write(destination.join("source/keep.txt"), b"keep").unwrap();
+
+        let copied = copy_directory(&source, &destination).unwrap();
+
+        assert_eq!(fs::read(copied.join("nested/photo.jpg")).unwrap(), b"photo");
+        assert_eq!(
+            fs::read(destination.join("source/keep.txt")).unwrap(),
+            b"keep"
+        );
+        assert!(source.join("nested/photo.jpg").exists());
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

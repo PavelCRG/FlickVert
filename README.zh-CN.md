@@ -57,7 +57,7 @@ FlickVert 可与文件资源管理器和 Finder 配合使用。将文件拖入�
 | 文本文档和电子书 | 取决于 Pandoc | 需要单独安装 Pandoc。 |
 | Office 文档转 PDF | 取决于 LibreOffice | 需要单独安装 LibreOffice。 |
 | 相机 RAW 图片 | 取决于 ImageMagick | 需要单独安装 ImageMagick。 |
-| 压缩包 | 创建和解压 ZIP | 解压到 `Downloads/FlickVert` 中的新文件夹；会拒绝不安全路径和链接。 |
+| 压缩包 | 创建和解压 ZIP | 可将文件夹打包；解压到 `Downloads/FlickVert` 中的新文件夹；会拒绝不安全路径和链接。 |
 
 ## 文件保存位置
 
