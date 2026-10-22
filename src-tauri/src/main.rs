@@ -331,11 +331,16 @@ fn reveal_dropped_file(
     input_path: String,
     dropped: tauri::State<'_, DroppedFiles>,
 ) -> Result<(), String> {
+    let path = selected_dropped_file(&input_path, &dropped)?;
+    reveal_in_file_manager(&path).map_err(|error| error.to_string())
+}
+
+fn selected_dropped_file(input_path: &str, dropped: &DroppedFiles) -> Result<PathBuf, String> {
     let path = fs::canonicalize(input_path).map_err(|error| error.to_string())?;
     if !dropped.0.lock().unwrap().contains(&path) || !path.is_file() {
         return Err("Select the file by dropping it into FlickVert".into());
     }
-    reveal_in_file_manager(&path).map_err(|error| error.to_string())
+    Ok(path)
 }
 
 #[cfg(target_os = "windows")]
@@ -365,11 +370,54 @@ fn copy_dropped_file_path(
     input_path: String,
     dropped: tauri::State<'_, DroppedFiles>,
 ) -> Result<(), String> {
-    let path = fs::canonicalize(input_path).map_err(|error| error.to_string())?;
-    if !dropped.0.lock().unwrap().contains(&path) || !path.is_file() {
-        return Err("Select the file by dropping it into FlickVert".into());
-    }
+    let path = selected_dropped_file(&input_path, &dropped)?;
     copy_path_to_clipboard(&path.to_string_lossy())
+}
+
+#[tauri::command]
+fn copy_to_flickvert_folder(
+    app: AppHandle,
+    input_path: String,
+    dropped: tauri::State<'_, DroppedFiles>,
+) -> Result<String, String> {
+    let source = selected_dropped_file(&input_path, &dropped)?;
+    let downloads = app
+        .path()
+        .download_dir()
+        .map_err(|error| error.to_string())?;
+    let destination = files::output_directory(&downloads).map_err(|error| error.to_string())?;
+    let name = source
+        .file_name()
+        .ok_or("File name not found")?
+        .to_string_lossy();
+    files::write_output_file(&destination, &name, &source)
+        .map(|path| path.to_string_lossy().into_owned())
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn move_to_flickvert_folder(
+    app: AppHandle,
+    input_path: String,
+    dropped: tauri::State<'_, DroppedFiles>,
+) -> Result<String, String> {
+    let source = selected_dropped_file(&input_path, &dropped)?;
+    let downloads = app
+        .path()
+        .download_dir()
+        .map_err(|error| error.to_string())?;
+    let destination = files::output_directory(&downloads).map_err(|error| error.to_string())?;
+    let name = source
+        .file_name()
+        .ok_or("File name not found")?
+        .to_string_lossy();
+    let output = files::write_output_file(&destination, &name, &source)
+        .map_err(|error| error.to_string())?;
+    if let Err(error) = fs::remove_file(&source) {
+        let _ = fs::remove_file(&output);
+        return Err(error.to_string());
+    }
+    Ok(output.to_string_lossy().into_owned())
 }
 
 #[cfg(windows)]
@@ -501,6 +549,8 @@ fn main() {
             quick_action,
             reveal_dropped_file,
             copy_dropped_file_path,
+            copy_to_flickvert_folder,
+            move_to_flickvert_folder,
             register_shortcut,
             take_drag_trigger,
             quick_formats,
