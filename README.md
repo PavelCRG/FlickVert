@@ -36,7 +36,7 @@ Closing the window keeps FlickVert running in the notification area so the drag 
 
 The default shortcut, **Ctrl+Alt+Space**, opens quick actions. Change it in **Settings**.
 
-While dragging, tap and release **Ctrl** (Windows) or **Command** (macOS) for tools, or **Alt** for file actions. The tools wheel can resize, rotate, flip, grayscale, square-crop, or compress images. With FFmpeg installed, it also offers video compression, mute, audio extraction, thumbnails, audio compression, and loudness normalization. Results are saved beside the original with a suffix. Actions can copy selected files or move one file to `Downloads/FlickVert`, reveal one file in Explorer/Finder, or copy one path.
+While dragging, tap and release **Ctrl** (Windows) or **Command** (macOS) for tools, or **Alt** for file actions. The tools wheel can resize, rotate, flip, grayscale, square-crop, or compress images. With FFmpeg installed, it also offers video compression, mute, audio extraction, thumbnails, audio compression, and loudness normalization. Actions can create or safely extract ZIP archives, copy selected files or move one file to `Downloads/FlickVert`, reveal one file in Explorer/Finder, or copy one path.
 
 ## How the drag wheel works
 
@@ -56,6 +56,7 @@ The wheel needs a file drag that starts in Explorer or Finder. Selecting a file 
 | Text documents and ebooks | Depends on Pandoc | Install Pandoc separately. |
 | Office documents to PDF | Depends on LibreOffice | Install LibreOffice separately. |
 | Camera RAW | Depends on ImageMagick | Install ImageMagick separately. |
+| Archives | ZIP create and extract | Extracted into a new folder in `Downloads/FlickVert`; unsafe paths and links are rejected. |
 
 ## Where files are saved
 

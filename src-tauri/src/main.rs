@@ -15,6 +15,7 @@ use tauri::{
     WebviewWindowBuilder,
 };
 use tauri_plugin_global_shortcut::GlobalShortcutExt;
+mod archive;
 mod files;
 mod input;
 mod operations;
@@ -351,6 +352,93 @@ fn process_media_tool(
     result
 }
 
+#[tauri::command]
+fn create_zip_archive(
+    app: AppHandle,
+    input_paths: Vec<String>,
+    dropped: tauri::State<'_, DroppedFiles>,
+) -> Result<String, String> {
+    if input_paths.is_empty() || input_paths.len() > 10_000 {
+        return Err("Select between 1 and 10,000 files to archive".into());
+    }
+    let mut seen = HashSet::new();
+    let mut inputs = Vec::new();
+    for input_path in input_paths {
+        let path = selected_dropped_file(&input_path, &dropped)?;
+        if seen.insert(path.clone()) {
+            inputs.push(path);
+        }
+    }
+    let stem = if inputs.len() == 1 {
+        inputs[0]
+            .file_stem()
+            .and_then(|value| value.to_str())
+            .unwrap_or("archive")
+    } else {
+        "archive"
+    };
+    let output_name = format!("{stem}.zip");
+    let work_root = app
+        .path()
+        .app_cache_dir()
+        .map_err(|error| error.to_string())?
+        .join("archive-work");
+    fs::create_dir_all(&work_root).map_err(|error| error.to_string())?;
+    let work_dir = loop {
+        let candidate = work_root.join(format!(
+            "{}-{}",
+            std::process::id(),
+            MEDIA_TEMP_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+        ));
+        match fs::create_dir(&candidate) {
+            Ok(()) => break candidate,
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(error.to_string()),
+        }
+    };
+    let result = (|| {
+        let temporary = work_dir.join("archive.zip");
+        archive::create_zip(&inputs, &temporary)?;
+        let downloads = app
+            .path()
+            .download_dir()
+            .map_err(|error| error.to_string())?;
+        let destination = files::output_directory(&downloads).map_err(|error| error.to_string())?;
+        files::write_output_file(&destination, &output_name, &temporary)
+            .map(|path| path.to_string_lossy().into_owned())
+            .map_err(|error| error.to_string())
+    })();
+    let _ = fs::remove_dir_all(work_dir);
+    result
+}
+
+#[tauri::command]
+fn extract_zip_archive(
+    app: AppHandle,
+    input_path: String,
+    dropped: tauri::State<'_, DroppedFiles>,
+) -> Result<String, String> {
+    let input = selected_dropped_file(&input_path, &dropped)?;
+    if !input
+        .extension()
+        .and_then(|value| value.to_str())
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("zip"))
+    {
+        return Err("Only ZIP archives can be extracted".into());
+    }
+    let downloads = app
+        .path()
+        .download_dir()
+        .map_err(|error| error.to_string())?;
+    let destination = files::output_directory(&downloads).map_err(|error| error.to_string())?;
+    let name = input
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .filter(|name| !name.is_empty())
+        .unwrap_or("archive");
+    archive::extract_zip(&input, &destination, name).map(|path| path.to_string_lossy().into_owned())
+}
+
 fn show_main(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
@@ -647,7 +735,9 @@ fn main() {
             inspect_dropped_files,
             engine_status,
             convert_file,
-            process_media_tool
+            process_media_tool,
+            create_zip_archive,
+            extract_zip_archive
         ])
         .setup(|app| {
             app.manage(DroppedFiles::default());

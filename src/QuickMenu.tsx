@@ -37,6 +37,8 @@ const audioToolActions = [
 ]
 const allToolActions = [...toolActions, ...videoToolActions, ...audioToolActions]
 const fileActions = [
+  { id: 'create-zip', label: 'Create ZIP' as const, glyph: '▱' },
+  { id: 'extract-zip', label: 'Extract ZIP' as const, glyph: '▣' },
   { id: 'copy-to-folder', label: 'Copy to FlickVert' as const, glyph: '⧉' },
   { id: 'move-to-folder', label: 'Move to FlickVert' as const, glyph: '⇥' },
   { id: 'reveal', label: 'Show in folder' as const, glyph: '↗' },
@@ -219,7 +221,8 @@ export default function QuickMenu() {
       const size = await getCurrentWindow().innerSize()
       if (wheelModeRef.current === 'actions') {
         const index = selectedSector(point, size, fileActions.length)
-        if (index >= 0 && received.length && (fileActions[index].id === 'copy-to-folder' || received.length === 1)) await choose(fileActions[index].id)
+        const id = fileActions[index]?.id
+        if (index >= 0 && received.length && (id === 'copy-to-folder' || id === 'create-zip' || received.length === 1)) await choose(id)
         return
       }
       if (wheelModeRef.current === 'tools') {
@@ -297,6 +300,17 @@ export default function QuickMenu() {
       } else if (allToolActions.some((action) => action.id === actionId) && dragModeRef.current && filesRef.current.length) {
         await runTool(actionId, filesRef.current)
         return
+      } else if (actionId === 'create-zip') {
+        const items = filesRef.current
+        const output = await invoke<string>('create_zip_archive', { inputPaths: items.map((file) => file.path) })
+        await emit('flickvert://job-completed', { fileName: `${items.length} files`, size: items.reduce((sum, file) => sum + file.size, 0), output })
+        setStatus(`${tr('Archive created')}: ${output.split(/[\\/]/).pop()}`)
+      } else if (actionId === 'extract-zip') {
+        const file = filesRef.current[0]
+        if (!file) return
+        const output = await invoke<string>('extract_zip_archive', { inputPath: file.path })
+        await emit('flickvert://job-completed', { fileName: file.name, size: file.size, output })
+        setStatus(`${tr('Archive extracted')}: ${output.split(/[\\/]/).pop()}`)
       } else if (actionId === 'copy-to-folder' || actionId === 'move-to-folder') {
         const items = actionId === 'copy-to-folder' ? filesRef.current : filesRef.current.slice(0, 1)
         if (!items.length) return
@@ -310,7 +324,7 @@ export default function QuickMenu() {
       } else {
         await invoke('quick_action', { actionId })
       }
-      if (['copy-to-folder', 'move-to-folder', 'reveal', 'copy-path'].includes(actionId)) window.setTimeout(hide, 650)
+      if (['create-zip', 'extract-zip', 'copy-to-folder', 'move-to-folder', 'reveal', 'copy-path'].includes(actionId)) window.setTimeout(hide, 650)
       else await getCurrentWindow().hide()
     } catch (error) {
       setStatus(String(error).slice(0, 120))
@@ -334,10 +348,11 @@ export default function QuickMenu() {
       <div className="quick-center"><img className="quick-monogram" src="/fv-mark.svg" alt="FlickVert"/><span>{status || (files.length ? tr('No formats available') : dragMode ? tr('Drag a file here') : tr('Choose an action'))}</span></div>
       {(dragMode ? wheelMode === 'actions' ? fileActions : wheelMode === 'tools' ? toolActionsFor(files, ffmpegAvailable) : quickActions : quickActions).map((action, index, entries) => {
         const angle = (index / entries.length) * Math.PI * 2 - Math.PI / 2
-        const needsOneFile = ['move-to-folder', 'reveal', 'copy-path'].includes(action.id)
+        const needsOneFile = ['extract-zip', 'move-to-folder', 'reveal', 'copy-path'].includes(action.id)
         const imageTool = allToolActions.some((tool) => tool.id === action.id)
         const unavailableTool = imageTool && dragMode && !toolActionsFor(files, ffmpegAvailable).some((tool) => tool.id === action.id)
-        return <button key={action.id} className={`quick-action action-${action.id}${active === index ? ' active' : ''}`} style={{ left: `${50 + Math.cos(angle) * 34}%`, top: `${50 + Math.sin(angle) * 34}%` }} onClick={() => void choose(action.id)} disabled={(needsOneFile && files.length !== 1) || unavailableTool}><span>{action.glyph}</span><small>{tr(action.label)}</small></button>
+        const unavailableArchive = dragMode && (action.id === 'create-zip' ? files.length === 0 : action.id === 'extract-zip' && (files.length !== 1 || files[0]?.extension !== 'zip'))
+        return <button key={action.id} className={`quick-action action-${action.id}${active === index ? ' active' : ''}`} style={{ left: `${50 + Math.cos(angle) * 34}%`, top: `${50 + Math.sin(angle) * 34}%` }} onClick={() => void choose(action.id)} disabled={(needsOneFile && files.length !== 1) || unavailableTool || unavailableArchive}><span>{action.glyph}</span><small>{tr(action.label)}</small></button>
       })}
     </div>}
     <footer>{status || (formats.length ? `${tr('Drop on a format')} · ${files.length} ${tr(files.length === 1 ? 'file' : 'files')}` : dragMode ? tr('Drag a file here') : tr('Choose an action'))}</footer>
