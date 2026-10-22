@@ -71,7 +71,6 @@ FlickVert 可与文件资源管理器和 Finder 配合使用。将文件拖入�
 
 ```sh
 npm ci
-npm run build
 npm run dev
 ```
 

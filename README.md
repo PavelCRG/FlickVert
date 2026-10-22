@@ -70,7 +70,6 @@ Install Node.js 24, stable Rust, and the [Tauri system prerequisites](https://v2
 
 ```sh
 npm ci
-npm run build
 npm run dev
 ```
 

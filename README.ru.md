@@ -70,7 +70,6 @@ FlickVert работает рядом с Проводником и Finder. Пе�
 
 ```sh
 npm ci
-npm run build
 npm run dev
 ```
 

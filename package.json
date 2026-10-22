@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "tauri dev",
-    "build": "tsc -b && vite build --configLoader native",
+    "dev": "npm run build && tauri dev",
+    "build": "tsc -b && node scripts/prepare-dist.mjs && esbuild src/main.tsx --bundle --outdir=dist/assets --jsx=automatic --platform=browser --target=safari16 --minify",
     "test": "node --experimental-strip-types --test --test-isolation=none src/settings.test.ts src/conversion/images.test.ts",
     "preview": "vite preview",
     "tauri": "tauri"
@@ -20,6 +20,7 @@
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "esbuild": "0.28.2",
     "typescript": "~5.8.3",
     "vite": "^7.1.0"
   }
