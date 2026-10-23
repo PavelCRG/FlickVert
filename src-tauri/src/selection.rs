@@ -31,6 +31,13 @@ pub fn choose_paths() -> Vec<String> {
 }
 
 #[cfg(windows)]
+pub fn choose_folder() -> Option<String> {
+    windows_paths("Add-Type -AssemblyName System.Windows.Forms; $dialog=New-Object System.Windows.Forms.FolderBrowserDialog; $dialog.Description='Choose where FlickVert saves converted files'; $dialog.ShowNewFolderButton=$true; if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { $stream=[Console]::OpenStandardOutput(); $bytes=[Text.Encoding]::UTF8.GetBytes($dialog.SelectedPath); $stream.Write($bytes,0,$bytes.Length) }")
+        .into_iter()
+        .next()
+}
+
+#[cfg(windows)]
 fn windows_paths(script: &str) -> Vec<String> {
     let output = Command::new("powershell.exe")
         .args(["-NoProfile", "-NonInteractive", "-Sta", "-Command", script])
@@ -68,6 +75,13 @@ pub fn choose_paths() -> Vec<String> {
 }
 
 #[cfg(target_os = "macos")]
+pub fn choose_folder() -> Option<String> {
+    apple_paths("POSIX path of (choose folder with prompt \"Choose where FlickVert saves converted files\")")
+        .into_iter()
+        .next()
+}
+
+#[cfg(target_os = "macos")]
 fn apple_paths(script: &str) -> Vec<String> {
     let output = Command::new("osascript").args(["-e", script]).output();
     output
@@ -90,4 +104,9 @@ pub fn selected_paths(_: isize) -> Vec<String> {
 #[cfg(not(any(windows, target_os = "macos")))]
 pub fn choose_paths() -> Vec<String> {
     Vec::new()
+}
+
+#[cfg(not(any(windows, target_os = "macos")))]
+pub fn choose_folder() -> Option<String> {
+    None
 }

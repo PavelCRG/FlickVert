@@ -6,11 +6,11 @@ import { selectionToPixels, normalizeSelection, type Selection } from './image-e
 import { t, type MessageKey } from './i18n'
 
 export type ImageEditTool = 'crop' | 'redact' | 'annotate' | 'background' | 'adjust'
-type Props = { inputPath: string; initialTool: ImageEditTool; onClose: () => void }
+type Props = { inputPath: string; initialTool: ImageEditTool; outputFolder?: string; onClose: () => void }
 const tools: ImageEditTool[] = ['crop', 'redact', 'annotate', 'background', 'adjust']
 const labels: Record<ImageEditTool, MessageKey> = { crop: 'Crop', redact: 'Redact', annotate: 'Annotate', background: 'Background', adjust: 'Adjust' }
 
-export default function ImageEditor({ inputPath, initialTool, onClose }: Props) {
+export default function ImageEditor({ inputPath, initialTool, outputFolder, onClose }: Props) {
   const tr = (key: MessageKey) => t(loadSettings().language, key)
   const bitmap = useRef<ImageBitmap | null>(null)
   const dragStart = useRef<[number, number] | null>(null)
@@ -111,7 +111,7 @@ export default function ImageEditor({ inputPath, initialTool, onClose }: Props) 
       if (blob.size > 128 * 1024 * 1024) throw new Error('Edited image exceeds the 128 MB limit')
       const stem = inputPath.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '') || 'image'
       const suffix: Record<ImageEditTool, string> = { crop: 'cropped', redact: 'redacted', annotate: 'annotated', background: 'background', adjust: 'edited' }
-      const output = await invoke<string>('save_output', { fileName: `${stem}-${suffix[tool]}.png`, inputPath, bytes: Array.from(new Uint8Array(await blob.arrayBuffer())) })
+      const output = await invoke<string>('save_output', { fileName: `${stem}-${suffix[tool]}.png`, inputPath, destinationFolder: outputFolder, bytes: Array.from(new Uint8Array(await blob.arrayBuffer())) })
       await emit('flickvert://job-completed', { fileName: `${stem}.png`, size: blob.size, output })
       onClose()
     } catch (reason) {

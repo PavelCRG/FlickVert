@@ -10,7 +10,7 @@
   <p><a href="README.ru.md">Русский</a> · <a href="README.zh-CN.md">简体中文</a></p>
 </div>
 
-FlickVert sits beside File Explorer and Finder. Drag a file, hold Shift, and drop it onto an action in the wheel beside the pointer. The main window is a start screen with history and settings.
+FlickVert sits beside File Explorer and Finder. Start dragging a file and the circular action wheel appears beside the pointer. Drop the file on a format or action to run it. The main window has history and settings.
 
 <p align="center"><a href="https://github.com/PavelCRG/FlickVert/releases/latest"><strong>Download FlickVert for Windows or macOS →</strong></a></p>
 
@@ -27,7 +27,7 @@ FlickVert sits beside File Explorer and Finder. Drag a file, hold Shift, and dro
 ## Quick start
 
 1. Start FlickVert. The start screen opens once; closing it leaves FlickVert in the tray while you work in File Explorer or Finder.
-2. Drag a file, press **Shift**, and drop it onto a format in the wheel beside the pointer.
+2. Drag a file and drop it onto a format in the wheel beside the pointer.
 3. Find the converted file beside the original. Open the main window from the tray for the start screen, history, and settings.
 
 ## Closing the app
@@ -43,8 +43,8 @@ For detailed image work, choose **Edit image** in Tools. The editor can crop or 
 ## How the drag wheel works
 
 1. Start dragging a selected file from File Explorer or Finder with either mouse button.
-2. While still holding the mouse button, press **Shift**. The format wheel opens under the pointer; you can then release Shift.
-3. Move over a format and release the mouse button to convert. Press **Esc** to cancel.
+2. The format wheel opens as soon as the drag starts. Hold **Ctrl** (Windows) or **Command** (macOS) for tools, or **Alt/Option** for file actions.
+3. Move over a choice and release the mouse button to run it. Press **Esc** to cancel.
 
 The wheel needs a file drag that starts in Explorer or Finder. You can also open the wheel with the global shortcut and then drag a file onto it.
 
@@ -52,7 +52,7 @@ The wheel needs a file drag that starts in Explorer or Finder. You can also open
 
 | Files | Available formats | Notes |
 | --- | --- | --- |
-| Images | PNG, JPEG, WebP, BMP, HEIC, TIFF, AVIF, PDF | PNG/JPEG/WebP/PDF output from common images is built in. Other formats and HEIC/TIFF/AVIF/SVG/RAW input need ImageMagick. Animated GIFs use the first frame in built-in conversions. |
+| Images | PNG, JPEG, WebP, BMP, SVG, HEIC, TIFF, AVIF, PDF | PNG/JPEG/WebP/PDF output from common images and SVG is built in. HEIC/TIFF/AVIF and RAW input need ImageMagick. Animated GIFs use the first frame in built-in conversions. |
 | Audio and video | Depends on FFmpeg | Install FFmpeg separately. |
 | Subtitles | SRT, VTT, ASS | Requires FFmpeg; converts between these subtitle formats. |
 | Text documents and ebooks | Depends on Pandoc | Install Pandoc separately. |
@@ -67,7 +67,8 @@ The wheel needs a file drag that starts in Explorer or Finder. You can also open
 
 ## Where files are saved
 
-- Files dropped from Explorer or Finder are saved beside their originals.
+- By default, converted files are saved beside their originals. Choose another folder in **Settings → Output settings** to use it for conversions, image and media tools, PDF exports, and ZIP archives.
+- Choosing **Save beside original** clears the custom folder and restores the default.
 - Existing files are kept. If a name is taken, FlickVert adds a number, such as `photo (2).webp`.
 
 ## Build from source
@@ -79,7 +80,7 @@ npm ci
 npm run dev
 ```
 
-FlickVert supports Windows 10/11 and macOS 13 or later. On macOS, allow Accessibility and Input Monitoring access for the Shift drag wheel. The configured keyboard shortcut is an alternative for opening quick actions.
+FlickVert supports Windows 10/11 and macOS 13 or later. On macOS, allow Accessibility and Input Monitoring access for the drag wheel. The configured keyboard shortcut is an alternative for opening quick actions.
 
 ## Privacy
 

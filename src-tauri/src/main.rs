@@ -59,6 +59,7 @@ fn file_mime(extension: &str) -> Option<&'static str> {
         "webp" => Some("image/webp"),
         "gif" => Some("image/gif"),
         "bmp" => Some("image/bmp"),
+        "svg" => Some("image/svg+xml"),
         "cr2" | "cr3" | "nef" | "arw" | "raf" | "dng" | "orf" | "rw2" => Some("image/x-raw"),
         "mp4" | "m4v" => Some("video/mp4"),
         "mpeg" | "mpg" => Some("video/mpeg"),
@@ -155,7 +156,7 @@ fn quick_formats(
         .and_then(|value| value.to_str())
         .unwrap_or("")
         .to_ascii_lowercase();
-    if ["png", "jpg", "jpeg", "webp", "gif", "bmp"].contains(&extension.as_str()) {
+    if ["png", "jpg", "jpeg", "webp", "gif", "bmp", "svg"].contains(&extension.as_str()) {
         let mut formats = ["png", "jpg", "webp", "pdf"].map(str::to_owned).to_vec();
         let engines = operations::all_engine_status();
         if engines.imagemagick {
@@ -172,6 +173,10 @@ fn quick_formats(
     ))
 }
 
+fn destination_for(input: &Path, selected: Option<&str>) -> Result<PathBuf, String> {
+    files::destination_directory(input, selected).map_err(|error| error.to_string())
+}
+
 #[tauri::command(async)]
 fn read_dropped_file(
     input_path: String,
@@ -186,7 +191,7 @@ fn read_dropped_file(
         .and_then(|value| value.to_str())
         .unwrap_or("")
         .to_ascii_lowercase();
-    if !["png", "jpg", "jpeg", "webp", "gif", "bmp"].contains(&extension.as_str()) {
+    if !["png", "jpg", "jpeg", "webp", "gif", "bmp", "svg"].contains(&extension.as_str()) {
         return Err("Only supported images can be read by the quick converter".into());
     }
     let metadata = fs::metadata(&input).map_err(|error| error.to_string())?;
@@ -201,6 +206,10 @@ fn convert_file(
     app: AppHandle,
     input_path: String,
     output_extension: String,
+    quality: Option<u8>,
+    width: Option<u32>,
+    height: Option<u32>,
+    destination_folder: Option<String>,
     dropped: tauri::State<'_, DroppedFiles>,
 ) -> Result<String, String> {
     let input = fs::canonicalize(&input_path).map_err(|error| error.to_string())?;
@@ -242,7 +251,8 @@ fn convert_file(
             .and_then(|value| value.to_str())
             .unwrap_or("converted");
         if operation.engine == operations::Engine::Poppler {
-            return convert_pdf(&input, &work_dir, input.parent().ok_or("Input folder not found")?, stem, &output_extension);
+            let destination = destination_for(&input, destination_folder.as_deref())?;
+            return convert_pdf(&input, &work_dir, &destination, stem, &output_extension);
         }
         if operation.engine == operations::Engine::LibreOffice && ["png", "jpg"].contains(&output_extension.as_str()) {
             let soffice = operations::find_executable("soffice").ok_or("LibreOffice is not installed")?;
@@ -251,7 +261,8 @@ fn convert_file(
             if !output.status.success() { return Err(String::from_utf8_lossy(&output.stderr).trim().to_owned()); }
             let pdf = work_dir.join(format!("{stem}.pdf"));
             if !pdf.is_file() { return Err("LibreOffice did not export slides to PDF".into()); }
-            return convert_pdf(&pdf, &work_dir, input.parent().ok_or("Input folder not found")?, stem, &output_extension);
+            let destination = destination_for(&input, destination_folder.as_deref())?;
+            return convert_pdf(&pdf, &work_dir, &destination, stem, &output_extension);
         }
         let output_temp = if operation.engine == operations::Engine::LibreOffice {
             work_dir.join(format!("{stem}.{output_extension}"))
@@ -269,7 +280,7 @@ fn convert_file(
             ),
             operations::Engine::ImageMagick => (
                 operations::find_executable("magick").ok_or("ImageMagick is not installed")?,
-                operations::imagemagick_args(&input, &output_temp),
+                operations::imagemagick_args(&input, &output_temp, quality.unwrap_or(88), width, height),
             ),
             operations::Engine::LibreOffice => (
                 operations::find_executable("soffice").ok_or("LibreOffice is not installed")?,
@@ -295,7 +306,7 @@ fn convert_file(
             .and_then(|value| value.to_str())
             .unwrap_or("converted");
         let name = format!("{stem}.{output_extension}");
-        let destination = input.parent().ok_or("Input folder not found")?;
+        let destination = destination_for(&input, destination_folder.as_deref())?;
         files::write_output_file(&destination, &name, &output_temp)
             .map(|path| path.to_string_lossy().into_owned())
             .map_err(|error| error.to_string())
@@ -365,6 +376,10 @@ fn process_image_tool(
     app: AppHandle,
     input_path: String,
     action_id: String,
+    quality: Option<u8>,
+    width: Option<u32>,
+    height: Option<u32>,
+    destination_folder: Option<String>,
     dropped: tauri::State<'_, DroppedFiles>,
 ) -> Result<String, String> {
     let input = selected_dropped_file(&input_path, &dropped)?;
@@ -372,15 +387,20 @@ fn process_image_tool(
     if !["heic", "heif", "avif", "tif", "tiff", "svg"].contains(&extension.as_str()) {
         return Err("This image tool is unavailable for the selected file".into());
     }
-    let options: &[&str] = match action_id.as_str() {
-        "resize" => &["-resize", "1920x1920>"],
-        "rotate" => &["-rotate", "90"],
-        "flip" => &["-flop"],
-        "grayscale" => &["-colorspace", "Gray"],
-        "compress" => &["-quality", "76"],
-        "metadata" => &["-strip"],
+    let mut options = Vec::new();
+    match action_id.as_str() {
+        "resize" => {
+            let width = width.unwrap_or(1920).clamp(1, 32768);
+            let height = height.unwrap_or(1920).clamp(1, 32768);
+            options.extend([std::ffi::OsString::from("-resize"), std::ffi::OsString::from(format!("{width}x{height}>"))]);
+        }
+        "rotate" => options.extend(["-rotate", "90"].map(std::ffi::OsString::from)),
+        "flip" => options.push("-flop".into()),
+        "grayscale" => options.extend(["-colorspace", "Gray"].map(std::ffi::OsString::from)),
+        "compress" => options.extend([std::ffi::OsString::from("-quality"), std::ffi::OsString::from(quality.unwrap_or(76).clamp(40, 100).to_string())]),
+        "metadata" => options.push("-strip".into()),
         _ => return Err("Unknown image tool".into()),
-    };
+    }
     let magick = operations::find_executable("magick").ok_or("ImageMagick is not installed")?;
     let work_root = app.path().app_cache_dir().map_err(|error| error.to_string())?.join("image-work");
     fs::create_dir_all(&work_root).map_err(|error| error.to_string())?;
@@ -396,7 +416,7 @@ fn process_image_tool(
         let output_extension = if action_id == "compress" { "jpg" } else { "png" };
         let temporary = work_dir.join(format!("result.{output_extension}"));
         let mut args = vec![std::ffi::OsString::from(format!("{}[0]", input.to_string_lossy()))];
-        args.extend(options.iter().map(std::ffi::OsString::from));
+        args.extend(options);
         args.push(temporary.as_os_str().to_owned());
         let output = operations::run(&magick, &args).map_err(|error| error.to_string())?;
         if !output.status.success() {
@@ -406,8 +426,8 @@ fn process_image_tool(
             return Err("ImageMagick did not create an output file".into());
         }
         let stem = input.file_stem().and_then(|value| value.to_str()).unwrap_or("image");
-        let destination = input.parent().ok_or("Input folder not found")?;
-        files::write_output_file(destination, &format!("{stem}-{}.{output_extension}", action_id), &temporary)
+        let destination = destination_for(&input, destination_folder.as_deref())?;
+        files::write_output_file(&destination, &format!("{stem}-{}.{output_extension}", action_id), &temporary)
             .map(|path| path.to_string_lossy().into_owned()).map_err(|error| error.to_string())
     })();
     let _ = fs::remove_dir_all(work_dir);
@@ -419,6 +439,7 @@ fn process_media_tool(
     app: AppHandle,
     input_path: String,
     action_id: String,
+    destination_folder: Option<String>,
     dropped: tauri::State<'_, DroppedFiles>,
 ) -> Result<String, String> {
     let input = selected_dropped_file(&input_path, &dropped)?;
@@ -490,8 +511,8 @@ fn process_media_tool(
             _ => return Err("Unknown media tool".into()),
         };
         let name = format!("{stem}-{suffix}.{output_extension}");
-        let destination = input.parent().ok_or("Input folder not found")?;
-        files::write_output_file(destination, &name, &output_temp)
+        let destination = destination_for(&input, destination_folder.as_deref())?;
+        files::write_output_file(&destination, &name, &output_temp)
             .map(|path| path.to_string_lossy().into_owned())
             .map_err(|error| error.to_string())
     })();
@@ -503,6 +524,7 @@ fn process_media_tool(
 fn create_zip_archive(
     app: AppHandle,
     input_paths: Vec<String>,
+    destination_folder: Option<String>,
     dropped: tauri::State<'_, DroppedFiles>,
 ) -> Result<String, String> {
     if input_paths.is_empty() || input_paths.len() > 10_000 {
@@ -546,7 +568,7 @@ fn create_zip_archive(
     let result = (|| {
         let temporary = work_dir.join("archive.zip");
         archive::create_zip(&inputs, &temporary)?;
-        let destination = inputs[0].parent().ok_or("Input folder not found")?;
+        let destination = destination_for(&inputs[0], destination_folder.as_deref())?;
         files::write_output_file(&destination, &output_name, &temporary)
             .map(|path| path.to_string_lossy().into_owned())
             .map_err(|error| error.to_string())
@@ -557,6 +579,7 @@ fn create_zip_archive(
 
 #[tauri::command(async)]
 fn extract_zip_archive(
+    destination_folder: Option<String>,
     input_path: String,
     dropped: tauri::State<'_, DroppedFiles>,
 ) -> Result<String, String> {
@@ -568,7 +591,7 @@ fn extract_zip_archive(
     {
         return Err("Only ZIP archives can be extracted".into());
     }
-    let destination = input.parent().ok_or("Input folder not found")?;
+    let destination = destination_for(&input, destination_folder.as_deref())?;
     let name = input
         .file_stem()
         .and_then(|value| value.to_str())
@@ -646,6 +669,11 @@ fn choose_files(app: AppHandle) -> Result<(), String> {
     show_quick(&app, true);
     app.emit("flickvert://shortcut-files", paths)
         .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn choose_output_folder() -> Option<String> {
+    selection::choose_folder()
 }
 
 #[tauri::command]
@@ -952,6 +980,7 @@ fn save_output(
     file_name: String,
     bytes: Vec<u8>,
     input_path: Option<String>,
+    destination_folder: Option<String>,
     dropped: tauri::State<'_, DroppedFiles>,
 ) -> Result<String, String> {
     let directory = if let Some(path) = input_path {
@@ -959,10 +988,10 @@ fn save_output(
         if !dropped.0.lock().unwrap().contains(&input) {
             return Err("Select the input file by dropping it into FlickVert".into());
         }
-        input
-            .parent()
-            .ok_or("Input folder not found")?
-            .to_path_buf()
+        destination_for(&input, destination_folder.as_deref())?
+    } else if let Some(path) = destination_folder.as_deref() {
+        files::destination_directory(Path::new("."), Some(path))
+            .map_err(|error| error.to_string())?
     } else {
         let downloads = app
             .path()
@@ -998,6 +1027,7 @@ fn main() {
             move_to_flickvert_folder,
             register_shortcut,
             choose_files,
+            choose_output_folder,
             take_drag_trigger,
             quick_formats,
             read_dropped_file,
@@ -1029,6 +1059,7 @@ fn main() {
                 .resizable(false)
                 .decorations(false)
                 .transparent(true)
+                .shadow(false)
                 .always_on_top(true)
                 .skip_taskbar(true)
                 .focused(false)
@@ -1072,6 +1103,7 @@ fn main() {
                     show_main(app.handle());
                 }
             }
+            show_main(app.handle());
             input::start(app.handle().clone());
             Ok(())
         })
@@ -1098,6 +1130,7 @@ mod file_type_tests {
     fn recognizes_document_and_raw_inputs_without_claiming_unknown_files() {
         assert_eq!(file_mime("docx"), Some("application/octet-stream"));
         assert_eq!(file_mime("cr3"), Some("image/x-raw"));
+        assert_eq!(file_mime("svg"), Some("image/svg+xml"));
         assert_eq!(file_mime("exe"), None);
     }
 }

@@ -182,8 +182,25 @@ pub fn pandoc_args(input: &Path, output: &Path) -> Vec<OsString> {
     .to_vec()
 }
 
-pub fn imagemagick_args(input: &Path, output: &Path) -> Vec<OsString> {
-    [OsString::from(format!("{}[0]", input.to_string_lossy())), output.as_os_str().to_owned()].to_vec()
+pub fn imagemagick_args(
+    input: &Path,
+    output: &Path,
+    quality: u8,
+    width: Option<u32>,
+    height: Option<u32>,
+) -> Vec<OsString> {
+    let mut args = vec![OsString::from(format!("{}[0]", input.to_string_lossy()))];
+    if width.is_some() || height.is_some() {
+        args.extend([
+            OsString::from("-resize"),
+            OsString::from(format!("{}x{}>", width.unwrap_or(32768), height.unwrap_or(32768))),
+        ]);
+    }
+    if output.extension().and_then(|value| value.to_str()).is_some_and(|ext| ["jpg", "jpeg", "webp", "avif", "heic"].contains(&ext.to_ascii_lowercase().as_str())) {
+        args.extend([OsString::from("-quality"), OsString::from(quality.clamp(40, 100).to_string())]);
+    }
+    args.push(output.as_os_str().to_owned());
+    args
 }
 
 pub fn libreoffice_args(input: &Path, output_dir: &Path) -> Vec<OsString> {
@@ -361,6 +378,15 @@ mod tests {
             .map(OsString::from)
             .to_vec()
         );
+    }
+
+    #[test]
+    fn image_magick_receives_quality_only_for_lossy_output_formats() {
+        let jpeg = imagemagick_args(Path::new("photo.raw"), Path::new("photo.jpg"), 120, Some(1200), None);
+        assert_eq!(jpeg[1..3], [OsString::from("-resize"), OsString::from("1200x32768>")]);
+        assert_eq!(jpeg[3..5], [OsString::from("-quality"), OsString::from("100")]);
+        let png = imagemagick_args(Path::new("photo.raw"), Path::new("photo.png"), 75, None, None);
+        assert_eq!(png, [OsString::from("photo.raw[0]"), OsString::from("photo.png")]);
     }
 
     #[test]

@@ -8,14 +8,15 @@ import { imagesToPdf } from './conversion/pdf'
 import { loadSettings } from './settings'
 import { t, type MessageKey } from './i18n'
 import { canRunSelectedTool } from './quick-actions'
+import { wheelLabelPosition, wheelSlicePath } from './radial-wheel'
 import './quick-menu.css'
 
 type NativeFile = { path: string; name: string; size: number; extension: string; mime: string; isDirectory: boolean }
 type Format = { extension: string; label: string }
 type Position = { x: number; y: number }
-const imageExtensions = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp']
+type WheelChoice = { key: string; label: string; glyph?: string; disabled: boolean; onChoose: () => void }
+const imageExtensions = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'svg']
 const extendedImageExtensions = [...imageExtensions, 'heic', 'heif', 'avif', 'tif', 'tiff', 'svg']
-const isMac = navigator.platform.startsWith('Mac')
 const toolActions = [
   { id: 'image-editor', label: 'Edit image' as const, glyph: '✦' },
   { id: 'images-to-pdf', label: 'Images to PDF' as const, glyph: 'PDF' },
@@ -39,6 +40,7 @@ const audioToolActions = [
 ]
 const archiveToolActions = [{ id: 'extract-zip', label: 'Extract ZIP' as const, glyph: 'ZIP' }]
 const allToolActions = [...toolActions, ...videoToolActions, ...audioToolActions]
+const quickWindowSize = { width: 400, height: 400 }
 const fileActions = [
   { id: 'create-zip', label: 'Create ZIP' as const, glyph: '▱' },
   { id: 'extract-zip', label: 'Extract ZIP' as const, glyph: '▣' },
@@ -51,7 +53,7 @@ const fileActions = [
 
 function toolActionsFor(files: NativeFile[], ffmpegAvailable: boolean, imagemagickAvailable: boolean) {
   if (files.length === 1 && files[0].extension === 'zip') return archiveToolActions
-  if (files.length && files.every((file) => imageExtensions.includes(file.extension))) return toolActions
+  if (files.length && files.every((file) => imageExtensions.includes(file.extension))) return files.some((file) => file.extension === 'svg') ? toolActions.filter((action) => action.id !== 'image-editor') : toolActions
   if (imagemagickAvailable && files.length && files.every((file) => extendedImageExtensions.includes(file.extension))) return toolActions.filter((action) => !['image-editor', 'images-to-pdf', 'square'].includes(action.id))
   if (ffmpegAvailable && files.length && files.every((file) => file.mime.startsWith('video/'))) return videoToolActions
   if (ffmpegAvailable && files.length && files.every((file) => file.mime.startsWith('audio/'))) return audioToolActions
@@ -70,6 +72,32 @@ function selectedSector(point: Position, size: { width: number; height: number }
   if (radius < Math.min(size.width, size.height) * 0.2 || radius > Math.min(size.width, size.height) * 0.44) return -1
   const angle = (Math.atan2(dy, dx) + Math.PI / 2 + Math.PI * 2) % (Math.PI * 2)
   return Math.floor((angle + Math.PI / count) / (Math.PI * 2 / count)) % count
+}
+
+function WheelChoices({ items, active, onActive }: { items: WheelChoice[]; active: number; onActive: (index: number) => void }) {
+  return <>
+    <svg className="quick-segments" viewBox="0 0 352 352" role="group" aria-label="Available actions">
+      {items.map((item, index) => <path
+        key={item.key}
+        d={wheelSlicePath(index, items.length)}
+        className={`quick-segment${active === index ? ' active' : ''}${item.disabled ? ' disabled' : ''}`}
+        role="button"
+        aria-label={item.label}
+        aria-disabled={item.disabled}
+        tabIndex={item.disabled ? -1 : 0}
+        onPointerEnter={() => { if (!item.disabled) onActive(index) }}
+        onFocus={() => { if (!item.disabled) onActive(index) }}
+        onClick={() => { if (!item.disabled) item.onChoose() }}
+        onKeyDown={(event) => { if (event.key === ' ' || event.key === 'Enter') { event.preventDefault(); if (!item.disabled) item.onChoose() } }}
+      ><title>{item.label}</title></path>)}
+    </svg>
+    <div className="quick-labels" aria-hidden="true">
+      {items.map((item, index) => <span key={item.key} className={`quick-label${active === index ? ' active' : ''}${item.disabled ? ' disabled' : ''}`} style={wheelLabelPosition(index, items.length) as CSSProperties}>
+        {item.glyph && <span className="quick-glyph">{item.glyph}</span>}
+        <strong>{item.label}</strong>
+      </span>)}
+    </div>
+  </>
 }
 
 export default function QuickMenu() {
@@ -91,6 +119,8 @@ export default function QuickMenu() {
   const formatsRef = useRef<Format[]>([])
   const dropHandled = useRef(false)
   const hideTimer = useRef<number | undefined>(undefined)
+  const inspectedPaths = useRef('')
+  const inspectingPaths = useRef<{ signature: string; promise: Promise<{ received: NativeFile[]; options: Format[] }> } | null>(null)
 
   function setDragVisible(value: boolean) {
     dragModeRef.current = value
@@ -109,6 +139,8 @@ export default function QuickMenu() {
     setActiveWheelMode('convert')
     filesRef.current = []
     formatsRef.current = []
+    inspectedPaths.current = ''
+    inspectingPaths.current = null
     setFiles([])
     setFormats([])
     setActive(-1)
@@ -118,43 +150,57 @@ export default function QuickMenu() {
   }
 
   async function refreshFiles(paths: string[]) {
-    const received = await invoke<NativeFile[]>('inspect_dropped_files', { paths })
-    if (!received.length) {
-      filesRef.current = []; formatsRef.current = []; setFiles([]); setFormats([])
-      return { received, options: [] as Format[] }
+    const signature = JSON.stringify(paths)
+    if (signature === inspectedPaths.current) return { received: filesRef.current, options: formatsRef.current }
+    if (inspectingPaths.current?.signature === signature) return inspectingPaths.current.promise
+    const promise = (async () => {
+      const received = await invoke<NativeFile[]>('inspect_dropped_files', { paths })
+      if (!received.length) {
+        filesRef.current = []; formatsRef.current = []; setFiles([]); setFormats([])
+        inspectedPaths.current = signature
+        return { received, options: [] as Format[] }
+      }
+      const lists = await Promise.all(received.map((file): Promise<string[]> => file.isDirectory ? Promise.resolve([]) : invoke<string[]>('quick_formats', { inputPath: file.path })))
+      const common = lists[0].filter((extension) => lists.every((list) => list.includes(extension)))
+      const options = common.map((extension) => ({ extension, label: outputLabel(extension) }))
+      filesRef.current = received
+      formatsRef.current = options
+      setFiles(received)
+      setFormats(options)
+      setDragVisible(true)
+      setStatus('')
+      dropHandled.current = false
+      inspectedPaths.current = signature
+      return { received, options }
+    })()
+    inspectingPaths.current = { signature, promise }
+    try {
+      return await promise
+    } finally {
+      if (inspectingPaths.current?.promise === promise) inspectingPaths.current = null
     }
-    const lists = await Promise.all(received.map((file): Promise<string[]> => file.isDirectory ? Promise.resolve([]) : invoke<string[]>('quick_formats', { inputPath: file.path })))
-    const common = lists[0].filter((extension) => lists.every((list) => list.includes(extension)))
-    const options = common.map((extension) => ({ extension, label: outputLabel(extension) }))
-    filesRef.current = received
-    formatsRef.current = options
-    setFiles(received)
-    setFormats(options)
-    setDragVisible(true)
-    setStatus('')
-    dropHandled.current = false
-    return { received, options }
   }
 
   async function convertTo(file: NativeFile, format: Format) {
     const stem = file.name.replace(/\.[^.]+$/, '')
+    const preferences = loadSettings()
     if (imageExtensions.includes(file.extension) && (format.extension === 'pdf' || ['png', 'jpg', 'webp'].includes(format.extension))) {
-      const preferences = loadSettings()
       const bytes = await invoke<number[]>('read_dropped_file', { inputPath: file.path })
       const input = new File([Uint8Array.from(bytes)], file.name, { type: file.mime })
       if (format.extension === 'pdf') {
         const pdf = await imagesToPdf([input], preferences.quality)
-        return invoke<string>('save_output', { fileName: `${stem}.pdf`, inputPath: file.path, bytes: Array.from(pdf) })
+        return invoke<string>('save_output', { fileName: `${stem}.pdf`, inputPath: file.path, destinationFolder: preferences.outputFolder, bytes: Array.from(pdf) })
       }
       const outputType = format.extension === 'png' ? 'image/png' : format.extension === 'jpg' ? 'image/jpeg' : 'image/webp'
       const blob = await convertImage(input, { format: outputType, quality: preferences.quality, width: preferences.width, height: preferences.height })
       return invoke<string>('save_output', {
         fileName: `${stem}.${format.extension}`,
         inputPath: file.path,
+        destinationFolder: preferences.outputFolder,
         bytes: Array.from(new Uint8Array(await blob.arrayBuffer())),
       })
     }
-    return invoke<string>('convert_file', { inputPath: file.path, outputExtension: format.extension })
+    return invoke<string>('convert_file', { inputPath: file.path, outputExtension: format.extension, quality: preferences.quality, width: preferences.width, height: preferences.height, destinationFolder: preferences.outputFolder })
   }
 
   async function convertFiles(items: NativeFile[], format: Format) {
@@ -195,7 +241,7 @@ export default function QuickMenu() {
         }
         const bytes = await imagesToPdf(inputs, loadSettings().quality)
         const name = items.length === 1 ? items[0].name.replace(/\.[^.]+$/, '') : 'images'
-        const output = await invoke<string>('save_output', { fileName: `${name}.pdf`, inputPath: items[0].path, bytes: Array.from(bytes) })
+        const output = await invoke<string>('save_output', { fileName: `${name}.pdf`, inputPath: items[0].path, destinationFolder: loadSettings().outputFolder, bytes: Array.from(bytes) })
         await emit('flickvert://job-completed', { fileName: `${name}.pdf`, size: bytes.length, output })
         setStatus(tr('PDF created'))
         window.setTimeout(hide, 650)
@@ -203,7 +249,8 @@ export default function QuickMenu() {
       }
       for (const file of items) {
         if (!imageExtensions.includes(file.extension)) {
-          const output = await invoke<string>('process_image_tool', { inputPath: file.path, actionId })
+          const preferences = loadSettings()
+          const output = await invoke<string>('process_image_tool', { inputPath: file.path, actionId, quality: preferences.quality, width: preferences.width, height: preferences.height, destinationFolder: preferences.outputFolder })
           await emit('flickvert://job-completed', { fileName: file.name, size: file.size, output })
           continue
         }
@@ -211,7 +258,8 @@ export default function QuickMenu() {
         const input = new File([Uint8Array.from(bytes)], file.name, { type: file.mime })
         const bitmap = await createImageBitmap(input)
         const side = Math.min(bitmap.width, bitmap.height)
-        const size = actionId === 'resize' ? fitWithin(bitmap.width, bitmap.height, 1920, 1920) : actionId === 'square' ? { width: side, height: side } : actionId === 'rotate' ? { width: bitmap.height, height: bitmap.width } : { width: bitmap.width, height: bitmap.height }
+        const preferences = loadSettings()
+        const size = actionId === 'resize' ? fitWithin(bitmap.width, bitmap.height, preferences.width ?? 1920, preferences.height ?? 1920) : actionId === 'square' ? { width: side, height: side } : actionId === 'rotate' ? { width: bitmap.height, height: bitmap.width } : { width: bitmap.width, height: bitmap.height }
         const canvas = document.createElement('canvas')
         canvas.width = size.width
         canvas.height = size.height
@@ -226,12 +274,13 @@ export default function QuickMenu() {
         bitmap.close()
         const extension = actionId === 'compress' ? 'jpg' : ['png', 'jpg', 'jpeg', 'webp'].includes(file.extension) ? file.extension : 'webp'
         const format = extension === 'png' ? 'image/png' : extension === 'jpg' || extension === 'jpeg' ? 'image/jpeg' : 'image/webp'
-        const quality = actionId === 'compress' ? Math.min(loadSettings().quality, 76) / 100 : loadSettings().quality / 100
+        const quality = preferences.quality / 100
         const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((result) => result ? resolve(result) : reject(new Error('Image processing failed')), format, quality))
         const suffix = actionId === 'resize' ? '-resized' : actionId === 'rotate' ? '-rotated' : actionId === 'flip' ? '-flipped' : actionId === 'grayscale' ? '-grayscale' : actionId === 'square' ? '-square' : actionId === 'metadata' ? '-clean' : '-compressed'
         const output = await invoke<string>('save_output', {
           fileName: `${file.name.replace(/\.[^.]+$/, '')}${suffix}.${extension === 'jpeg' ? 'jpg' : extension}`,
           inputPath: file.path,
+          destinationFolder: loadSettings().outputFolder,
           bytes: Array.from(new Uint8Array(await blob.arrayBuffer())),
         })
         await emit('flickvert://job-completed', { fileName: file.name, size: file.size, output })
@@ -257,7 +306,7 @@ export default function QuickMenu() {
     setStatus(tr('Processing...'))
     try {
       for (const file of items) {
-        const output = await invoke<string>('process_media_tool', { inputPath: file.path, actionId })
+        const output = await invoke<string>('process_media_tool', { inputPath: file.path, actionId, destinationFolder: loadSettings().outputFolder })
         await emit('flickvert://job-completed', { fileName: file.name, size: file.size, output })
       }
       setStatus(tr('Saved'))
@@ -271,20 +320,19 @@ export default function QuickMenu() {
   async function dropFiles(paths: string[], point: Position) {
     try {
       const { received, options } = await refreshFiles(paths)
-      const size = await getCurrentWindow().innerSize()
       if (wheelModeRef.current === 'actions') {
-        const index = selectedSector(point, size, fileActions.length)
+        const index = selectedSector(point, quickWindowSize, fileActions.length)
         const id = fileActions[index]?.id
         if (index >= 0 && received.length && (id === 'copy-to-folder' || id === 'move-to-folder' || id === 'create-zip' || received.length === 1)) await choose(id)
         return
       }
       if (wheelModeRef.current === 'tools') {
         const actions = toolActionsFor(received, ffmpegAvailableRef.current, imagemagickAvailableRef.current)
-        const index = selectedSector(point, size, actions.length)
+        const index = selectedSector(point, quickWindowSize, actions.length)
         if (index >= 0) await runTool(actions[index].id, received)
         return
       }
-      const index = selectedSector(point, size, options.length)
+      const index = selectedSector(point, quickWindowSize, options.length)
       if (wheelModeRef.current === 'convert' && index >= 0 && received.length) await convertFiles(received, options[index])
     } catch (error) {
       setStatus(String(error).slice(0, 160))
@@ -333,7 +381,8 @@ export default function QuickMenu() {
         setDragVisible(true)
         void refreshFiles(payload.paths).catch((error) => setStatus(String(error)))
       } else if (payload.type === 'over') {
-        void getCurrentWindow().innerSize().then((size) => setActive(selectedSector(payload.position, size, wheelModeRef.current === 'tools' ? toolActionsFor(filesRef.current, ffmpegAvailableRef.current, imagemagickAvailableRef.current).length : wheelModeRef.current === 'actions' ? fileActions.length : formatsRef.current.length)))
+        const count = wheelModeRef.current === 'tools' ? toolActionsFor(filesRef.current, ffmpegAvailableRef.current, imagemagickAvailableRef.current).length : wheelModeRef.current === 'actions' ? fileActions.length : formatsRef.current.length
+        setActive(selectedSector(payload.position, quickWindowSize, count))
       } else if (payload.type === 'drop') {
         if (hideTimer.current !== undefined) window.clearTimeout(hideTimer.current)
         dropHandled.current = true
@@ -357,13 +406,13 @@ export default function QuickMenu() {
         return
       } else if (actionId === 'create-zip') {
         const items = filesRef.current
-        const output = await invoke<string>('create_zip_archive', { inputPaths: items.map((file) => file.path) })
+        const output = await invoke<string>('create_zip_archive', { inputPaths: items.map((file) => file.path), destinationFolder: loadSettings().outputFolder })
         await emit('flickvert://job-completed', { fileName: `${items.length} files`, size: items.reduce((sum, file) => sum + file.size, 0), output })
         setStatus(`${tr('Archive created')}: ${output.split(/[\\/]/).pop()}`)
       } else if (actionId === 'extract-zip') {
         const file = filesRef.current[0]
         if (!file) return
-        const output = await invoke<string>('extract_zip_archive', { inputPath: file.path })
+        const output = await invoke<string>('extract_zip_archive', { inputPath: file.path, destinationFolder: loadSettings().outputFolder })
         await emit('flickvert://job-completed', { fileName: file.name, size: file.size, output })
         setStatus(`${tr('Archive extracted')}: ${output.split(/[\\/]/).pop()}`)
       } else if (actionId === 'copy-to-folder' || actionId === 'move-to-folder') {
@@ -392,55 +441,41 @@ export default function QuickMenu() {
   }
 
   const actions = files.length ? wheelMode === 'actions' ? fileActions : wheelMode === 'tools' ? toolActionsFor(files, ffmpegAvailable, imagemagickAvailable) : [] : []
+  const choices: WheelChoice[] = wheelMode === 'convert'
+    ? formats.map((format) => ({ key: format.extension, label: format.label, disabled: false, onChoose: () => void convertFiles(filesRef.current, format) }))
+    : actions.map((action) => {
+      const needsOneFile = ['extract-zip', 'reveal', 'copy-path', 'open-terminal'].includes(action.id)
+      const imageTool = allToolActions.some((tool) => tool.id === action.id)
+      const unavailableTool = imageTool && dragMode && !toolActionsFor(files, ffmpegAvailable, imagemagickAvailable).some((tool) => tool.id === action.id)
+      const multipleEditorFiles = action.id === 'image-editor' && files.length !== 1
+      const unavailableArchive = dragMode && (action.id === 'create-zip' ? files.length === 0 : action.id === 'extract-zip' && (files.length !== 1 || files[0]?.extension !== 'zip'))
+      return { key: action.id, label: tr(action.label), glyph: action.glyph, disabled: (needsOneFile && files.length !== 1) || unavailableTool || unavailableArchive || multipleEditorFiles, onChoose: () => void choose(action.id) }
+    })
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') { hide(); return }
       const modes = ['convert', 'tools', 'actions'] as const
       if (['1', '2', '3'].includes(event.key)) { setActiveWheelMode(modes[Number(event.key) - 1]); return }
-      const count = wheelMode === 'convert' ? formats.length : actions.length
+      const count = choices.length
       if (!count || dropHandled.current) return
       if (event.key === 'ArrowRight' || event.key === 'ArrowDown') { event.preventDefault(); setActive((value) => (value + 1) % count) }
       if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') { event.preventDefault(); setActive((value) => (value + count - 1) % count) }
       if (event.key === 'Enter' && active >= 0) {
         event.preventDefault()
-        if (wheelMode === 'convert') void convertFiles(filesRef.current, formats[active])
-        else if (wheelMode === 'tools') void runTool(actions[active].id, filesRef.current)
-        else if (actions[active].id === 'create-zip' || ['copy-to-folder', 'move-to-folder'].includes(actions[active].id) || (files.length === 1 && (actions[active].id !== 'extract-zip' || files[0].extension === 'zip'))) void choose(actions[active].id)
+        if (choices[active] && !choices[active].disabled) choices[active].onChoose()
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [active, actions, files, formats, wheelMode])
-  const emptyWheel = !files.length && !formats.length && !actions.length
+  }, [active, choices])
+  const emptyWheel = !files.length && !choices.length
+  const activeChoice = choices[active]
+  const centerTitle = status || activeChoice?.label || (files.length === 1 ? files[0].name : files.length ? `${files.length} ${tr('files')}` : tr('Drag a file here'))
+  const centerDetail = status ? (files.length === 1 ? files[0].name : '') : activeChoice ? wheelMode === 'convert' ? `${tr('Convert to')} ${activeChoice.label}` : (files.length === 1 ? files[0].name : '') : files.length ? wheelMode === 'convert' ? tr('Select output format') : '' : ''
   return <main className={`quick-shell${dragMode ? ' drag-mode' : ''}${emptyWheel ? ' quick-empty' : ''}`} aria-label="FlickVert quick actions">
-    <header className="quick-tabs">
-      {(['convert', 'tools', 'actions'] as const).map((mode) => <button key={mode} className={wheelMode === mode ? 'selected' : ''} onClick={() => setActiveWheelMode(mode)} aria-pressed={wheelMode === mode}><kbd>{mode === 'convert' ? '⇧' : mode === 'tools' ? isMac ? '⌘' : 'Ctrl' : isMac ? '⌥' : 'Alt'}</kbd>{tr(mode === 'convert' ? 'Convert' : mode === 'tools' ? 'Tools' : 'Actions')}</button>)}
-      <button className="quick-settings" onClick={() => void choose('settings')} aria-label={tr('Settings')}>⚙</button>
-    </header>
-    {formats.length > 0 && wheelMode === 'convert' ? <div className="quick-orbit" aria-label={tr('Select output format')}>
-      <div className="quick-center"><span>{status || (files.length === 1 ? files[0].name : `${files.length} ${tr('files')}`)}</span></div>
-      {formats.map((format, index) => {
-        const angle = (index / formats.length) * Math.PI * 2 - Math.PI / 2
-        const distance = formats.length > 5 ? 35 : 33
-        const left = 50 + Math.cos(angle) * distance
-        const top = 50 + Math.sin(angle) * distance
-        return <button key={format.extension} className={`quick-format${active === index ? ' active' : ''}`} style={{ left: `${left}%`, top: `${top}%`, '--petal-angle': `${index / formats.length * 360}deg`, '--entry-index': index } as CSSProperties} onClick={() => void convertFiles(filesRef.current, format)} aria-label={`${tr('Convert to')} ${format.label}`}>
-          <span className="quick-petal-content"><strong>{format.label}</strong><small>{tr('Convert to')}</small></span>
-        </button>
-      })}
-    </div> : <div className="quick-orbit quick-actions">
-      <div className="quick-center"><span>{status || (files.length ? wheelMode === 'convert' || !actions.length ? tr('No formats available') : files.length === 1 ? files[0].name : `${files.length} ${tr('files')}` : tr('Drag a file here'))}</span></div>
-      {actions.map((action, index, entries) => {
-        const angle = (index / entries.length) * Math.PI * 2 - Math.PI / 2
-        const actionRadius = entries.length > 8 ? 36 : 34
-        const needsOneFile = ['extract-zip', 'reveal', 'copy-path', 'open-terminal'].includes(action.id)
-        const imageTool = allToolActions.some((tool) => tool.id === action.id)
-        const unavailableTool = imageTool && dragMode && !toolActionsFor(files, ffmpegAvailable, imagemagickAvailable).some((tool) => tool.id === action.id)
-        const multipleEditorFiles = action.id === 'image-editor' && files.length !== 1
-        const unavailableArchive = dragMode && (action.id === 'create-zip' ? files.length === 0 : action.id === 'extract-zip' && (files.length !== 1 || files[0]?.extension !== 'zip'))
-        return <button key={action.id} className={`quick-action action-${action.id}${active === index ? ' active' : ''}`} style={{ left: `${50 + Math.cos(angle) * actionRadius}%`, top: `${50 + Math.sin(angle) * actionRadius}%`, '--petal-angle': `${index / entries.length * 360}deg`, '--entry-index': index } as CSSProperties} onClick={() => void choose(action.id)} disabled={(needsOneFile && files.length !== 1) || unavailableTool || unavailableArchive || multipleEditorFiles}><span className="quick-petal-content"><span className="quick-glyph">{action.glyph}</span><small>{tr(action.label)}</small></span></button>
-      })}
-    </div>}
-    {!dragMode && <div className="quick-keyhint"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> · ← → · Enter · Esc</div>}
+    <div className={`quick-orbit${emptyWheel ? ' no-choices' : ''}`} aria-label={tr(wheelMode === 'convert' ? 'Select output format' : wheelMode === 'tools' ? 'Tools' : 'Actions')}>
+      <WheelChoices items={choices} active={active} onActive={setActive}/>
+      <div className="quick-center" aria-live="polite"><strong>{centerTitle}</strong>{centerDetail && <small>{centerDetail}</small>}</div>
+    </div>
   </main>
 }

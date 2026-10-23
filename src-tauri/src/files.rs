@@ -86,6 +86,19 @@ pub fn write_output_file(
     })
 }
 
+pub fn destination_directory(input: &Path, selected: Option<&str>) -> Result<PathBuf, FileError> {
+    if let Some(selected) = selected.filter(|value| !value.trim().is_empty()) {
+        let directory = fs::canonicalize(selected)?;
+        if !directory.is_dir() {
+            return Err(io::Error::new(io::ErrorKind::InvalidInput, "Output path is not a folder").into());
+        }
+        return Ok(directory);
+    }
+    input.parent().map(Path::to_path_buf).ok_or_else(|| {
+        io::Error::new(io::ErrorKind::InvalidInput, "Input folder not found").into()
+    })
+}
+
 pub fn copy_directory(source: &Path, destination: &Path) -> Result<PathBuf, FileError> {
     let source = fs::canonicalize(source)?;
     if !fs::metadata(&source)?.is_dir() {
@@ -294,6 +307,24 @@ mod tests {
         assert_eq!(fs::read(output).unwrap(), b"converted data");
         assert_eq!(fs::read(root.join("photo.mp4")).unwrap(), b"keep");
         let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn uses_a_chosen_existing_output_folder_or_the_source_folder() {
+        let root = dir();
+        let source_folder = root.join("source");
+        let selected_folder = root.join("selected");
+        fs::create_dir_all(&source_folder).unwrap();
+        fs::create_dir_all(&selected_folder).unwrap();
+        let input = source_folder.join("photo.jpg");
+
+        assert_eq!(destination_directory(&input, None).unwrap(), source_folder);
+        assert_eq!(
+            destination_directory(&input, Some(selected_folder.to_str().unwrap())).unwrap(),
+            selected_folder
+        );
+        assert!(destination_directory(&input, Some("missing-folder")).is_err());
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

@@ -6,6 +6,7 @@ export type AppSettings = {
   quality: number
   width?: number
   height?: number
+  outputFolder?: string
   format: 'image/png' | 'image/jpeg' | 'image/webp'
   shortcut: string
 }
@@ -26,6 +27,7 @@ export function normalizeSettings(value: unknown): AppSettings {
     shortcut: ['CTRL+ALT+SPACE', 'CTRL+SHIFT+SPACE', 'ALT+SHIFT+SPACE'].includes(String(raw.shortcut)) ? String(raw.shortcut) : 'CTRL+ALT+SPACE',
     ...(validDimension(raw.width) ? { width: validDimension(raw.width) } : {}),
     ...(validDimension(raw.height) ? { height: validDimension(raw.height) } : {}),
+    ...(typeof raw.outputFolder === 'string' && raw.outputFolder.trim() ? { outputFolder: raw.outputFolder.trim() } : {}),
   }
 }
 

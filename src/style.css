@@ -403,6 +403,11 @@ button:focus-visible,select:focus-visible,input:focus-visible,.dropzone:focus-vi
   border-radius:7px;
   cursor:pointer;
   font-size:12px}
+.output-folder-setting{display:flex;align-items:center;gap:8px;max-width:700px;margin-top:18px;padding:12px;border:1px solid var(--line);border-radius:9px;background:var(--surface)}
+.output-folder-setting>div{display:grid;gap:4px;flex:1;min-width:0}
+.output-folder-setting strong{font-size:12px}
+.output-folder-setting span{overflow:hidden;color:var(--muted);font-size:11px;text-overflow:ellipsis;white-space:nowrap}
+.output-folder-setting .secondary-button{flex:none;margin:0}
 .history-list{margin-top:25px}
 .history-empty{margin-top:20px}
 .theme-options{display:flex;

@@ -62,20 +62,15 @@ impl Gesture {
         match event {
             InputEvent::Move(x, y) => {
                 self.cursor = (x, y);
-                if self.left_down
-                    && !self.dragging
-                    && ((x - self.start.0).abs() >= 8.0 || (y - self.start.1).abs() >= 8.0)
-                {
+                if self.left_down && !self.dragging
+                    && ((x - self.start.0).abs() >= 8.0 || (y - self.start.1).abs() >= 8.0) {
                     self.dragging = true;
-                }
-                if self.dragging && !self.wheel_open {
                     let mode = [WheelMode::Actions, WheelMode::Tools, WheelMode::Convert]
                         .into_iter()
-                        .find(|mode| self.modifiers[*mode as usize]);
-                    if let Some(mode) = mode {
-                        self.wheel_open = true;
-                        return Some(Action::Open(mode));
-                    }
+                        .find(|mode| self.modifiers[*mode as usize])
+                        .unwrap_or(WheelMode::Convert);
+                    self.wheel_open = true;
+                    return Some(Action::Open(mode));
                 }
                 None
             }
