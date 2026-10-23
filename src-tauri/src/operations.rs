@@ -222,7 +222,7 @@ pub fn ffmpeg_tool_args(action: &str, input: &Path, output: &Path) -> Option<Vec
         "compress-video" => &[
             "-c:v", "libx264", "-crf", "28", "-preset", "medium", "-c:a", "aac", "-b:a", "128k",
         ],
-        "mute-video" => &["-c:v", "copy", "-an"],
+        "mute-video" => &["-an", "-c:v", "libx264", "-pix_fmt", "yuv420p"],
         "extract-audio" => &["-vn", "-c:a", "libmp3lame", "-q:a", "3"],
         "video-thumbnail" => &[],
         "compress-audio" => &["-vn", "-c:a", "aac", "-b:a", "128k"],
@@ -230,7 +230,7 @@ pub fn ffmpeg_tool_args(action: &str, input: &Path, output: &Path) -> Option<Vec
         _ => return None,
     };
     if action == "video-thumbnail" {
-        args.extend(["-ss", "00:00:01", "-i"].into_iter().map(OsString::from));
+        args.extend(["-ss", "00:00:00", "-i"].into_iter().map(OsString::from));
         args.push(input.as_os_str().to_owned());
         args.extend(["-frames:v", "1"].into_iter().map(OsString::from));
     } else {

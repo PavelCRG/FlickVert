@@ -34,7 +34,7 @@ FlickVert sits beside File Explorer and Finder. Drag a file, hold Shift, and dro
 
 Closing the main window keeps FlickVert in the tray. Choose **Show FlickVert** from the tray menu to reopen it, or **Quit** to stop the background helper.
 
-The default shortcut, **Ctrl+Alt+Space**, opens quick actions. Drop a file onto the wheel, use **1/2/3** to switch modes, arrow keys to select a target, and **Enter** to run it. **Esc** closes the wheel. Change the shortcut in **Settings**. The shortcut alone does not read the current selection in Explorer or Finder.
+The default shortcut, **Ctrl+Alt+Space**, opens quick actions for files selected in Explorer or Finder. You can also drop a file onto the wheel. Use **1/2/3** to switch modes, arrow keys to select a target, and **Enter** to run it. **Esc** closes the wheel. Change the shortcut in **Settings**.
 
 While dragging, press **Ctrl** (Windows) or **Command** (macOS) for tools, or **Alt/Option** for file actions. The tools wheel can resize, rotate, flip, grayscale, square-crop, compress, remove image metadata, or combine up to 100 images into a PDF. HEIC, AVIF, TIFF, and SVG tools require ImageMagick; these save PNG or JPEG output. With FFmpeg installed, the wheel also offers video compression, mute, audio extraction, thumbnails, audio compression, and loudness normalization. Actions can create or safely extract ZIP archives, copy or move selected files and folders to `Downloads/FlickVert`, reveal one item in Explorer/Finder, copy its path, or open its folder in a terminal.
 
@@ -61,7 +61,7 @@ The wheel needs a file drag that starts in Explorer or Finder. You can also open
 | Camera RAW | Depends on ImageMagick | Install ImageMagick separately. |
 | Archives | ZIP create and extract | Saved beside the selected file; unsafe paths and links are rejected. |
 
-**Still missing:** OCR for scanned PDFs; PDF to PAGES/PPTX/XLSX; area-based redaction, annotation and background editing; TAR/GZIP/RAR; interactive trim, split and merge. The shortcut alone does not read an Explorer or Finder selection.
+**Still missing:** OCR for scanned PDFs; PDF to PAGES/PPTX/XLSX; area-based redaction, annotation and background editing; TAR/GZIP/RAR; interactive trim, split and merge.
 
 ## Where files are saved
 

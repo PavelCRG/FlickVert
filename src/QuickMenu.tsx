@@ -115,7 +115,10 @@ export default function QuickMenu() {
 
   async function refreshFiles(paths: string[]) {
     const received = await invoke<NativeFile[]>('inspect_dropped_files', { paths })
-    if (!received.length) return { received, options: [] as Format[] }
+    if (!received.length) {
+      filesRef.current = []; formatsRef.current = []; setFiles([]); setFormats([])
+      return { received, options: [] as Format[] }
+    }
     const lists = await Promise.all(received.map((file): Promise<string[]> => file.isDirectory ? Promise.resolve([]) : invoke<string[]>('quick_formats', { inputPath: file.path })))
     const common = lists[0].filter((extension) => lists.every((list) => list.includes(extension)))
     const options = common.map((extension) => ({ extension, label: outputLabel(extension) }))
@@ -300,6 +303,11 @@ export default function QuickMenu() {
       hideTimer.current = window.setTimeout(hide, 280)
     }).then(addStop)
     void listen('flickvert://cancel-drag-wheel', hide).then(addStop)
+    void listen<string[]>('flickvert://shortcut-files', ({ payload }) => {
+      setActiveWheelMode('convert')
+      if (payload.length) void refreshFiles(payload).catch((error) => setStatus(String(error)))
+      else { filesRef.current = []; formatsRef.current = []; setFiles([]); setFormats([]); setDragVisible(false) }
+    }).then(addStop)
     void invoke<boolean>('take_drag_trigger').then((opened) => {
       if (opened) { setDragVisible(true); dropHandled.current = false }
     }).catch(() => {})

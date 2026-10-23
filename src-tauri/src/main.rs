@@ -20,6 +20,7 @@ mod files;
 mod input;
 mod operations;
 mod quick_window;
+mod selection;
 
 const QUICK_WIDTH: u32 = 400;
 const QUICK_HEIGHT: u32 = 400;
@@ -137,7 +138,7 @@ fn quick_formats(
 ) -> Result<Vec<String>, String> {
     let input = fs::canonicalize(input_path).map_err(|error| error.to_string())?;
     if !dropped.0.lock().unwrap().contains(&input) {
-        return Err("Select the input file by dropping it into FlickVert".into());
+        return Err("Select the input file in FlickVert".into());
     }
     if input.is_dir() {
         return Ok(Vec::new());
@@ -171,7 +172,7 @@ fn read_dropped_file(
 ) -> Result<Vec<u8>, String> {
     let input = fs::canonicalize(input_path).map_err(|error| error.to_string())?;
     if !dropped.0.lock().unwrap().contains(&input) {
-        return Err("Select the input file by dropping it into FlickVert".into());
+        return Err("Select the input file in FlickVert".into());
     }
     let extension = input
         .extension()
@@ -197,7 +198,7 @@ fn convert_file(
 ) -> Result<String, String> {
     let input = fs::canonicalize(&input_path).map_err(|error| error.to_string())?;
     if !dropped.0.lock().unwrap().contains(&input) {
-        return Err("Select the input file by dropping it into FlickVert".into());
+        return Err("Select the input file in FlickVert".into());
     }
     let extension = input
         .extension()
@@ -423,7 +424,7 @@ fn process_media_tool(
     let is_audio = operations::is_audio_input(&extension);
     let output_extension = match (is_video, is_audio, action_id.as_str()) {
         (true, _, "compress-video") => "mp4",
-        (true, _, "mute-video") => &extension,
+        (true, _, "mute-video") => "mp4",
         (true, _, "extract-audio") => "mp3",
         (true, _, "video-thumbnail") => "jpg",
         (_, true, "compress-audio" | "normalize-audio") => "m4a",
@@ -645,7 +646,7 @@ fn reveal_dropped_file(
 fn selected_dropped_path(input_path: &str, dropped: &DroppedFiles) -> Result<PathBuf, String> {
     let path = fs::canonicalize(input_path).map_err(|error| error.to_string())?;
     if !dropped.0.lock().unwrap().contains(&path) || !path.is_file() && !path.is_dir() {
-        return Err("Select a file or folder by dropping it into FlickVert".into());
+        return Err("Select a file or folder in FlickVert".into());
     }
     Ok(path)
 }
@@ -653,7 +654,7 @@ fn selected_dropped_path(input_path: &str, dropped: &DroppedFiles) -> Result<Pat
 fn selected_dropped_file(input_path: &str, dropped: &DroppedFiles) -> Result<PathBuf, String> {
     let path = selected_dropped_path(input_path, dropped)?;
     if !path.is_file() {
-        return Err("Select a file by dropping it into FlickVert".into());
+        return Err("Select a file in FlickVert".into());
     }
     Ok(path)
 }
@@ -879,7 +880,14 @@ fn register_shortcut(app: AppHandle, shortcut: String) -> Result<(), String> {
     app.global_shortcut()
         .on_shortcut(shortcut, |handle, _, event| {
             if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                let foreground = selection::foreground_window();
                 show_quick(handle, true);
+                let _ = handle.emit("flickvert://shortcut-files", Vec::<String>::new());
+                let handle = handle.clone();
+                std::thread::spawn(move || {
+                    let paths = selection::selected_paths(foreground);
+                    let _ = handle.emit("flickvert://shortcut-files", paths);
+                });
             }
         })
         .map_err(|error| error.to_string())
