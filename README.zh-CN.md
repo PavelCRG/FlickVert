@@ -3,7 +3,7 @@
   <h1>FlickVert</h1>
   <p>适用于 Windows 和 macOS 的本地文件转换工具。</p>
   <p>
-    <a href="#快速开始"><img alt="快速开始" src="https://img.shields.io/badge/%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B-%E6%8B%96%E6%94%BE%E5%B9%B6%E8%BD%AC%E6%8D%A2-E8783D?style=for-the-badge"></a>
+    <a href="#快速开始"><img alt="快速开始" src="https://img.shields.io/badge/%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B-%E6%8B%96%E6%94%BE%E5%B9%B6%E8%BD%AC%E6%8D%A2-285FE8?style=for-the-badge"></a>
     <a href="#支持的格式"><img alt="支持的格式" src="https://img.shields.io/badge/%E6%A0%BC%E5%BC%8F-%E6%9F%A5%E7%9C%8B%E6%94%AF%E6%8C%81%E6%83%85%E5%86%B5-59616D?style=for-the-badge"></a>
     <a href="#从源码构建"><img alt="从源码构建" src="https://img.shields.io/badge/%E6%9E%84%E5%BB%BA-%E4%BB%8E%E6%BA%90%E7%A0%81-59616D?style=for-the-badge"></a>
   </p>
@@ -27,9 +27,9 @@ FlickVert 可与文件资源管理器和 Finder 配合使用。开始拖动文�
 
 ## 快速开始
 
-1. 启动 FlickVert。开始页会先打开；关闭窗口后，FlickVert 留在系统托盘中，你可以继续在资源管理器或 Finder 中工作。
+1. 启动 FlickVert。紧凑的设置窗口会打开；关闭窗口后，FlickVert 留在系统托盘中，你可以继续在资源管理器或 Finder 中工作。
 2. 拖动文件并将其放到指针旁转盘中的目标格式上。
-3. 转换后的文件保存在原文件旁边。开始页、历史记录和设置可从托盘打开。
+3. 转换后的文件保存在原文件旁边。从托盘打开主窗口即可查看历史记录或更改设置。
 
 ## 重新打开应用
 

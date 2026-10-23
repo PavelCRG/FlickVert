@@ -40,7 +40,7 @@ const audioToolActions = [
 ]
 const archiveToolActions = [{ id: 'extract-zip', label: 'Extract ZIP' as const, glyph: 'ZIP' }]
 const allToolActions = [...toolActions, ...videoToolActions, ...audioToolActions]
-const quickWindowSize = { width: 400, height: 400 }
+const quickWindowSize = { width: 336, height: 336 }
 const fileActions = [
   { id: 'create-zip', label: 'Create ZIP' as const, glyph: '▱' },
   { id: 'extract-zip', label: 'Extract ZIP' as const, glyph: '▣' },
@@ -67,9 +67,9 @@ function outputLabel(extension: string) {
 function selectedSector(point: Position, size: { width: number; height: number }, count: number) {
   if (!count) return -1
   const dx = point.x - size.width / 2
-  const dy = point.y - size.height * 0.53
+  const dy = point.y - size.height / 2
   const radius = Math.hypot(dx, dy)
-  if (radius < Math.min(size.width, size.height) * 0.2 || radius > Math.min(size.width, size.height) * 0.44) return -1
+  if (radius < Math.min(size.width, size.height) * 0.215 || radius > Math.min(size.width, size.height) * 0.47) return -1
   const angle = (Math.atan2(dy, dx) + Math.PI / 2 + Math.PI * 2) % (Math.PI * 2)
   return Math.floor((angle + Math.PI / count) / (Math.PI * 2 / count)) % count
 }
@@ -120,6 +120,7 @@ export default function QuickMenu() {
   const dropHandled = useRef(false)
   const hideTimer = useRef<number | undefined>(undefined)
   const inspectedPaths = useRef('')
+  const wheelSize = useRef(quickWindowSize)
   const inspectingPaths = useRef<{ signature: string; promise: Promise<{ received: NativeFile[]; options: Format[] }> } | null>(null)
 
   function setDragVisible(value: boolean) {
@@ -321,18 +322,18 @@ export default function QuickMenu() {
     try {
       const { received, options } = await refreshFiles(paths)
       if (wheelModeRef.current === 'actions') {
-        const index = selectedSector(point, quickWindowSize, fileActions.length)
+        const index = selectedSector(point, wheelSize.current, fileActions.length)
         const id = fileActions[index]?.id
         if (index >= 0 && received.length && (id === 'copy-to-folder' || id === 'move-to-folder' || id === 'create-zip' || received.length === 1)) await choose(id)
         return
       }
       if (wheelModeRef.current === 'tools') {
         const actions = toolActionsFor(received, ffmpegAvailableRef.current, imagemagickAvailableRef.current)
-        const index = selectedSector(point, quickWindowSize, actions.length)
+        const index = selectedSector(point, wheelSize.current, actions.length)
         if (index >= 0) await runTool(actions[index].id, received)
         return
       }
-      const index = selectedSector(point, quickWindowSize, options.length)
+      const index = selectedSector(point, wheelSize.current, options.length)
       if (wheelModeRef.current === 'convert' && index >= 0 && received.length) await convertFiles(received, options[index])
     } catch (error) {
       setStatus(String(error).slice(0, 160))
@@ -378,11 +379,12 @@ export default function QuickMenu() {
     void getCurrentWebview().onDragDropEvent(({ payload }) => {
       if (payload.type === 'enter') {
         if (hideTimer.current !== undefined) window.clearTimeout(hideTimer.current)
+        void getCurrentWindow().innerSize().then((size) => { wheelSize.current = size })
         setDragVisible(true)
         void refreshFiles(payload.paths).catch((error) => setStatus(String(error)))
       } else if (payload.type === 'over') {
         const count = wheelModeRef.current === 'tools' ? toolActionsFor(filesRef.current, ffmpegAvailableRef.current, imagemagickAvailableRef.current).length : wheelModeRef.current === 'actions' ? fileActions.length : formatsRef.current.length
-        setActive(selectedSector(payload.position, quickWindowSize, count))
+        setActive(selectedSector(payload.position, wheelSize.current, count))
       } else if (payload.type === 'drop') {
         if (hideTimer.current !== undefined) window.clearTimeout(hideTimer.current)
         dropHandled.current = true

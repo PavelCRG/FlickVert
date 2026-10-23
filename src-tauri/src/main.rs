@@ -22,8 +22,8 @@ mod operations;
 mod quick_window;
 mod selection;
 
-const QUICK_WIDTH: u32 = 400;
-const QUICK_HEIGHT: u32 = 400;
+const QUICK_WIDTH: u32 = 336;
+const QUICK_HEIGHT: u32 = 336;
 static MEDIA_TEMP_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 #[derive(Default)]
@@ -1045,7 +1045,7 @@ fn main() {
             }
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                 .title("FlickVert")
-                .inner_size(1120.0, 760.0)
+                .inner_size(900.0, 720.0)
                 .min_inner_size(760.0, 600.0)
                 .resizable(true)
                 .center()

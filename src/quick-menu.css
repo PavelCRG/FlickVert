@@ -8,7 +8,7 @@ html:has(.quick-shell), body:has(.quick-shell), #root:has(.quick-shell) {
   user-select: none; pointer-events: none;
 }
 .quick-orbit {
-  position: absolute; top: 24px; left: 24px; width: 352px; height: 352px;
+  position: absolute; top: 8px; left: 8px; width: 320px; height: 320px;
   border-radius: 50%; pointer-events: none;
 }
 .quick-orbit::before {

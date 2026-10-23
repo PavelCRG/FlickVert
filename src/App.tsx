@@ -7,7 +7,7 @@ import ImageEditor, { type ImageEditTool } from './ImageEditor'
 
 type HistoryEntry = { id: string; fileName: string; size: number; output: string }
 type Engines = { ffmpeg: boolean; pandoc: boolean; imagemagick: boolean; libreoffice: boolean; poppler: boolean }
-type Section = 'home' | 'history' | 'settings'
+type Section = 'history' | 'settings'
 
 function loadHistory(): HistoryEntry[] {
   try {
@@ -23,7 +23,7 @@ function loadHistory(): HistoryEntry[] {
 const sizeOf = (bytes: number) => bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`
 
 export default function App() {
-  const [section, setSection] = useState<Section>('home')
+  const [section, setSection] = useState<Section>('settings')
   const [history, setHistory] = useState<HistoryEntry[]>(loadHistory)
   const [preferences, setPreferences] = useState<AppSettings>(loadSettings)
   const [shortcutError, setShortcutError] = useState(false)
@@ -36,9 +36,9 @@ export default function App() {
     let disposed = false
     const stops: (() => void)[] = []
     const addStop = (stop: () => void) => { if (disposed) stop(); else stops.push(stop) }
-    void listen<string>('flickvert://quick-action', ({ payload }) => setSection(payload === 'settings' ? 'settings' : 'home')).then(addStop)
+    void listen<string>('flickvert://quick-action', ({ payload }) => setSection(payload === 'history' ? 'history' : 'settings')).then(addStop)
     void listen<{ inputPath: string; initialTool: ImageEditTool }>('flickvert://image-editor-open', ({ payload }) => {
-      if (typeof payload.inputPath === 'string') { setSection('home'); setImageEdit(payload) }
+      if (typeof payload.inputPath === 'string') { setSection('settings'); setImageEdit(payload) }
     }).then(addStop)
     void listen<Omit<HistoryEntry, 'id'>>('flickvert://job-completed', ({ payload }) => {
       if (typeof payload.fileName !== 'string' || typeof payload.output !== 'string' || !Number.isFinite(payload.size)) return
@@ -89,44 +89,70 @@ export default function App() {
       <div className="brand"><img className="brand-mark" src="/fv-mark.svg" alt=""/><span>FlickVert</span></div>
       <div className="side-label">{tr('Workspace')}</div>
       <nav aria-label="Main navigation">
-        <button className={section === 'home' ? 'nav-item active' : 'nav-item'} onClick={() => setSection('home')}>{tr('Home')}</button>
+        <button className={section === 'settings' ? 'nav-item active' : 'nav-item'} onClick={() => setSection('settings')}>{tr('Settings')}</button>
         <button className={section === 'history' ? 'nav-item active' : 'nav-item'} onClick={() => setSection('history')}>{tr('History')}</button>
       </nav>
       <div className="sidebar-bottom">
         <div className="privacy"><span className="privacy-icon">●</span><div><strong>{tr('Your files stay here')}</strong><small>{tr('Processed on this device')}</small></div></div>
-        <button className={section === 'settings' ? 'nav-item active' : 'nav-item'} onClick={() => setSection('settings')}>{tr('Settings')}</button>
         <div className="version">FlickVert <span>0.1.0</span></div>
       </div>
     </aside>
 
     <main className="main">
-      {section === 'home' && <div className="page home-page">
-        <p className="eyebrow">{tr('PRIVATE BY DESIGN')}</p>
-        <h1>{tr('Work with files where they are.')}</h1>
-        <p className="home-description">{tr('Select a file in Explorer or Finder, then use the shortcut or choose files here.')}</p>
-        <div className="home-preview" aria-hidden="true">
-          <div className="preview-wheel">
-            <span className="preview-orbit"/>
-            <span className="preview-format format-webp">WEBP</span>
-            <span className="preview-format format-pdf">PDF</span>
-            <span className="preview-format format-heic">HEIC</span>
-            <span className="preview-format format-tiff">TIFF</span>
-            <span className="preview-format format-png">PNG</span>
-            <span className="preview-format format-jpg">JPG</span>
-            <div className="preview-file"><div className="preview-thumbnail"><span/></div><small>photo.jpg</small></div>
-          </div>
-        </div>
-        <button className="primary-button home-pick" onClick={() => void chooseFiles()}>{tr('Choose files')}</button>
+      {section === 'history' ? <div className="page simple-page">
+        <h1>{tr('History')}</h1>
+        <p className="subtitle">{tr('Recent conversions are stored on this device.')}</p>
+        {history.length ? <div className="file-list history-list">{history.map((item) => <article className="file-row" key={item.id}>
+          <div className="file-icon">✓</div>
+          <div className="file-info"><strong title={item.output}>{item.output}</strong><span>{item.fileName} · {sizeOf(item.size)}</span></div>
+          <span className="status done">{tr('Converted')}</span>
+        </article>)}</div> : <div className="empty-queue history-empty">
+          <div className="empty-glyph">◷</div><div><strong>{tr('No completed conversions yet')}</strong><p>{tr('Completed conversions will appear here.')}</p></div>
+        </div>}
+      </div> : <div className="page settings-page">
+        <header className="settings-header">
+          <div><h1>{tr('Settings')}</h1><p className="subtitle">{tr('Choose how FlickVert looks.')}</p></div>
+          <button className="secondary-button choose-files-button" onClick={() => void chooseFiles()}>{tr('Choose files')}</button>
+        </header>
         {pickError && <p className="shortcut-error">{tr('Could not open files')}</p>}
-        <div className="home-steps" aria-label={tr('Quick shortcut')}>
-          <div><kbd>⇧ Shift</kbd><span>{tr('Convert')}</span></div>
-          <div><kbd>{navigator.platform.startsWith('Mac') ? '⌘ Command' : 'Ctrl'}</kbd><span>{tr('Tools')}</span></div>
-          <div><kbd>{navigator.platform.startsWith('Mac') ? '⌥ Option' : 'Alt'}</kbd><span>{tr('Actions')}</span></div>
-        </div>
-        <p className="home-footnote">{tr('Quick shortcut')}: <kbd>{preferences.shortcut.replaceAll('+', ' + ')}</kbd> · {tr('Same folder as original')}</p>
+
+        <section className="settings-group" aria-labelledby="appearance-title">
+          <h2 id="appearance-title">{tr('Appearance')}</h2>
+          <div className="setting-row"><span>{tr('Appearance')}</span><div className="segmented-control" role="group" aria-label={tr('Appearance')}>
+            {(['system', 'light', 'dark'] as const).map((appearance) => <button key={appearance} aria-pressed={preferences.appearance === appearance} className={preferences.appearance === appearance ? 'selected' : ''} onClick={() => updatePreferences({ appearance })}>{tr(appearance === 'system' ? 'System' : appearance === 'light' ? 'Light' : 'Dark')}</button>)}
+          </div></div>
+          <div className="setting-row"><span>{tr('Language')}</span><div className="segmented-control" role="group" aria-label={tr('Language')}>
+            {(['en', 'ru', 'zh'] as const).map((language) => <button key={language} aria-pressed={preferences.language === language} className={preferences.language === language ? 'selected' : ''} onClick={() => updatePreferences({ language })}>{tr(language === 'en' ? 'English' : language === 'ru' ? 'Russian' : 'Chinese')}</button>)}
+          </div></div>
+        </section>
+
+        <section className="settings-group" aria-labelledby="shortcut-title">
+          <h2 id="shortcut-title">{tr('Quick shortcut')}</h2>
+          <div className="setting-row"><span>{tr('Quick shortcut')}</span><label className="field shortcut-field"><select aria-label={tr('Quick shortcut')} value={preferences.shortcut} onChange={(event) => void updateShortcut(event.target.value)}>
+            <option value="CTRL+ALT+SPACE">Ctrl + Alt + Space</option><option value="CTRL+SHIFT+SPACE">Ctrl + Shift + Space</option><option value="ALT+SHIFT+SPACE">Alt + Shift + Space</option>
+          </select></label></div>
+          {shortcutError && <p className="shortcut-error">{tr('Shortcut unavailable. Use the tray menu.')}</p>}
+        </section>
+
+        <section className="settings-group" aria-labelledby="output-title">
+          <h2 id="output-title">{tr('Output settings')}</h2>
+          <div className="setting-fields">
+            <label className="field"><span>{tr('Quality')} · {preferences.quality}%</span><input type="range" min="40" max="100" value={preferences.quality} onChange={(event) => updatePreferences({ quality: Number(event.target.value) })}/></label>
+            <label className="field"><span>{tr('Max width')}</span><input type="number" min="1" max="32768" value={preferences.width ?? ''} onChange={(event) => updatePreferences({ width: event.target.value ? Number(event.target.value) : undefined })}/></label>
+            <label className="field"><span>{tr('Max height')}</span><input type="number" min="1" max="32768" value={preferences.height ?? ''} onChange={(event) => updatePreferences({ height: event.target.value ? Number(event.target.value) : undefined })}/></label>
+          </div>
+          <div className="output-folder-setting"><div><strong>{tr('Save location')}</strong><span title={preferences.outputFolder}>{preferences.outputFolder || tr('Same folder as original')}</span></div>
+            <button className="secondary-button" onClick={() => void chooseOutputFolder()}>{tr('Choose folder')}</button>
+            {preferences.outputFolder && <button className="secondary-button" onClick={() => updatePreferences({ outputFolder: undefined })}>{tr('Use source folder')}</button>}
+          </div>
+        </section>
+
+        <section className="settings-group" aria-labelledby="engines-title">
+          <h2 id="engines-title">{tr('Conversion engines')}</h2>
+          <div className="engine-status">{([['FFmpeg', engines.ffmpeg], ['Pandoc', engines.pandoc], ['ImageMagick', engines.imagemagick], ['LibreOffice', engines.libreoffice], ['Poppler', engines.poppler]] as const).map(([name, available]) => <div key={name}><span>{name}</span><span className={available ? 'engine-found' : ''}>{tr(available ? 'Detected' : 'Not detected on PATH')}</span></div>)}</div>
+        </section>
+        <p className="settings-note">{tr('Your files stay on this device. Processing runs locally.')}</p>
       </div>}
-      {section === 'history' && <div className="page simple-page"><p className="eyebrow">{tr('RECENT WORK')}</p><h1>{tr('History')}</h1><p className="subtitle">{tr('Recent conversions are stored on this device.')}</p>{history.length ? <div className="file-list history-list">{history.map((item) => <article className="file-row" key={item.id}><div className="file-icon">✓</div><div className="file-info"><strong title={item.output}>{item.output}</strong><span>{item.fileName} · {sizeOf(item.size)}</span></div><span className="status done">{tr('Converted')}</span></article>)}</div> : <div className="empty-queue history-empty"><div className="empty-glyph">◷</div><div><strong>{tr('No completed conversions yet')}</strong><p>{tr('Completed conversions will appear here.')}</p></div></div>}</div>}
-      {section === 'settings' && <div className="page simple-page"><p className="eyebrow">{tr('MAKE IT YOURS')}</p><h1>{tr('Settings')}</h1><p className="subtitle">{tr('Choose how FlickVert looks.')}</p><h2 className="preference-heading">{tr('Appearance')}</h2><div className="theme-options">{(['system', 'light', 'dark'] as const).map((appearance) => <button key={appearance} className={preferences.appearance === appearance ? 'theme-option selected' : 'theme-option'} onClick={() => updatePreferences({ appearance })}>{tr(appearance === 'system' ? 'System' : appearance === 'light' ? 'Light' : 'Dark')}</button>)}</div><h2 className="preference-heading">{tr('Language')}</h2><div className="theme-options">{(['en', 'ru', 'zh'] as const).map((language) => <button key={language} className={preferences.language === language ? 'theme-option selected' : 'theme-option'} onClick={() => updatePreferences({ language })}>{tr(language === 'en' ? 'English' : language === 'ru' ? 'Russian' : 'Chinese')}</button>)}</div><h2 className="preference-heading">{tr('Quick shortcut')}</h2><label className="field shortcut-field"><select value={preferences.shortcut} onChange={(event) => { void updateShortcut(event.target.value) }}><option value="CTRL+ALT+SPACE">Ctrl + Alt + Space</option><option value="CTRL+SHIFT+SPACE">Ctrl + Shift + Space</option><option value="ALT+SHIFT+SPACE">Alt + Shift + Space</option></select></label>{shortcutError && <p className="shortcut-error">{tr('Shortcut unavailable. Use the tray menu.')}</p>}<h2 className="preference-heading">{tr('Output settings')}</h2><div className="home-settings"><label className="field"><span>{tr('Quality')} · {preferences.quality}%</span><input type="range" min="40" max="100" value={preferences.quality} onChange={(event) => updatePreferences({ quality: Number(event.target.value) })}/></label><label className="field"><span>{tr('Max width')}</span><input type="number" min="1" max="32768" value={preferences.width ?? ''} onChange={(event) => updatePreferences({ width: event.target.value ? Number(event.target.value) : undefined })}/></label><label className="field"><span>{tr('Max height')}</span><input type="number" min="1" max="32768" value={preferences.height ?? ''} onChange={(event) => updatePreferences({ height: event.target.value ? Number(event.target.value) : undefined })}/></label></div><div className="output-folder-setting"><div><strong>{tr('Save location')}</strong><span title={preferences.outputFolder}>{preferences.outputFolder || tr('Same folder as original')}</span></div><button className="secondary-button" onClick={() => void chooseOutputFolder()}>{tr('Choose folder')}</button>{preferences.outputFolder && <button className="secondary-button" onClick={() => updatePreferences({ outputFolder: undefined })}>{tr('Use source folder')}</button>}</div><h2 className="preference-heading">{tr('Conversion engines')}</h2><div className="engine-status">{[['FFmpeg', engines.ffmpeg], ['Pandoc', engines.pandoc], ['ImageMagick', engines.imagemagick], ['LibreOffice', engines.libreoffice], ['Poppler', engines.poppler]].map(([name, available]) => <div key={String(name)}><span>{name}</span><span className={available ? 'engine-found' : ''}>{tr(available ? 'Detected' : 'Not detected on PATH')}</span></div>)}</div><div className="settings-note">{tr('Your files stay on this device. Processing runs locally.')}</div></div>}
     </main>
     {imageEdit && <ImageEditor inputPath={imageEdit.inputPath} initialTool={imageEdit.initialTool} outputFolder={preferences.outputFolder} onClose={() => setImageEdit(null)}/>}
   </div>

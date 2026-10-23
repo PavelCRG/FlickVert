@@ -3,7 +3,7 @@
   <h1>FlickVert</h1>
   <p>A small, local file converter for Windows and macOS.</p>
   <p>
-    <a href="#quick-start"><img alt="Quick start" src="https://img.shields.io/badge/Quick%20start-Drag%20%26%20convert-E8783D?style=for-the-badge"></a>
+    <a href="#quick-start"><img alt="Quick start" src="https://img.shields.io/badge/Quick%20start-Drag%20%26%20convert-285FE8?style=for-the-badge"></a>
     <a href="#supported-formats"><img alt="Supported formats" src="https://img.shields.io/badge/Formats-What%20works-59616D?style=for-the-badge"></a>
     <a href="#build-from-source"><img alt="Build from source" src="https://img.shields.io/badge/Build-From%20source-59616D?style=for-the-badge"></a>
   </p>
@@ -26,9 +26,9 @@ FlickVert sits beside File Explorer and Finder. Start dragging a file and the ci
 
 ## Quick start
 
-1. Start FlickVert. The start screen opens once; closing it leaves FlickVert in the tray while you work in File Explorer or Finder.
+1. Start FlickVert. Its compact settings window opens; closing it leaves FlickVert in the tray while you work in File Explorer or Finder.
 2. Drag a file and drop it onto a format in the wheel beside the pointer.
-3. Find the converted file beside the original. Open the main window from the tray for the start screen, history, and settings.
+3. Find the converted file beside the original. Open the main window from the tray to view history or change settings.
 
 ## Closing the app
 
