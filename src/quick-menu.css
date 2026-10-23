@@ -76,4 +76,6 @@ html:has(.quick-shell), body:has(.quick-shell), #root:has(.quick-shell) {
   max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   font-size: 10px; font-weight: 600; color: color-mix(in srgb, CanvasText 76%, transparent);
 }
+.quick-keyhint {position:absolute;bottom:0;left:50%;transform:translateX(-50%);white-space:nowrap;padding:3px 10px;border-radius:8px;background:color-mix(in srgb,Canvas 85%,transparent);font-size:10px;color:color-mix(in srgb,CanvasText 70%,transparent)}
+.quick-keyhint kbd {font:inherit}
 @media (prefers-reduced-motion: reduce) { .quick-format, .quick-action {transition: none} }

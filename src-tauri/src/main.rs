@@ -493,7 +493,7 @@ pub(crate) fn show_drag_quick(app: &AppHandle) {
 
 #[tauri::command]
 fn quick_action(app: AppHandle, action_id: String) -> Result<(), String> {
-    if !matches!(action_id.as_str(), "convert" | "resize" | "settings") {
+    if action_id != "settings" {
         return Err("Unknown quick action".into());
     }
     show_main(&app);
@@ -834,7 +834,7 @@ fn main() {
                 .min_inner_size(760.0, 600.0)
                 .resizable(true)
                 .center()
-                .visible(false)
+                .visible(true)
                 .build()?;
             app.manage(DroppedFiles::default());
             app.manage(DragTrigger::default());

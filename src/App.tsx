@@ -1,34 +1,12 @@
-import { useEffect, useRef, useState, type ChangeEvent, type DragEvent, type ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
-import { getCurrentWebview } from '@tauri-apps/api/webview'
-import { convertImage } from './conversion/images'
-import { loadSettings, saveSettings, type AppSettings } from './settings'
+import { loadSettings, normalizeSettings, saveSettings, type AppSettings } from './settings'
 import { t, type MessageKey } from './i18n'
 
-type Format = 'image/png' | 'image/jpeg' | 'image/webp'
-type Item = { id: string; file: File; size: number; path?: string; outputFormats?: string[]; outputExtension?: string; status: 'ready' | 'done' | 'error'; output?: string; error?: string }
 type HistoryEntry = { id: string; fileName: string; size: number; output: string }
-type NativeFile = { path: string; name: string; size: number; extension: string; mime: string; isDirectory: boolean }
 type Engines = { ffmpeg: boolean; pandoc: boolean; imagemagick: boolean; libreoffice: boolean }
-const formats: { value: Format; label: string; ext: string }[] = [
-  { value: 'image/png', label: 'PNG', ext: 'png' },
-  { value: 'image/jpeg', label: 'JPEG', ext: 'jpg' },
-  { value: 'image/webp', label: 'WebP', ext: 'webp' },
-]
-const imageTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/bmp']
-const documentExtensions = ['docx', 'odt', 'md', 'markdown', 'html', 'htm', 'epub', 'rtf', 'txt', 'rst', 'tex']
-const officeExtensions = ['doc', 'xls', 'xlsx', 'ods', 'ppt', 'pptx', 'odp', 'csv']
-const imageMagickExtensions = ['cr2', 'cr3', 'nef', 'arw', 'raf', 'dng', 'orf', 'rw2', 'avif', 'heic', 'heif', 'svg', 'tif', 'tiff']
-const subtitleExtensions = ['ass', 'srt', 'ssa', 'vtt']
-const supported = (file: File) => imageTypes.includes(file.type)
-const isMedia = (file: File) => file.type.startsWith('audio/') || file.type.startsWith('video/')
-const extensionOf = (file: File) => file.name.split('.').pop()?.toLowerCase() ?? ''
-const isDocument = (file: File) => documentExtensions.includes(extensionOf(file))
-const isOffice = (file: File) => officeExtensions.includes(extensionOf(file))
-const isImageMagick = (file: File) => imageMagickExtensions.includes(extensionOf(file))
-const isSubtitle = (file: File) => subtitleExtensions.includes(extensionOf(file))
-const sizeOf = (bytes: number) => bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`
+type Section = 'home' | 'history' | 'settings'
 
 function loadHistory(): HistoryEntry[] {
   try {
@@ -41,138 +19,47 @@ function loadHistory(): HistoryEntry[] {
   } catch { return [] }
 }
 
-function Icon({ name, size = 18 }: { name: string; size?: number }) {
-  const common = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
-  const paths: Record<string, ReactNode> = {
-    mark: <><path d="M5 4h14v3H8v4h9v3H8v6H5z"/><path d="M13 4v6"/></>,
-    convert: <><path d="M4 7h13l-3-3M20 17H7l3 3"/><path d="m17 4 3 3-3 3M7 14l-3 3 3 3"/></>,
-    history: <><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></>,
-    settings: <><circle cx="12" cy="12" r="3"/><path d="M19 13.5a7.5 7.5 0 0 0 0-3l2-1.5-2-3.5-2.4 1a8 8 0 0 0-2.6-1.5L13.5 2h-4L9 5a8 8 0 0 0-2.6 1.5l-2.4-1-2 3.5 2 1.5a7.5 7.5 0 0 0 0 3l-2 1.5 2 3.5 2.4-1A8 8 0 0 0 9 19l.5 3h4l.5-3a8 8 0 0 0 2.6-1.5l2.4 1 2-3.5z"/></>,
-    plus: <><path d="M12 5v14M5 12h14"/></>,
-    image: <><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></>,
-    file: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></>,
-    close: <><path d="m18 6-12 12M6 6l12 12"/></>,
-    arrow: <path d="m9 18 6-6-6-6"/>,
-    check: <path d="m5 12 4 4L19 6"/>,
-    lock: <><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 1 1 8 0v3"/></>,
-    sun: <><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></>,
-  }
-  return <svg {...common} aria-hidden="true">{paths[name] ?? paths.file}</svg>
-}
+const sizeOf = (bytes: number) => bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`
 
 export default function App() {
-  const [items, setItems] = useState<Item[]>([])
+  const [section, setSection] = useState<Section>('home')
   const [history, setHistory] = useState<HistoryEntry[]>(loadHistory)
   const [preferences, setPreferences] = useState<AppSettings>(loadSettings)
-  const { format, quality, appearance: theme, language } = preferences
-  const [section, setSection] = useState<'convert' | 'history' | 'settings'>('convert')
-  const [dragging, setDragging] = useState(false)
-  const [converting, setConverting] = useState(false)
   const [shortcutError, setShortcutError] = useState(false)
   const [engines, setEngines] = useState<Engines>({ ffmpeg: false, pandoc: false, imagemagick: false, libreoffice: false })
-  const [documentFormat, setDocumentFormat] = useState('html')
-  const input = useRef<HTMLInputElement>(null)
-  const canConvert = (item: Item) => {
-    if (supported(item.file)) return true
-    return Boolean(item.path && item.outputExtension && item.outputFormats?.includes(item.outputExtension))
-  }
-  const ready = items.filter((item) => item.status === 'ready' && canConvert(item)).length
-  const done = items.filter((item) => item.status === 'done').length
+  const tr = (key: MessageKey) => t(preferences.language, key)
 
   useEffect(() => {
-    let unlisten: (() => void) | undefined
     let disposed = false
-    void listen<string>('flickvert://quick-action', ({ payload }) => {
-      setSection(payload === 'settings' ? 'settings' : 'convert')
-      if (payload === 'resize') setPreferences((current) => {
-        const next = { ...current, width: 1920, height: 1920 }
-        saveSettings(next)
-        return next
-      })
-    }).then((stop) => { if (disposed) stop(); else unlisten = stop })
-    return () => { disposed = true; unlisten?.() }
-  }, [])
-
-  useEffect(() => {
-    let unlisten: (() => void) | undefined
-    let disposed = false
+    const stops: (() => void)[] = []
+    const addStop = (stop: () => void) => { if (disposed) stop(); else stops.push(stop) }
+    void listen<string>('flickvert://quick-action', ({ payload }) => setSection(payload === 'settings' ? 'settings' : 'home')).then(addStop)
     void listen<Omit<HistoryEntry, 'id'>>('flickvert://job-completed', ({ payload }) => {
       if (typeof payload.fileName !== 'string' || typeof payload.output !== 'string' || !Number.isFinite(payload.size)) return
       setHistory((current) => [{ id: crypto.randomUUID(), ...payload }, ...current].slice(0, 100))
-    }).then((stop) => { if (disposed) stop(); else unlisten = stop })
-    return () => { disposed = true; unlisten?.() }
+    }).then(addStop)
+    return () => { disposed = true; stops.forEach((stop) => stop()) }
   }, [])
 
   useEffect(() => {
-    void invoke('register_shortcut', { shortcut: preferences.shortcut })
-      .then(() => setShortcutError(false))
-      .catch(() => setShortcutError(true))
+    if (!isTauri()) return
+    void invoke('register_shortcut', { shortcut: preferences.shortcut }).then(() => setShortcutError(false)).catch(() => setShortcutError(true))
   }, [preferences.shortcut])
 
   useEffect(() => {
-    if (isTauri()) void invoke<Engines>('engine_status').then(setEngines)
+    if (isTauri()) void invoke<Engines>('engine_status').then(setEngines).catch(() => {})
   }, [])
 
   useEffect(() => {
     try { localStorage.setItem('flickvert-history', JSON.stringify(history)) } catch {}
   }, [history])
 
-  useEffect(() => {
-    if (!engines.pandoc && engines.libreoffice) setDocumentFormat('pdf')
-    else if (engines.pandoc && documentFormat === 'pdf') setDocumentFormat('html')
-  }, [engines.pandoc, engines.libreoffice])
-
-  useEffect(() => {
-    if (!isTauri()) return
-    let unlisten: (() => void) | undefined
-    let disposed = false
-    void getCurrentWebview().onDragDropEvent((event) => {
-      if (event.payload.type === 'drop') void invoke<NativeFile[]>('inspect_dropped_files', { paths: event.payload.paths }).then(addNativeFiles)
-    }).then((stop) => { if (disposed) stop(); else unlisten = stop })
-    return () => { disposed = true; unlisten?.() }
-  }, [])
-
-  function addFiles(files: FileList | File[]) {
-    setItems((current) => {
-      const next = [...current]
-      for (const file of Array.from(files)) {
-        const existing = next.findIndex((item) => item.file.name === file.name && item.size === file.size)
-        if (existing >= 0) { if (next[existing].file.size === 0 && file.size) next[existing] = { ...next[existing], file }; continue }
-        next.push({ id: crypto.randomUUID(), file, size: file.size, status: 'ready' })
-      }
-      return next
-    })
-  }
-  function addNativeFiles(files: NativeFile[]) {
-    files = files.filter((file) => !file.isDirectory)
-    if (!files.length) return
-    setItems((current) => {
-      const next = [...current]
-      for (const entry of files) {
-        const existing = next.findIndex((item) => item.file.name === entry.name && item.size === entry.size)
-        if (existing >= 0) next[existing] = { ...next[existing], path: entry.path, file: next[existing].file.size ? next[existing].file : new File([], entry.name, { type: entry.mime }) }
-        else next.push({ id: crypto.randomUUID(), file: new File([], entry.name, { type: entry.mime }), size: entry.size, path: entry.path, status: 'ready' })
-      }
-      return next
-    })
-    void Promise.all(files.map(async (entry): Promise<{ path: string; outputFormats: string[]; outputExtension?: string }> => {
-      try {
-        const outputFormats = await invoke<string[]>('quick_formats', { inputPath: entry.path })
-        const preferred = entry.mime.startsWith('audio/') ? 'mp3' : entry.mime.startsWith('video/') ? 'mp4' : 'pdf'
-        return { path: entry.path, outputFormats, outputExtension: outputFormats.includes(preferred) ? preferred : outputFormats[0] }
-      } catch { return { path: entry.path, outputFormats: [], outputExtension: undefined } }
-    })).then((results) => setItems((current) => current.map((item) => {
-      const result = results.find((entry) => entry.path === item.path)
-      return result ? { ...item, outputFormats: result.outputFormats, outputExtension: result.outputFormats.includes(item.outputExtension ?? '') ? item.outputExtension : result.outputExtension } : item
-    })))
-  }
-  function onDrop(event: DragEvent<HTMLElement>) { event.preventDefault(); setDragging(false); addFiles(event.dataTransfer.files) }
-  function onPick(event: ChangeEvent<HTMLInputElement>) { if (event.target.files) addFiles(event.target.files); event.target.value = '' }
   function updatePreferences(patch: Partial<AppSettings>) {
-    const next = { ...preferences, ...patch }
+    const next = normalizeSettings({ ...preferences, ...patch })
     setPreferences(next)
     saveSettings(next)
   }
+
   async function updateShortcut(shortcut: string) {
     try {
       await invoke('register_shortcut', { shortcut })
@@ -180,84 +67,39 @@ export default function App() {
       updatePreferences({ shortcut })
     } catch { setShortcutError(true) }
   }
-  const tr = (key: MessageKey) => t(language, key)
-  const typeOf = (file: File) => tr(supported(file) || isImageMagick(file) ? 'Image' : file.type.startsWith('video/') ? 'Video' : file.type.startsWith('audio/') ? 'Audio' : isSubtitle(file) ? 'Subtitle' : isDocument(file) || isOffice(file) ? 'Document' : file.type === 'application/pdf' ? 'PDF document' : 'File')
 
-  async function convert() {
-    const work = items.filter((item) => item.status === 'ready' && canConvert(item))
-    setConverting(true)
-    try {
-      for (const item of work) {
-        try {
-          let path: string
-          if (supported(item.file)) {
-            const source = item.path
-              ? new File([Uint8Array.from(await invoke<number[]>('read_dropped_file', { inputPath: item.path }))], item.file.name, { type: item.file.type })
-              : item.file
-            const blob = await convertImage(source, { format, quality, width: preferences.width, height: preferences.height })
-            const selected = formats.find((entry) => entry.value === format)!
-            const name = `${item.file.name.replace(/\.[^.]+$/, '')}.${selected.ext}`
-            path = await invoke<string>('save_output', { fileName: name, inputPath: item.path, bytes: Array.from(new Uint8Array(await blob.arrayBuffer())) })
-          } else {
-            const outputExtension = item.outputExtension ?? 'png'
-            path = await invoke<string>('convert_file', { inputPath: item.path, outputExtension })
-          }
-          setHistory((current) => [{ id: crypto.randomUUID(), fileName: item.file.name, size: item.size, output: path }, ...current].slice(0, 100))
-          setItems((current) => current.map((row) => row.id === item.id ? { ...row, status: 'done', output: path } : row))
-        } catch (error) {
-          setItems((current) => current.map((row) => row.id === item.id ? { ...row, status: 'error', error: String(error).slice(0, 240) } : row))
-        }
-      }
-    } finally { setConverting(false) }
-  }
-
-  return <div className={`app ${theme}`} onDragOver={(event) => { event.preventDefault(); setDragging(true) }} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragging(false) }} onDrop={onDrop}>
+  return <div className={`app ${preferences.appearance}`}>
     <aside className="sidebar">
       <div className="brand"><img className="brand-mark" src="/fv-mark.svg" alt=""/><span>FlickVert</span></div>
       <div className="side-label">{tr('Workspace')}</div>
       <nav aria-label="Main navigation">
-        <button className={section === 'convert' ? 'nav-item active' : 'nav-item'} onClick={() => setSection('convert')}><Icon name="convert"/><span>{tr('Convert files')}</span></button>
-        <button className={section === 'history' ? 'nav-item active' : 'nav-item'} onClick={() => setSection('history')}><Icon name="history"/><span>{tr('History')}</span></button>
+        <button className={section === 'home' ? 'nav-item active' : 'nav-item'} onClick={() => setSection('home')}>{tr('Home')}</button>
+        <button className={section === 'history' ? 'nav-item active' : 'nav-item'} onClick={() => setSection('history')}>{tr('History')}</button>
       </nav>
       <div className="sidebar-bottom">
-        <div className="privacy"><span className="privacy-icon"><Icon name="lock" size={16}/></span><div><strong>{tr('Your files stay here')}</strong><small>{tr('Processed on this device')}</small></div></div>
-        <button className={section === 'settings' ? 'nav-item active' : 'nav-item'} onClick={() => setSection('settings')}><Icon name="settings"/><span>{tr('Settings')}</span></button>
+        <div className="privacy"><span className="privacy-icon">●</span><div><strong>{tr('Your files stay here')}</strong><small>{tr('Processed on this device')}</small></div></div>
+        <button className={section === 'settings' ? 'nav-item active' : 'nav-item'} onClick={() => setSection('settings')}>{tr('Settings')}</button>
         <div className="version">FlickVert <span>0.1.0</span></div>
       </div>
     </aside>
 
     <main className="main">
-      <header className="topbar"><div className="breadcrumb">FlickVert <Icon name="arrow" size={14}/><span>{section === 'convert' ? tr('Convert files') : section === 'history' ? tr('History') : tr('Settings')}</span></div><button className="theme-button" title={tr('System appearance')} onClick={() => updatePreferences({ appearance: theme === 'system' ? 'light' : theme === 'light' ? 'dark' : 'system' })}><Icon name="sun" size={17}/></button></header>
-      {section === 'convert' && <div className="page">
-        <div className="page-heading"><div className="heading-copy"><p className="eyebrow">{tr('PRIVATE BY DESIGN')}</p><h1>{tr('File conversion')}</h1><p className="subtitle">{tr('Add images, choose a format and save the result.')}</p></div><img className="hero-mark" src="/fv-mark.svg" alt="FlickVert FV monogram"/><div className="format-chip"><span className="chip-dot"/>{tr('Images · PNG, JPEG, WebP')}</div></div>
-        <section className={`dropzone ${dragging ? 'dragging' : ''}`} onClick={() => input.current?.click()} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') input.current?.click() }} tabIndex={0} role="button" aria-label="Add files">
-          <input ref={input} type="file" multiple accept="image/*" onChange={onPick} hidden/>
-          <div className="upload-icon"><Icon name="plus" size={23}/></div><div className="drop-title">{tr('Drop files here')}</div><div className="drop-subtitle">{tr('or')} <span>{tr('browse your computer')}</span></div><div className="drop-note">{tr('Files are processed on your device and never uploaded')}</div><div className="drop-note">{tr('Browse images or drop audio and video from Finder or Explorer.')}</div>
-        </section>
-        <section className="queue-section">
-          <div className="section-heading"><div><h2>{tr('File queue')}</h2><span className="count">{items.length}</span></div>{items.length > 0 && <button className="text-button" onClick={() => setItems([])}>{tr('Clear queue')}</button>}</div>
-          {items.length === 0 ? <div className="empty-queue"><div className="empty-glyph"><Icon name="file" size={21}/></div><div><strong>{tr('Your files will appear here')}</strong><p>{tr('Add one or more files to get started')}</p></div></div> : <div className="file-list">{items.map((item) => <article className="file-row" key={item.id}>
-            <div className="file-icon"><Icon name={supported(item.file) ? 'image' : 'file'} size={19}/></div><div className="file-info"><strong title={item.file.name}>{item.file.name}</strong><span>{typeOf(item.file)} <i/> {sizeOf(item.size)}</span></div>
-            {item.status === 'ready' && !supported(item.file) && item.outputFormats && item.outputFormats.length > 0 && <label className="field file-format"><span className="sr-only">{tr('Convert to')}</span><select aria-label={`${tr('Convert to')} ${item.file.name}`} value={item.outputExtension ?? ''} onChange={(event) => setItems((current) => current.map((row) => row.id === item.id ? { ...row, outputExtension: event.target.value } : row))}>{item.outputFormats.map((extension) => <option key={extension} value={extension}>{extension.toUpperCase()}</option>)}</select></label>}
-            {item.status === 'done' ? <span className="status done"><Icon name="check" size={14}/>{item.output ?? tr('Done')}</span> : item.status === 'error' ? <span className="status error" title={item.error}>{tr('Could not convert')}</span> : canConvert(item) ? <span className="status ready">{tr('Ready to convert')}</span> : <span className="status unavailable">{(isMedia(item.file) || isSubtitle(item.file)) ? item.path ? tr('FFmpeg unavailable') : tr(isSubtitle(item.file) ? 'Drop a subtitle from Finder or Explorer' : 'Drop media from Finder or Explorer') : isImageMagick(item.file) ? tr('ImageMagick unavailable') : isDocument(item.file) || isOffice(item.file) ? tr(documentFormat === 'pdf' ? 'LibreOffice unavailable' : 'Pandoc unavailable') : tr('Format not supported')}</span>}
-            <button className="remove-button" onClick={() => setItems((current) => current.filter((row) => row.id !== item.id))} aria-label={`Remove ${item.file.name}`}><Icon name="close" size={17}/></button>
-          </article>)}</div>}
-        </section>
-        <section className="settings-panel">
-          <div className="settings-title"><div><h2>{tr('Output settings')}</h2><p>{tr('These settings apply to every image in the queue.')}</p></div><span className="settings-step">{tr('FORMAT')}</span></div>
-          <div className="controls"><label className="field"><span>{tr('Convert to')}</span><select value={format} onChange={(event) => updatePreferences({ format: event.target.value as Format })}>{formats.map((entry) => <option key={entry.value} value={entry.value}>{entry.label}</option>)}</select></label>
-            {format !== 'image/png' ? <label className="quality-field"><span>{tr('Quality')} <strong>{quality}%</strong></span><input type="range" min="40" max="100" value={quality} onChange={(event) => updatePreferences({ quality: Number(event.target.value) })}/></label> : <div className="quality-field lossless"><span>{tr('Quality')}</span><div>{tr('Lossless')}</div></div>}
-            <div className="destination"><span>{tr('Save location')}</span><div><Icon name="file" size={15}/> {tr(items.length && items.every((item) => item.path) ? 'Same folder as original' : items.some((item) => item.path) ? 'Save location varies' : 'Downloads / FlickVert')}</div></div>
-            <label className="field"><span>{tr('Max width')}</span><input type="number" min="1" max="32768" placeholder="Original" value={preferences.width ?? ''} onChange={(event) => updatePreferences({ width: event.target.value ? Number(event.target.value) : undefined })}/></label>
-            <label className="field"><span>{tr('Max height')}</span><input type="number" min="1" max="32768" placeholder="Original" value={preferences.height ?? ''} onChange={(event) => updatePreferences({ height: event.target.value ? Number(event.target.value) : undefined })}/></label>
-          </div>
-          {items.some((item) => item.file.type === 'image/gif' && item.status === 'ready') && <p className="animated-note">{tr('Animated GIFs are converted using the first frame.')}</p>}
-        </section>
-        <footer className="action-bar"><div className="action-hint">{items.length === 0 ? tr('Add images to get started') : ready === 0 ? tr('No supported images in the queue') : `${ready} ${tr(ready === 1 ? 'item' : 'items')} ${tr('Ready to convert').toLowerCase()}`}</div><button className="primary-button" onClick={convert} disabled={ready === 0 || converting}><Icon name="convert" size={17}/>{converting ? tr('Converting...') : done > 0 && ready === 0 ? tr('Done') : tr('Convert')}<span className="button-count">{ready || ''}</span></button></footer>
+      <header className="topbar"><div className="breadcrumb">FlickVert <span>›</span><span>{tr(section === 'home' ? 'Home' : section === 'history' ? 'History' : 'Settings')}</span></div></header>
+      {section === 'home' && <div className="page home-page">
+        <div className="home-art" aria-hidden="true"><span className="home-ring home-ring-one"/><span className="home-ring home-ring-two"/><img src="/fv-mark.svg" alt=""/></div>
+        <p className="eyebrow">{tr('PRIVATE BY DESIGN')}</p>
+        <h1>FlickVert</h1>
+        <p className="home-lead">{tr('Work with files where they are.')}</p>
+        <p className="home-description">{tr('Drag a file in Explorer or Finder, press Shift, and drop it on an action.')}</p>
+        <div className="home-steps" aria-label={tr('Quick shortcut')}>
+          <div><kbd>⇧ Shift</kbd><span>{tr('Convert')}</span></div>
+          <div><kbd>{navigator.platform.startsWith('Mac') ? '⌘ Command' : 'Ctrl'}</kbd><span>{tr('Tools')}</span></div>
+          <div><kbd>{navigator.platform.startsWith('Mac') ? '⌥ Option' : 'Alt'}</kbd><span>{tr('Actions')}</span></div>
+        </div>
+        <p className="home-footnote">{tr('Quick shortcut')}: <kbd>{preferences.shortcut.replaceAll('+', ' + ')}</kbd> · {tr('Same folder as original')}</p>
       </div>}
-      {section === 'history' && <div className="page simple-page"><p className="eyebrow">{tr('RECENT WORK')}</p><h1>{tr('History')}</h1><p className="subtitle">{tr('Recent conversions are stored on this device.')}</p>{history.length ? <div className="file-list history-list">{history.map((item) => <article className="file-row" key={item.id}><div className="file-icon"><Icon name="check" size={18}/></div><div className="file-info"><strong title={item.output}>{item.output}</strong><span>{item.fileName} <i/> {sizeOf(item.size)}</span></div><span className="status done">{tr('Converted')}</span></article>)}</div> : <div className="empty-queue history-empty"><div className="empty-glyph"><Icon name="history" size={21}/></div><div><strong>{tr('No completed conversions yet')}</strong><p>{tr('Completed conversions will appear here.')}</p></div></div>}<button className="secondary-button" onClick={() => setSection('convert')}>{tr('Back to conversion')}</button></div>}
-      {section === 'settings' && <div className="page simple-page"><p className="eyebrow">{tr('MAKE IT YOURS')}</p><h1>{tr('Settings')}</h1><p className="subtitle">{tr('Choose how FlickVert looks.')}</p><h2 className="preference-heading">{tr('Appearance')}</h2><div className="theme-options">{(['system', 'light', 'dark'] as const).map((appearance) => <button key={appearance} className={theme === appearance ? 'theme-option selected' : 'theme-option'} onClick={() => updatePreferences({ appearance })}>{tr(appearance === 'system' ? 'System' : appearance === 'light' ? 'Light' : 'Dark')}</button>)}</div><h2 className="preference-heading">{tr('Language')}</h2><div className="theme-options"><button className={language === 'en' ? 'theme-option selected' : 'theme-option'} onClick={() => updatePreferences({ language: 'en' })}>{tr('English')}</button><button className={language === 'ru' ? 'theme-option selected' : 'theme-option'} onClick={() => updatePreferences({ language: 'ru' })}>{tr('Russian')}</button><button className={language === 'zh' ? 'theme-option selected' : 'theme-option'} onClick={() => updatePreferences({ language: 'zh' })}>{tr('Chinese')}</button></div><h2 className="preference-heading">{tr('Quick shortcut')}</h2><label className="field shortcut-field"><select value={preferences.shortcut} onChange={(event) => { void updateShortcut(event.target.value) }}><option value="CTRL+ALT+SPACE">Ctrl + Alt + Space</option><option value="CTRL+SHIFT+SPACE">Ctrl + Shift + Space</option><option value="ALT+SHIFT+SPACE">Alt + Shift + Space</option></select></label>{shortcutError && <p className="shortcut-error">{tr('Shortcut unavailable. Use the tray menu.')}</p>}<h2 className="preference-heading">{tr('Conversion engines')}</h2><div className="engine-status">{[['FFmpeg', engines.ffmpeg], ['Pandoc', engines.pandoc], ['ImageMagick', engines.imagemagick], ['LibreOffice', engines.libreoffice]].map(([name, available]) => <div key={String(name)}><span>{name}</span><span className={available ? 'engine-found' : ''}>{tr(available ? 'Detected' : 'Not detected on PATH')}</span></div>)}</div><div className="settings-note"><Icon name="lock" size={17}/> {tr('Your files stay on this device. Processing runs locally.')}</div></div>}
+      {section === 'history' && <div className="page simple-page"><p className="eyebrow">{tr('RECENT WORK')}</p><h1>{tr('History')}</h1><p className="subtitle">{tr('Recent conversions are stored on this device.')}</p>{history.length ? <div className="file-list history-list">{history.map((item) => <article className="file-row" key={item.id}><div className="file-icon">✓</div><div className="file-info"><strong title={item.output}>{item.output}</strong><span>{item.fileName} · {sizeOf(item.size)}</span></div><span className="status done">{tr('Converted')}</span></article>)}</div> : <div className="empty-queue history-empty"><div className="empty-glyph">◷</div><div><strong>{tr('No completed conversions yet')}</strong><p>{tr('Completed conversions will appear here.')}</p></div></div>}</div>}
+      {section === 'settings' && <div className="page simple-page"><p className="eyebrow">{tr('MAKE IT YOURS')}</p><h1>{tr('Settings')}</h1><p className="subtitle">{tr('Choose how FlickVert looks.')}</p><h2 className="preference-heading">{tr('Appearance')}</h2><div className="theme-options">{(['system', 'light', 'dark'] as const).map((appearance) => <button key={appearance} className={preferences.appearance === appearance ? 'theme-option selected' : 'theme-option'} onClick={() => updatePreferences({ appearance })}>{tr(appearance === 'system' ? 'System' : appearance === 'light' ? 'Light' : 'Dark')}</button>)}</div><h2 className="preference-heading">{tr('Language')}</h2><div className="theme-options">{(['en', 'ru', 'zh'] as const).map((language) => <button key={language} className={preferences.language === language ? 'theme-option selected' : 'theme-option'} onClick={() => updatePreferences({ language })}>{tr(language === 'en' ? 'English' : language === 'ru' ? 'Russian' : 'Chinese')}</button>)}</div><h2 className="preference-heading">{tr('Quick shortcut')}</h2><label className="field shortcut-field"><select value={preferences.shortcut} onChange={(event) => { void updateShortcut(event.target.value) }}><option value="CTRL+ALT+SPACE">Ctrl + Alt + Space</option><option value="CTRL+SHIFT+SPACE">Ctrl + Shift + Space</option><option value="ALT+SHIFT+SPACE">Alt + Shift + Space</option></select></label>{shortcutError && <p className="shortcut-error">{tr('Shortcut unavailable. Use the tray menu.')}</p>}<h2 className="preference-heading">{tr('Output settings')}</h2><div className="home-settings"><label className="field"><span>{tr('Quality')} · {preferences.quality}%</span><input type="range" min="40" max="100" value={preferences.quality} onChange={(event) => updatePreferences({ quality: Number(event.target.value) })}/></label><label className="field"><span>{tr('Max width')}</span><input type="number" min="1" max="32768" value={preferences.width ?? ''} onChange={(event) => updatePreferences({ width: event.target.value ? Number(event.target.value) : undefined })}/></label><label className="field"><span>{tr('Max height')}</span><input type="number" min="1" max="32768" value={preferences.height ?? ''} onChange={(event) => updatePreferences({ height: event.target.value ? Number(event.target.value) : undefined })}/></label></div><h2 className="preference-heading">{tr('Conversion engines')}</h2><div className="engine-status">{[['FFmpeg', engines.ffmpeg], ['Pandoc', engines.pandoc], ['ImageMagick', engines.imagemagick], ['LibreOffice', engines.libreoffice]].map(([name, available]) => <div key={String(name)}><span>{name}</span><span className={available ? 'engine-found' : ''}>{tr(available ? 'Detected' : 'Not detected on PATH')}</span></div>)}</div><div className="settings-note">{tr('Your files stay on this device. Processing runs locally.')}</div></div>}
     </main>
-    {dragging && <div className="drag-overlay"><div><Icon name="plus" size={30}/><strong>{tr('Drop files to add them')}</strong></div></div>}
   </div>
 }

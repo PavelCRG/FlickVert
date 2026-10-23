@@ -1,6 +1,9 @@
 import type { Language } from './settings'
 
 const messages = {
+  'Home': ['Home', 'Главная'],
+  'Work with files where they are.': ['Work with files where they are.', 'Работайте с файлами прямо в их папке.'],
+  'Drag a file in Explorer or Finder, press Shift, and drop it on an action.': ['Drag a file in Explorer or Finder, press Shift, and drop it on an action.', 'Перетащите файл в Проводнике или Finder, нажмите Shift и отпустите на нужном действии.'],
   'Tools': ['Tools', 'Инструменты'], 'Actions': ['Actions', 'Действия'],
   'Images to PDF': ['Images to PDF', 'Изображения в PDF'], 'PDF created': ['PDF created', 'PDF создан'],
   'Create ZIP': ['Create ZIP', '\u0421\u043e\u0437\u0434\u0430\u0442\u044c ZIP'], 'Extract ZIP': ['Extract ZIP', '\u0420\u0430\u0441\u043f\u0430\u043a\u043e\u0432\u0430\u0442\u044c ZIP'], 'Archive created': ['Archive created', '\u0410\u0440\u0445\u0438\u0432 \u0441\u043e\u0437\u0434\u0430\u043d'], 'Archive extracted': ['Archive extracted', '\u0410\u0440\u0445\u0438\u0432 \u0440\u0430\u0441\u043f\u0430\u043a\u043e\u0432\u0430\u043d'],
@@ -45,6 +48,9 @@ const messages = {
 
 export type MessageKey = keyof typeof messages
 const chinese: { [K in keyof typeof messages]: string } = {
+  'Home': '主页',
+  'Work with files where they are.': '直接在文件所在位置处理。',
+  'Drag a file in Explorer or Finder, press Shift, and drop it on an action.': '在资源管理器或 Finder 中拖动文件，按 Shift，然后放到所需操作上。',
   'Tools': '工具', 'Actions': '操作',
   'Images to PDF': '图像转 PDF', 'PDF created': 'PDF 已创建',
   'Create ZIP': '\u521b\u5efa ZIP', 'Extract ZIP': '\u89e3\u538b ZIP', 'Archive created': '\u538b\u7f29\u5305\u5df2\u521b\u5efa', 'Archive extracted': '\u538b\u7f29\u5305\u5df2\u89e3\u538b',

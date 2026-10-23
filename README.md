@@ -10,7 +10,7 @@
   <p><a href="README.ru.md">Русский</a> · <a href="README.zh-CN.md">简体中文</a></p>
 </div>
 
-FlickVert sits beside File Explorer and Finder. Drop a file onto the app, choose a format, and save the result on your device.
+FlickVert sits beside File Explorer and Finder. Drag a file, hold Shift, and drop it onto an action in the wheel beside the pointer. The main window is a start screen with history and settings.
 
 <p align="center"><a href="https://github.com/PavelCRG/FlickVert/releases/latest"><strong>Download FlickVert for Windows or macOS →</strong></a></p>
 
@@ -26,15 +26,15 @@ FlickVert sits beside File Explorer and Finder. Drop a file onto the app, choose
 
 ## Quick start
 
-1. Start FlickVert. It stays in the tray while you work in File Explorer or Finder.
+1. Start FlickVert. The start screen opens once; closing it leaves FlickVert in the tray while you work in File Explorer or Finder.
 2. Drag a file, press **Shift**, and drop it onto a format in the wheel beside the pointer.
-3. Find the converted file beside the original. Open the main window from the tray for settings, history, or manual conversion.
+3. Find the converted file beside the original. Open the main window from the tray for the start screen, history, and settings.
 
 ## Closing the app
 
 Closing the main window keeps FlickVert in the tray. Choose **Show FlickVert** from the tray menu to reopen it, or **Quit** to stop the background helper.
 
-The default shortcut, **Ctrl+Alt+Space**, opens quick actions. Change it in **Settings**.
+The default shortcut, **Ctrl+Alt+Space**, opens quick actions. Drop a file onto the wheel, use **1/2/3** to switch modes, arrow keys to select a target, and **Enter** to run it. **Esc** closes the wheel. Change the shortcut in **Settings**. The shortcut alone does not read the current selection in Explorer or Finder.
 
 While dragging, press **Ctrl** (Windows) or **Command** (macOS) for tools, or **Alt/Option** for file actions. The tools wheel can resize, rotate, flip, grayscale, square-crop, compress images, or combine up to 100 images into a PDF. With FFmpeg installed, it also offers video compression, mute, audio extraction, thumbnails, audio compression, and loudness normalization. Actions can create or safely extract ZIP archives, copy or move selected files and folders to `Downloads/FlickVert`, reveal one item in Explorer/Finder, copy its path, or open its folder in a terminal.
 
@@ -44,7 +44,7 @@ While dragging, press **Ctrl** (Windows) or **Command** (macOS) for tools, or **
 2. While still holding the mouse button, press **Shift**. The format wheel opens under the pointer; you can then release Shift.
 3. Move over a format and release the mouse button to convert. Press **Esc** to cancel.
 
-The wheel needs a file drag that starts in Explorer or Finder. Selecting a file with **Browse** does not start this gesture.
+The wheel needs a file drag that starts in Explorer or Finder. You can also open the wheel with the global shortcut and then drag a file onto it.
 
 ## Supported formats
 
@@ -61,7 +61,6 @@ The wheel needs a file drag that starts in Explorer or Finder. Selecting a file 
 ## Where files are saved
 
 - Files dropped from Explorer or Finder are saved beside their originals.
-- Images selected with **Browse** are saved to `Downloads/FlickVert`.
 - Existing files are kept. If a name is taken, FlickVert adds a number, such as `photo (2).webp`.
 
 ## Build from source

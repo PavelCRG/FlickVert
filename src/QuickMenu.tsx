@@ -262,8 +262,6 @@ export default function QuickMenu() {
   }
 
   useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') hide() }
-    window.addEventListener('keydown', onKeyDown)
     let disposed = false
     const stops: (() => void)[] = []
     const addStop = (stop: () => void) => { if (disposed) stop(); else stops.push(stop) }
@@ -311,7 +309,6 @@ export default function QuickMenu() {
 
     return () => {
       disposed = true
-      window.removeEventListener('keydown', onKeyDown)
       stops.forEach((stop) => stop())
       if (hideTimer.current !== undefined) window.clearTimeout(hideTimer.current)
     }
@@ -362,6 +359,25 @@ export default function QuickMenu() {
   }
 
   const actions = files.length ? wheelMode === 'actions' ? fileActions : wheelMode === 'tools' ? toolActionsFor(files, ffmpegAvailable) : [] : []
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { hide(); return }
+      const modes = ['convert', 'tools', 'actions'] as const
+      if (['1', '2', '3'].includes(event.key)) { setActiveWheelMode(modes[Number(event.key) - 1]); return }
+      const count = wheelMode === 'convert' ? formats.length : actions.length
+      if (!count || dropHandled.current) return
+      if (event.key === 'ArrowRight' || event.key === 'ArrowDown') { event.preventDefault(); setActive((value) => (value + 1) % count) }
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') { event.preventDefault(); setActive((value) => (value + count - 1) % count) }
+      if (event.key === 'Enter' && active >= 0) {
+        event.preventDefault()
+        if (wheelMode === 'convert') void convertFiles(filesRef.current, formats[active])
+        else if (wheelMode === 'tools') void runTool(actions[active].id, filesRef.current)
+        else if (actions[active].id === 'create-zip' || ['copy-to-folder', 'move-to-folder'].includes(actions[active].id) || (files.length === 1 && (actions[active].id !== 'extract-zip' || files[0].extension === 'zip'))) void choose(actions[active].id)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [active, actions, files, formats, wheelMode])
   return <main className={`quick-shell${dragMode ? ' drag-mode' : ''}`} aria-label="FlickVert quick actions">
     <header className="quick-tabs">
       {(['convert', 'tools', 'actions'] as const).map((mode) => <button key={mode} className={wheelMode === mode ? 'selected' : ''} onClick={() => setActiveWheelMode(mode)} aria-pressed={wheelMode === mode}><kbd>{mode === 'convert' ? '⇧' : mode === 'tools' ? isMac ? '⌘' : 'Ctrl' : isMac ? '⌥' : 'Alt'}</kbd>{tr(mode === 'convert' ? 'Convert' : mode === 'tools' ? 'Tools' : 'Actions')}</button>)}
@@ -389,5 +405,6 @@ export default function QuickMenu() {
         return <button key={action.id} className={`quick-action action-${action.id}${active === index ? ' active' : ''}`} style={{ left: `${50 + Math.cos(angle) * 34}%`, top: `${50 + Math.sin(angle) * 34}%`, '--petal-angle': `${index / entries.length * 360}deg` } as CSSProperties} onClick={() => void choose(action.id)} disabled={(needsOneFile && files.length !== 1) || unavailableTool || unavailableArchive}><span className="quick-petal-content"><span className="quick-glyph">{action.glyph}</span><small>{tr(action.label)}</small></span></button>
       })}
     </div>}
+    {!dragMode && <div className="quick-keyhint"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> · ← → · Enter · Esc</div>}
   </main>
 }
