@@ -45,7 +45,7 @@ html:has(.quick-shell), body:has(.quick-shell), #root:has(.quick-shell) {
   background: color-mix(in srgb, Canvas 82%, transparent); color: CanvasText;
   box-shadow: 0 9px 22px #17344930, inset 0 1px #fff9;
   backdrop-filter: blur(22px) saturate(1.4); text-align: center; cursor: pointer;
-  transition: background-color .14s ease, border-color .14s ease, box-shadow .14s ease;
+  transition: background-color .16s ease, border-color .16s ease, box-shadow .16s ease, scale .16s ease;
 }
 .quick-petal-content {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
@@ -56,6 +56,7 @@ html:has(.quick-shell), body:has(.quick-shell), #root:has(.quick-shell) {
   outline: none; border-color: color-mix(in srgb, AccentColor 65%, Canvas);
   background: color-mix(in srgb, AccentColor 24%, Canvas);
   box-shadow: 0 11px 27px #17344942, inset 0 1px #fffa;
+  scale: 1.07;
 }
 .quick-format strong {font-size: 13px; line-height: 1.1; letter-spacing: -.02em}
 .quick-format small {font-size: 9px; color: color-mix(in srgb, CanvasText 60%, transparent)}
@@ -82,6 +83,13 @@ html:has(.quick-shell), body:has(.quick-shell), #root:has(.quick-shell) {
   box-shadow: 0 5px 16px #17344918; background: color-mix(in srgb, Canvas 88%, transparent);
 }
 .quick-empty .quick-center span {max-width: 180px; font-weight: 500}
+.quick-shell.drag-mode .quick-orbit {animation: wheel-arrive .22s cubic-bezier(.2,.75,.25,1) both}
+.quick-shell.drag-mode .quick-format,
+.quick-shell.drag-mode .quick-action {animation: petal-arrive .28s cubic-bezier(.2,.75,.25,1) both;animation-delay:calc(var(--entry-index, 0) * 18ms)}
+.quick-shell.drag-mode .quick-center {animation: center-arrive .32s cubic-bezier(.2,.75,.25,1) both}
+@keyframes wheel-arrive {from{opacity:0;scale:.94}to{opacity:1;scale:1}}
+@keyframes petal-arrive {from{opacity:0;scale:.78}to{opacity:1;scale:1}}
+@keyframes center-arrive {from{opacity:0;scale:.88}to{opacity:1;scale:1}}
 .quick-keyhint {position:absolute;bottom:0;left:50%;transform:translateX(-50%);white-space:nowrap;padding:3px 10px;border-radius:8px;background:color-mix(in srgb,Canvas 85%,transparent);font-size:10px;color:color-mix(in srgb,CanvasText 70%,transparent)}
 .quick-keyhint kbd {font:inherit}
-@media (prefers-reduced-motion: reduce) { .quick-format, .quick-action {transition: none} }
+@media (prefers-reduced-motion: reduce) { .quick-format, .quick-action {transition: none;animation:none!important}.quick-shell.drag-mode .quick-orbit,.quick-shell.drag-mode .quick-center{animation:none!important} }

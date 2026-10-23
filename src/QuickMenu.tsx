@@ -424,7 +424,7 @@ export default function QuickMenu() {
         const distance = formats.length > 5 ? 35 : 33
         const left = 50 + Math.cos(angle) * distance
         const top = 50 + Math.sin(angle) * distance
-        return <button key={format.extension} className={`quick-format${active === index ? ' active' : ''}`} style={{ left: `${left}%`, top: `${top}%`, '--petal-angle': `${index / formats.length * 360}deg` } as CSSProperties} onClick={() => void convertFiles(filesRef.current, format)} aria-label={`${tr('Convert to')} ${format.label}`}>
+        return <button key={format.extension} className={`quick-format${active === index ? ' active' : ''}`} style={{ left: `${left}%`, top: `${top}%`, '--petal-angle': `${index / formats.length * 360}deg`, '--entry-index': index } as CSSProperties} onClick={() => void convertFiles(filesRef.current, format)} aria-label={`${tr('Convert to')} ${format.label}`}>
           <span className="quick-petal-content"><strong>{format.label}</strong><small>{tr('Convert to')}</small></span>
         </button>
       })}
@@ -438,7 +438,7 @@ export default function QuickMenu() {
         const unavailableTool = imageTool && dragMode && !toolActionsFor(files, ffmpegAvailable, imagemagickAvailable).some((tool) => tool.id === action.id)
         const multipleEditorFiles = action.id === 'image-editor' && files.length !== 1
         const unavailableArchive = dragMode && (action.id === 'create-zip' ? files.length === 0 : action.id === 'extract-zip' && (files.length !== 1 || files[0]?.extension !== 'zip'))
-        return <button key={action.id} className={`quick-action action-${action.id}${active === index ? ' active' : ''}`} style={{ left: `${50 + Math.cos(angle) * actionRadius}%`, top: `${50 + Math.sin(angle) * actionRadius}%`, '--petal-angle': `${index / entries.length * 360}deg` } as CSSProperties} onClick={() => void choose(action.id)} disabled={(needsOneFile && files.length !== 1) || unavailableTool || unavailableArchive || multipleEditorFiles}><span className="quick-petal-content"><span className="quick-glyph">{action.glyph}</span><small>{tr(action.label)}</small></span></button>
+        return <button key={action.id} className={`quick-action action-${action.id}${active === index ? ' active' : ''}`} style={{ left: `${50 + Math.cos(angle) * actionRadius}%`, top: `${50 + Math.sin(angle) * actionRadius}%`, '--petal-angle': `${index / entries.length * 360}deg`, '--entry-index': index } as CSSProperties} onClick={() => void choose(action.id)} disabled={(needsOneFile && files.length !== 1) || unavailableTool || unavailableArchive || multipleEditorFiles}><span className="quick-petal-content"><span className="quick-glyph">{action.glyph}</span><small>{tr(action.label)}</small></span></button>
       })}
     </div>}
     {!dragMode && <div className="quick-keyhint"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> · ← → · Enter · Esc</div>}

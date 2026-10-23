@@ -99,6 +99,18 @@ export default function App() {
         <p className="eyebrow">{tr('PRIVATE BY DESIGN')}</p>
         <h1>{tr('Work with files where they are.')}</h1>
         <p className="home-description">{tr('Select a file in Explorer or Finder, then use the shortcut or choose files here.')}</p>
+        <div className="home-preview" aria-hidden="true">
+          <div className="preview-wheel">
+            <span className="preview-orbit"/>
+            <span className="preview-format format-webp">WEBP</span>
+            <span className="preview-format format-pdf">PDF</span>
+            <span className="preview-format format-heic">HEIC</span>
+            <span className="preview-format format-tiff">TIFF</span>
+            <span className="preview-format format-png">PNG</span>
+            <span className="preview-format format-jpg">JPG</span>
+            <div className="preview-file"><div className="preview-thumbnail"><span/></div><small>photo.jpg</small></div>
+          </div>
+        </div>
         <button className="primary-button home-pick" onClick={() => void chooseFiles()}>{tr('Choose files')}</button>
         {pickError && <p className="shortcut-error">{tr('Could not open files')}</p>}
         <div className="home-steps" aria-label={tr('Quick shortcut')}>
