@@ -411,13 +411,14 @@ export default function QuickMenu() {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [active, actions, files, formats, wheelMode])
-  return <main className={`quick-shell${dragMode ? ' drag-mode' : ''}`} aria-label="FlickVert quick actions">
+  const emptyWheel = !files.length && !formats.length && !actions.length
+  return <main className={`quick-shell${dragMode ? ' drag-mode' : ''}${emptyWheel ? ' quick-empty' : ''}`} aria-label="FlickVert quick actions">
     <header className="quick-tabs">
       {(['convert', 'tools', 'actions'] as const).map((mode) => <button key={mode} className={wheelMode === mode ? 'selected' : ''} onClick={() => setActiveWheelMode(mode)} aria-pressed={wheelMode === mode}><kbd>{mode === 'convert' ? '⇧' : mode === 'tools' ? isMac ? '⌘' : 'Ctrl' : isMac ? '⌥' : 'Alt'}</kbd>{tr(mode === 'convert' ? 'Convert' : mode === 'tools' ? 'Tools' : 'Actions')}</button>)}
       <button className="quick-settings" onClick={() => void choose('settings')} aria-label={tr('Settings')}>⚙</button>
     </header>
     {formats.length > 0 && wheelMode === 'convert' ? <div className="quick-orbit" aria-label={tr('Select output format')}>
-      <div className="quick-center"><img className="quick-monogram" src="/fv-mark.svg" alt="FlickVert"/><span>{status || (files.length === 1 ? files[0].name : `${files.length} ${tr('files')}`)}</span></div>
+      <div className="quick-center"><span>{status || (files.length === 1 ? files[0].name : `${files.length} ${tr('files')}`)}</span></div>
       {formats.map((format, index) => {
         const angle = (index / formats.length) * Math.PI * 2 - Math.PI / 2
         const distance = formats.length > 5 ? 35 : 33
@@ -428,7 +429,7 @@ export default function QuickMenu() {
         </button>
       })}
     </div> : <div className="quick-orbit quick-actions">
-      <div className="quick-center"><img className="quick-monogram" src="/fv-mark.svg" alt="FlickVert"/><span>{status || (files.length ? wheelMode === 'convert' || !actions.length ? tr('No formats available') : files.length === 1 ? files[0].name : `${files.length} ${tr('files')}` : tr('No selected files found'))}</span></div>
+      <div className="quick-center"><span>{status || (files.length ? wheelMode === 'convert' || !actions.length ? tr('No formats available') : files.length === 1 ? files[0].name : `${files.length} ${tr('files')}` : tr('Drag a file here'))}</span></div>
       {actions.map((action, index, entries) => {
         const angle = (index / entries.length) * Math.PI * 2 - Math.PI / 2
         const actionRadius = entries.length > 8 ? 36 : 34

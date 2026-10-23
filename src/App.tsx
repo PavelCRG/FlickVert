@@ -95,7 +95,6 @@ export default function App() {
     </aside>
 
     <main className="main">
-      <header className="topbar"><div className="breadcrumb">FlickVert <span>›</span><span>{tr(section === 'home' ? 'Home' : section === 'history' ? 'History' : 'Settings')}</span></div></header>
       {section === 'home' && <div className="page home-page">
         <p className="eyebrow">{tr('PRIVATE BY DESIGN')}</p>
         <h1>{tr('Work with files where they are.')}</h1>
