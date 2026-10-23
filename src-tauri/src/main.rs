@@ -11,7 +11,6 @@ use std::{
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
-    webview::PageLoadEvent,
     AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, Position, Size, WebviewUrl,
     WebviewWindowBuilder,
 };
@@ -31,6 +30,8 @@ struct DroppedFiles(Mutex<HashSet<PathBuf>>);
 
 #[derive(Default)]
 struct DragTrigger(Mutex<bool>);
+
+struct TrayAvailable(bool);
 
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -405,11 +406,7 @@ fn create_zip_archive(
     let result = (|| {
         let temporary = work_dir.join("archive.zip");
         archive::create_zip(&inputs, &temporary)?;
-        let downloads = app
-            .path()
-            .download_dir()
-            .map_err(|error| error.to_string())?;
-        let destination = files::output_directory(&downloads).map_err(|error| error.to_string())?;
+        let destination = inputs[0].parent().ok_or("Input folder not found")?;
         files::write_output_file(&destination, &output_name, &temporary)
             .map(|path| path.to_string_lossy().into_owned())
             .map_err(|error| error.to_string())
@@ -420,7 +417,6 @@ fn create_zip_archive(
 
 #[tauri::command]
 fn extract_zip_archive(
-    app: AppHandle,
     input_path: String,
     dropped: tauri::State<'_, DroppedFiles>,
 ) -> Result<String, String> {
@@ -432,11 +428,7 @@ fn extract_zip_archive(
     {
         return Err("Only ZIP archives can be extracted".into());
     }
-    let downloads = app
-        .path()
-        .download_dir()
-        .map_err(|error| error.to_string())?;
-    let destination = files::output_directory(&downloads).map_err(|error| error.to_string())?;
+    let destination = input.parent().ok_or("Input folder not found")?;
     let name = input
         .file_stem()
         .and_then(|value| value.to_str())
@@ -465,7 +457,10 @@ fn show_quick(app: &AppHandle, activate: bool) {
                 (QUICK_HEIGHT as f64 * scale).ceil() as u32,
             );
             let position = quick_window::clamp_window_position(
-                (cursor.x as i32, cursor.y as i32),
+                (
+                    cursor.x as i32,
+                    cursor.y as i32 - (physical_size.1 as f64 * 0.03).round() as i32,
+                ),
                 physical_size,
                 quick_window::Rect {
                     x: area.position.x,
@@ -830,13 +825,16 @@ fn main() {
             extract_zip_archive
         ])
         .setup(|app| {
+            if let Err(error) = register_shortcut(app.handle().clone(), "CTRL+ALT+SPACE".into()) {
+                eprintln!("Could not register the default shortcut: {error}");
+            }
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                 .title("FlickVert")
                 .inner_size(1120.0, 760.0)
                 .min_inner_size(760.0, 600.0)
                 .resizable(true)
                 .center()
-                .visible(true)
+                .visible(false)
                 .build()?;
             app.manage(DroppedFiles::default());
             app.manage(DragTrigger::default());
@@ -866,7 +864,7 @@ fn main() {
                     .icon_as_template(true)
                     .tooltip("FlickVert")
                     .menu(&menu)
-                    .show_menu_on_left_click(false)
+                    .show_menu_on_left_click(true)
                     .on_menu_event(|app, event| match event.id().as_ref() {
                         "show" => show_main(app),
                         "quick" => show_quick(app, true),
@@ -879,12 +877,14 @@ fn main() {
                     })
                     .build(app)
             });
+            app.manage(TrayAvailable(tray.is_ok()));
             match tray {
                 Ok(tray) => {
                     app.manage(tray);
                 }
                 Err(error) => {
-                    eprintln!("Tray unavailable; keep FlickVert open to access it: {error}")
+                    eprintln!("Tray unavailable; keep FlickVert open to access it: {error}");
+                    show_main(app.handle());
                 }
             }
             input::start(app.handle().clone());
@@ -892,28 +892,17 @@ fn main() {
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                if window.label() == "main" {
+                if window.label() == "main" && !window.state::<TrayAvailable>().0 {
                     window.app_handle().exit(0);
-                } else {
-                    api.prevent_close();
-                    let _ = window.hide();
+                    return;
                 }
-            }
-        })
-        .on_page_load(|webview, payload| {
-            if webview.label() == "main" && payload.event() == PageLoadEvent::Finished {
-                let window = webview.window();
-                let _ = window.show();
-                let _ = window.set_focus();
+                api.prevent_close();
+                let _ = window.hide();
             }
         })
         .build(tauri::generate_context!())
         .expect("FlickVert failed to start")
-        .run(|app, event| {
-            if matches!(event, tauri::RunEvent::Ready) {
-                show_main(app);
-            }
-        });
+        .run(|_, _| {});
 }
 
 #[cfg(test)]

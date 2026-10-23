@@ -1,6 +1,7 @@
 import type { Language } from './settings'
 
 const messages = {
+  'Tools': ['Tools', 'Инструменты'], 'Actions': ['Actions', 'Действия'],
   'Images to PDF': ['Images to PDF', 'Изображения в PDF'], 'PDF created': ['PDF created', 'PDF создан'],
   'Create ZIP': ['Create ZIP', '\u0421\u043e\u0437\u0434\u0430\u0442\u044c ZIP'], 'Extract ZIP': ['Extract ZIP', '\u0420\u0430\u0441\u043f\u0430\u043a\u043e\u0432\u0430\u0442\u044c ZIP'], 'Archive created': ['Archive created', '\u0410\u0440\u0445\u0438\u0432 \u0441\u043e\u0437\u0434\u0430\u043d'], 'Archive extracted': ['Archive extracted', '\u0410\u0440\u0445\u0438\u0432 \u0440\u0430\u0441\u043f\u0430\u043a\u043e\u0432\u0430\u043d'],
   'Copied files': ['Copied files', '\u0424\u0430\u0439\u043b\u044b \u0441\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u043d\u044b'], 'Moved files': ['Moved files', '\u0424\u0430\u0439\u043b\u044b \u043f\u0435\u0440\u0435\u043c\u0435\u0449\u0435\u043d\u044b'],
@@ -44,6 +45,7 @@ const messages = {
 
 export type MessageKey = keyof typeof messages
 const chinese: { [K in keyof typeof messages]: string } = {
+  'Tools': '工具', 'Actions': '操作',
   'Images to PDF': '图像转 PDF', 'PDF created': 'PDF 已创建',
   'Create ZIP': '\u521b\u5efa ZIP', 'Extract ZIP': '\u89e3\u538b ZIP', 'Archive created': '\u538b\u7f29\u5305\u5df2\u521b\u5efa', 'Archive extracted': '\u538b\u7f29\u5305\u5df2\u89e3\u538b',
   'Copied files': '\u5df2\u590d\u5236\u6587\u4ef6', 'Moved files': '\u5df2\u79fb\u52a8\u6587\u4ef6',

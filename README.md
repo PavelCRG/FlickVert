@@ -26,13 +26,13 @@ FlickVert sits beside File Explorer and Finder. Drop a file onto the app, choose
 
 ## Quick start
 
-1. Open FlickVert and drop one or more files into the window, or choose an image with **Browse**.
-2. Pick an output format and start the conversion.
-3. Find the converted file beside the original. Images chosen with **Browse** go to `Downloads/FlickVert`.
+1. Start FlickVert. It stays in the tray while you work in File Explorer or Finder.
+2. Drag a file, press **Shift**, and drop it onto a format in the wheel beside the pointer.
+3. Find the converted file beside the original. Open the main window from the tray for settings, history, or manual conversion.
 
 ## Closing the app
 
-Closing the window exits FlickVert. The tray icon and shortcut are available while the app is open.
+Closing the main window keeps FlickVert in the tray. Choose **Show FlickVert** from the tray menu to reopen it, or **Quit** to stop the background helper.
 
 The default shortcut, **Ctrl+Alt+Space**, opens quick actions. Change it in **Settings**.
 
@@ -56,7 +56,7 @@ The wheel needs a file drag that starts in Explorer or Finder. Selecting a file 
 | Text documents and ebooks | Depends on Pandoc | Install Pandoc separately. |
 | Office documents to PDF | Depends on LibreOffice | Install LibreOffice separately. |
 | Camera RAW | Depends on ImageMagick | Install ImageMagick separately. |
-| Archives | ZIP create and extract | Extracted into a new folder in `Downloads/FlickVert`; unsafe paths and links are rejected. |
+| Archives | ZIP create and extract | Saved beside the selected file; unsafe paths and links are rejected. |
 
 ## Where files are saved
 

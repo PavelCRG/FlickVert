@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 import { invoke } from '@tauri-apps/api/core'
@@ -13,11 +13,7 @@ type NativeFile = { path: string; name: string; size: number; extension: string;
 type Format = { extension: string; label: string }
 type Position = { x: number; y: number }
 const imageExtensions = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp']
-const quickActions = [
-  { id: 'convert', label: 'Convert' as const, glyph: '↔' },
-  { id: 'resize', label: 'Resize' as const, glyph: '⌗' },
-  { id: 'settings', label: 'Settings' as const, glyph: '⚙' },
-]
+const isMac = navigator.platform.startsWith('Mac')
 const toolActions = [
   { id: 'images-to-pdf', label: 'Images to PDF' as const, glyph: 'PDF' },
   { id: 'resize', label: 'Resize' as const, glyph: '↔' },
@@ -62,10 +58,11 @@ function outputLabel(extension: string) {
 function selectedSector(point: Position, size: { width: number; height: number }, count: number) {
   if (!count) return -1
   const dx = point.x - size.width / 2
-  const dy = point.y - size.height / 2
-  if (Math.hypot(dx, dy) < Math.min(size.width, size.height) * 0.2) return -1
+  const dy = point.y - size.height * 0.53
+  const radius = Math.hypot(dx, dy)
+  if (radius < Math.min(size.width, size.height) * 0.2 || radius > Math.min(size.width, size.height) * 0.44) return -1
   const angle = (Math.atan2(dy, dx) + Math.PI / 2 + Math.PI * 2) % (Math.PI * 2)
-  return Math.floor(angle / (Math.PI * 2 / count))
+  return Math.floor((angle + Math.PI / count) / (Math.PI * 2 / count)) % count
 }
 
 export default function QuickMenu() {
@@ -94,13 +91,20 @@ export default function QuickMenu() {
   function setActiveWheelMode(value: 'convert' | 'tools' | 'actions') {
     wheelModeRef.current = value
     setWheelMode(value)
+    setActive(-1)
   }
 
   function hide() {
     if (hideTimer.current !== undefined) window.clearTimeout(hideTimer.current)
     setDragVisible(false)
     setActiveWheelMode('convert')
+    filesRef.current = []
+    formatsRef.current = []
+    setFiles([])
+    setFormats([])
     setActive(-1)
+    setStatus('')
+    dropHandled.current = false
     void getCurrentWindow().hide()
   }
 
@@ -241,7 +245,7 @@ export default function QuickMenu() {
       if (wheelModeRef.current === 'actions') {
         const index = selectedSector(point, size, fileActions.length)
         const id = fileActions[index]?.id
-        if (index >= 0 && received.length && (id === 'copy-to-folder' || id === 'create-zip' || received.length === 1)) await choose(id)
+        if (index >= 0 && received.length && (id === 'copy-to-folder' || id === 'move-to-folder' || id === 'create-zip' || received.length === 1)) await choose(id)
         return
       }
       if (wheelModeRef.current === 'tools') {
@@ -273,6 +277,7 @@ export default function QuickMenu() {
       }
     }).then(addStop)
     void listen('flickvert://drag-wheel-open', async () => {
+      if (hideTimer.current !== undefined) window.clearTimeout(hideTimer.current)
       const opened = await invoke<boolean>('take_drag_trigger').catch(() => false)
       if (opened) { setDragVisible(true); setActiveWheelMode('convert'); setStatus(''); dropHandled.current = false }
     }).then(addStop)
@@ -291,6 +296,7 @@ export default function QuickMenu() {
     void getCurrentWebview().onDragDropEvent(({ payload }) => {
       if (payload.type === 'enter') {
         if (hideTimer.current !== undefined) window.clearTimeout(hideTimer.current)
+        setDragVisible(true)
         void refreshFiles(payload.paths).catch((error) => setStatus(String(error)))
       } else if (payload.type === 'over') {
         void getCurrentWindow().innerSize().then((size) => setActive(selectedSector(payload.position, size, wheelModeRef.current === 'tools' ? toolActionsFor(filesRef.current, ffmpegAvailableRef.current).length : wheelModeRef.current === 'actions' ? fileActions.length : formatsRef.current.length)))
@@ -355,30 +361,33 @@ export default function QuickMenu() {
     }
   }
 
+  const actions = files.length ? wheelMode === 'actions' ? fileActions : wheelMode === 'tools' ? toolActionsFor(files, ffmpegAvailable) : [] : []
   return <main className={`quick-shell${dragMode ? ' drag-mode' : ''}`} aria-label="FlickVert quick actions">
-    <header><img src="/fv-mark.svg" alt=""/><span>FlickVert</span><kbd>ESC</kbd></header>
+    <header className="quick-tabs">
+      {(['convert', 'tools', 'actions'] as const).map((mode) => <button key={mode} className={wheelMode === mode ? 'selected' : ''} onClick={() => setActiveWheelMode(mode)} aria-pressed={wheelMode === mode}><kbd>{mode === 'convert' ? '⇧' : mode === 'tools' ? isMac ? '⌘' : 'Ctrl' : isMac ? '⌥' : 'Alt'}</kbd>{tr(mode === 'convert' ? 'Convert' : mode === 'tools' ? 'Tools' : 'Actions')}</button>)}
+      <button className="quick-settings" onClick={() => void choose('settings')} aria-label={tr('Settings')}>⚙</button>
+    </header>
     {formats.length > 0 && wheelMode === 'convert' ? <div className="quick-orbit" aria-label={tr('Select output format')}>
-      <div className="quick-center"><img className="quick-monogram" src="/fv-mark.svg" alt="FlickVert"/><span>{files.length === 1 ? files[0].name : `${files.length} ${tr('files')}`}</span></div>
+      <div className="quick-center"><img className="quick-monogram" src="/fv-mark.svg" alt="FlickVert"/><span>{status || (files.length === 1 ? files[0].name : `${files.length} ${tr('files')}`)}</span></div>
       {formats.map((format, index) => {
         const angle = (index / formats.length) * Math.PI * 2 - Math.PI / 2
         const distance = formats.length > 5 ? 35 : 33
         const left = 50 + Math.cos(angle) * distance
         const top = 50 + Math.sin(angle) * distance
-        return <button key={format.extension} className={`quick-format${active === index ? ' active' : ''}`} style={{ left: `${left}%`, top: `${top}%` }} onClick={() => void convertFiles(filesRef.current, format)} aria-label={`${tr('Convert to')} ${format.label}`}>
-          <strong>{format.label}</strong><small>{tr('Convert to')}</small>
+        return <button key={format.extension} className={`quick-format${active === index ? ' active' : ''}`} style={{ left: `${left}%`, top: `${top}%`, '--petal-angle': `${index / formats.length * 360}deg` } as CSSProperties} onClick={() => void convertFiles(filesRef.current, format)} aria-label={`${tr('Convert to')} ${format.label}`}>
+          <span className="quick-petal-content"><strong>{format.label}</strong><small>{tr('Convert to')}</small></span>
         </button>
       })}
     </div> : <div className="quick-orbit quick-actions">
-      <div className="quick-center"><img className="quick-monogram" src="/fv-mark.svg" alt="FlickVert"/><span>{status || (files.length ? tr('No formats available') : dragMode ? tr('Drag a file here') : tr('Choose an action'))}</span></div>
-      {(dragMode ? wheelMode === 'actions' ? fileActions : wheelMode === 'tools' ? toolActionsFor(files, ffmpegAvailable) : quickActions : quickActions).map((action, index, entries) => {
+      <div className="quick-center"><img className="quick-monogram" src="/fv-mark.svg" alt="FlickVert"/><span>{status || (files.length ? wheelMode === 'convert' || !actions.length ? tr('No formats available') : files.length === 1 ? files[0].name : `${files.length} ${tr('files')}` : tr('Drag a file here'))}</span></div>
+      {actions.map((action, index, entries) => {
         const angle = (index / entries.length) * Math.PI * 2 - Math.PI / 2
         const needsOneFile = ['extract-zip', 'reveal', 'copy-path', 'open-terminal'].includes(action.id)
         const imageTool = allToolActions.some((tool) => tool.id === action.id)
         const unavailableTool = imageTool && dragMode && !toolActionsFor(files, ffmpegAvailable).some((tool) => tool.id === action.id)
         const unavailableArchive = dragMode && (action.id === 'create-zip' ? files.length === 0 : action.id === 'extract-zip' && (files.length !== 1 || files[0]?.extension !== 'zip'))
-        return <button key={action.id} className={`quick-action action-${action.id}${active === index ? ' active' : ''}`} style={{ left: `${50 + Math.cos(angle) * 34}%`, top: `${50 + Math.sin(angle) * 34}%` }} onClick={() => void choose(action.id)} disabled={(needsOneFile && files.length !== 1) || unavailableTool || unavailableArchive}><span>{action.glyph}</span><small>{tr(action.label)}</small></button>
+        return <button key={action.id} className={`quick-action action-${action.id}${active === index ? ' active' : ''}`} style={{ left: `${50 + Math.cos(angle) * 34}%`, top: `${50 + Math.sin(angle) * 34}%`, '--petal-angle': `${index / entries.length * 360}deg` } as CSSProperties} onClick={() => void choose(action.id)} disabled={(needsOneFile && files.length !== 1) || unavailableTool || unavailableArchive}><span className="quick-petal-content"><span className="quick-glyph">{action.glyph}</span><small>{tr(action.label)}</small></span></button>
       })}
     </div>}
-    <footer>{status || (formats.length ? `${tr('Drop on a format')} · ${files.length} ${tr(files.length === 1 ? 'file' : 'files')}` : dragMode ? tr('Drag a file here') : tr('Choose an action'))}</footer>
   </main>
 }
