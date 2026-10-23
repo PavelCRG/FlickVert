@@ -1,6 +1,7 @@
 import type { Language } from './settings'
 
 const messages = {
+  'Remove metadata': ['Remove metadata', 'Удалить метаданные'],
   'Home': ['Home', 'Главная'],
   'Work with files where they are.': ['Work with files where they are.', 'Работайте с файлами прямо в их папке.'],
   'Drag a file in Explorer or Finder, press Shift, and drop it on an action.': ['Drag a file in Explorer or Finder, press Shift, and drop it on an action.', 'Перетащите файл в Проводнике или Finder, нажмите Shift и отпустите на нужном действии.'],
@@ -48,6 +49,7 @@ const messages = {
 
 export type MessageKey = keyof typeof messages
 const chinese: { [K in keyof typeof messages]: string } = {
+  'Remove metadata': '删除元数据',
   'Home': '主页',
   'Work with files where they are.': '直接在文件所在位置处理。',
   'Drag a file in Explorer or Finder, press Shift, and drop it on an action.': '在资源管理器或 Finder 中拖动文件，按 Shift，然后放到所需操作上。',

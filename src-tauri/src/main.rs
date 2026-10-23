@@ -75,6 +75,7 @@ fn file_mime(extension: &str) -> Option<&'static str> {
         "mka" => Some("audio/x-matroska"),
         "wma" => Some("audio/x-ms-wma"),
         "ass" | "ssa" => Some("text/plain"),
+        "pdf" => Some("application/pdf"),
         "srt" => Some("application/x-subrip"),
         "vtt" => Some("text/vtt"),
         "docx" | "doc" | "odt" | "rtf" | "md" | "markdown" | "html" | "htm" | "epub" | "txt"
@@ -147,7 +148,15 @@ fn quick_formats(
         .unwrap_or("")
         .to_ascii_lowercase();
     if ["png", "jpg", "jpeg", "webp", "gif", "bmp"].contains(&extension.as_str()) {
-        return Ok(["png", "jpg", "webp"].map(str::to_owned).to_vec());
+        let mut formats = ["png", "jpg", "webp", "pdf"].map(str::to_owned).to_vec();
+        let engines = operations::all_engine_status();
+        if engines.imagemagick {
+            formats.extend(["bmp", "heic", "tiff", "avif"].map(str::to_owned));
+        }
+        if extension == "gif" && engines.ffmpeg {
+            formats.extend(["mp4", "webm"].map(str::to_owned));
+        }
+        return Ok(formats);
     }
     Ok(operations::output_extensions_for(
         &extension,
@@ -224,6 +233,18 @@ fn convert_file(
             .file_stem()
             .and_then(|value| value.to_str())
             .unwrap_or("converted");
+        if operation.engine == operations::Engine::Poppler {
+            return convert_pdf(&input, &work_dir, input.parent().ok_or("Input folder not found")?, stem, &output_extension);
+        }
+        if operation.engine == operations::Engine::LibreOffice && ["png", "jpg"].contains(&output_extension.as_str()) {
+            let soffice = operations::find_executable("soffice").ok_or("LibreOffice is not installed")?;
+            let args = operations::libreoffice_args(&input, &work_dir);
+            let output = operations::run(&soffice, &args).map_err(|error| error.to_string())?;
+            if !output.status.success() { return Err(String::from_utf8_lossy(&output.stderr).trim().to_owned()); }
+            let pdf = work_dir.join(format!("{stem}.pdf"));
+            if !pdf.is_file() { return Err("LibreOffice did not export slides to PDF".into()); }
+            return convert_pdf(&pdf, &work_dir, input.parent().ok_or("Input folder not found")?, stem, &output_extension);
+        }
         let output_temp = if operation.engine == operations::Engine::LibreOffice {
             work_dir.join(format!("{stem}.{output_extension}"))
         } else {
@@ -244,8 +265,9 @@ fn convert_file(
             ),
             operations::Engine::LibreOffice => (
                 operations::find_executable("soffice").ok_or("LibreOffice is not installed")?,
-                operations::libreoffice_args(&input, &work_dir),
+                operations::libreoffice_convert_args(&input, &work_dir, &output_extension),
             ),
+            operations::Engine::Poppler => unreachable!(),
         };
         let output: Output =
             operations::run(&executable, &args).map_err(|error| error.to_string())?;
@@ -269,6 +291,116 @@ fn convert_file(
         files::write_output_file(&destination, &name, &output_temp)
             .map(|path| path.to_string_lossy().into_owned())
             .map_err(|error| error.to_string())
+    })();
+    let _ = fs::remove_dir_all(work_dir);
+    result
+}
+
+fn convert_pdf(input: &Path, work_dir: &Path, destination: &Path, stem: &str, extension: &str) -> Result<String, String> {
+    if ["txt", "md", "docx", "epub"].contains(&extension) {
+        let executable = operations::find_executable("pdftotext").ok_or("Poppler is not installed")?;
+        let temporary = work_dir.join("result.txt");
+        let args = [std::ffi::OsString::from("-layout"), input.as_os_str().to_owned(), temporary.as_os_str().to_owned()];
+        let output = operations::run(&executable, &args).map_err(|error| error.to_string())?;
+        if !output.status.success() { return Err(String::from_utf8_lossy(&output.stderr).trim().to_owned()); }
+        if !temporary.is_file() || fs::metadata(&temporary).map_err(|error| error.to_string())?.len() == 0 {
+            return Err("This PDF has no extractable text".into());
+        }
+        let source = if ["docx", "epub"].contains(&extension) {
+            let pandoc = operations::find_executable("pandoc").ok_or("Pandoc is not installed")?;
+            let target = work_dir.join(format!("result.{extension}"));
+            let args = [std::ffi::OsString::from("--output"), target.as_os_str().to_owned(), temporary.as_os_str().to_owned()];
+            let output = operations::run(&pandoc, &args).map_err(|error| error.to_string())?;
+            if !output.status.success() { return Err(String::from_utf8_lossy(&output.stderr).trim().to_owned()); }
+            target
+        } else { temporary };
+        return files::write_output_file(destination, &format!("{stem}.{extension}"), &source)
+            .map(|path| path.to_string_lossy().into_owned()).map_err(|error| error.to_string());
+    }
+    let executable = operations::find_executable("pdftoppm").ok_or("Poppler is not installed")?;
+    let prefix = work_dir.join("page");
+    let args = [
+        std::ffi::OsString::from("-r"), std::ffi::OsString::from("300"),
+        std::ffi::OsString::from(if extension == "png" { "-png" } else { "-jpeg" }),
+        input.as_os_str().to_owned(), prefix.as_os_str().to_owned(),
+    ];
+    let output = operations::run(&executable, &args).map_err(|error| error.to_string())?;
+    if !output.status.success() { return Err(String::from_utf8_lossy(&output.stderr).trim().to_owned()); }
+    let image_extension = if extension == "png" { "png" } else { "jpg" };
+    let mut pages = fs::read_dir(work_dir).map_err(|error| error.to_string())?
+        .filter_map(Result::ok).map(|entry| entry.path())
+        .filter(|path| path.extension().and_then(|value| value.to_str()) == Some(image_extension))
+        .collect::<Vec<_>>();
+    pages.sort();
+    if pages.is_empty() { return Err("Poppler did not render any PDF pages".into()); }
+    let folder = loop {
+        let candidate = files::unique_output_path(destination, &format!("{stem}-{extension}-pages")).map_err(|error| error.to_string())?;
+        match fs::create_dir(&candidate) {
+            Ok(()) => break candidate,
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(error.to_string()),
+        }
+    };
+    let result = (|| {
+        for page in pages {
+            let name = page.file_name().ok_or("PDF page name not found")?.to_string_lossy().into_owned();
+            files::write_output_file(&folder, &name, &page).map_err(|error| error.to_string())?;
+        }
+        Ok(folder.to_string_lossy().into_owned())
+    })();
+    if result.is_err() { let _ = fs::remove_dir_all(&folder); }
+    result
+}
+
+#[tauri::command]
+fn process_image_tool(
+    app: AppHandle,
+    input_path: String,
+    action_id: String,
+    dropped: tauri::State<'_, DroppedFiles>,
+) -> Result<String, String> {
+    let input = selected_dropped_file(&input_path, &dropped)?;
+    let extension = input.extension().and_then(|value| value.to_str()).unwrap_or("").to_ascii_lowercase();
+    if !["heic", "heif", "avif", "tif", "tiff", "svg"].contains(&extension.as_str()) {
+        return Err("This image tool is unavailable for the selected file".into());
+    }
+    let options: &[&str] = match action_id.as_str() {
+        "resize" => &["-resize", "1920x1920>"],
+        "rotate" => &["-rotate", "90"],
+        "flip" => &["-flop"],
+        "grayscale" => &["-colorspace", "Gray"],
+        "compress" => &["-quality", "76"],
+        "metadata" => &["-strip"],
+        _ => return Err("Unknown image tool".into()),
+    };
+    let magick = operations::find_executable("magick").ok_or("ImageMagick is not installed")?;
+    let work_root = app.path().app_cache_dir().map_err(|error| error.to_string())?.join("image-work");
+    fs::create_dir_all(&work_root).map_err(|error| error.to_string())?;
+    let work_dir = loop {
+        let candidate = work_root.join(format!("{}-{}", std::process::id(), MEDIA_TEMP_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed)));
+        match fs::create_dir(&candidate) {
+            Ok(()) => break candidate,
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(error.to_string()),
+        }
+    };
+    let result = (|| {
+        let output_extension = if action_id == "compress" { "jpg" } else { "png" };
+        let temporary = work_dir.join(format!("result.{output_extension}"));
+        let mut args = vec![std::ffi::OsString::from(format!("{}[0]", input.to_string_lossy()))];
+        args.extend(options.iter().map(std::ffi::OsString::from));
+        args.push(temporary.as_os_str().to_owned());
+        let output = operations::run(&magick, &args).map_err(|error| error.to_string())?;
+        if !output.status.success() {
+            return Err(String::from_utf8_lossy(&output.stderr).trim().to_owned());
+        }
+        if !temporary.is_file() || fs::metadata(&temporary).map_err(|error| error.to_string())?.len() == 0 {
+            return Err("ImageMagick did not create an output file".into());
+        }
+        let stem = input.file_stem().and_then(|value| value.to_str()).unwrap_or("image");
+        let destination = input.parent().ok_or("Input folder not found")?;
+        files::write_output_file(destination, &format!("{stem}-{}.{output_extension}", action_id), &temporary)
+            .map(|path| path.to_string_lossy().into_owned()).map_err(|error| error.to_string())
     })();
     let _ = fs::remove_dir_all(work_dir);
     result
@@ -820,6 +952,7 @@ fn main() {
             inspect_dropped_files,
             engine_status,
             convert_file,
+            process_image_tool,
             process_media_tool,
             create_zip_archive,
             extract_zip_archive

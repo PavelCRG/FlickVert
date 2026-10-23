@@ -51,13 +51,18 @@ FlickVert 可与文件资源管理器和 Finder 配合使用。拖动文件时�
 | 文件类型 | 格式 | 说明 |
 | --- | --- | --- |
 | 其他图像 | HEIC、TIFF、AVIF、SVG、相机 RAW | 需要 ImageMagick。 |
-| 图片 | PNG、JPEG、WebP | 内置转换；可使用 GIF 和 BMP 作为输入。动画 GIF 仅转换第一帧。 |
+| 图片 | PNG、JPEG、WebP、BMP、HEIC、TIFF、AVIF、PDF | 常见图像输出为 PNG/JPEG/WebP/PDF 时无需外部工具；其他格式及 HEIC/TIFF/AVIF/SVG/RAW 输入需要 ImageMagick。内置 GIF 转换仅使用首帧。 |
 | 音频和视频 | 取决于 FFmpeg | 需要单独安装 FFmpeg。 |
 | 字幕 | SRT、VTT、ASS | 需要 FFmpeg，可在这些字幕格式之间转换。 |
 | 文本文档和电子书 | 取决于 Pandoc | 需要单独安装 Pandoc。 |
 | Office 文档转 PDF | 取决于 LibreOffice | 需要单独安装 LibreOffice。 |
+| 电子表格 | XLSX、ODS、CSV | LibreOffice 可在这些格式之间转换；XLS 仅支持输入。 |
+| 幻灯片 | PPT/PPTX/ODP 转 PDF、PNG、JPEG | 需要 LibreOffice；PNG/JPEG 还需要 Poppler，所有幻灯片保存到新文件夹。 |
+| PDF 输入 | PNG、JPEG、TXT、Markdown；安装 Pandoc 后支持 DOCX 和 EPUB | 需要安装 Poppler。所有页面以 300 DPI 图像保存到新文件夹。文本输出需要可选中文本，无法保留原 PDF 排版。 |
 | 相机 RAW 图片 | 取决于 ImageMagick | 需要单独安装 ImageMagick。 |
 | 压缩包 | 创建和解压 ZIP | 可将文件夹打包；结果保存在所选文件旁边；会拒绝不安全路径和链接。 |
+
+**尚未实现：** 扫描版 PDF 的 OCR、PDF 转 PAGES/PPTX/XLSX、区域遮盖与注释及背景编辑、TAR/GZIP/RAR、交互式媒体裁剪/拆分/合并。快捷键本身不会读取资源管理器或 Finder 中的选中项目。
 
 ## 文件保存位置
 

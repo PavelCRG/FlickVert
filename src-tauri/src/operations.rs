@@ -18,6 +18,7 @@ pub enum Engine {
     Pandoc,
     ImageMagick,
     LibreOffice,
+    Poppler,
 }
 
 #[derive(Clone, Copy, Debug, Default, serde::Serialize)]
@@ -27,6 +28,7 @@ pub struct Engines {
     pub pandoc: bool,
     pub imagemagick: bool,
     pub libreoffice: bool,
+    pub poppler: bool,
 }
 
 const AUDIO: Operation = Operation {
@@ -35,12 +37,12 @@ const AUDIO: Operation = Operation {
         "aac", "aif", "aiff", "caf", "flac", "m4a", "m4b", "mka", "mp3", "oga", "ogg", "opus",
         "wav", "wma",
     ],
-    output_extensions: &["aac", "aiff", "flac", "m4a", "mp3", "ogg", "wav", "wma"],
+    output_extensions: &["aac", "aiff", "flac", "m4a", "mp3", "ogg", "opus", "wav", "wma"],
 };
 const VIDEO: Operation = Operation {
     engine: Engine::Ffmpeg,
     input_extensions: &[
-        "3gp", "avi", "flv", "m2ts", "m4v", "mkv", "mov", "mp4", "mpeg", "mpg", "mts", "ogv", "ts",
+        "3gp", "avi", "flv", "gif", "m2ts", "m4v", "mkv", "mov", "mp4", "mpeg", "mpg", "mts", "ogv", "ts",
         "vob", "webm", "wmv",
     ],
     output_extensions: &["avi", "gif", "mkv", "mov", "mp3", "mp4", "webm", "wmv"],
@@ -66,8 +68,8 @@ const RAW: Operation = Operation {
 };
 const IMAGE: Operation = Operation {
     engine: Engine::ImageMagick,
-    input_extensions: &["avif", "heic", "heif", "svg", "tif", "tiff"],
-    output_extensions: &["png", "jpg", "tiff", "webp"],
+    input_extensions: &["png", "jpg", "jpeg", "webp", "gif", "bmp", "avif", "heic", "heif", "svg", "tif", "tiff"],
+    output_extensions: &["png", "jpg", "webp", "bmp", "heic", "tiff", "avif", "pdf"],
 };
 const OFFICE_PDF: Operation = Operation {
     engine: Engine::LibreOffice,
@@ -76,6 +78,26 @@ const OFFICE_PDF: Operation = Operation {
         "htm", "txt",
     ],
     output_extensions: &["pdf"],
+};
+const SPREADSHEET: Operation = Operation {
+    engine: Engine::LibreOffice,
+    input_extensions: &["xls", "xlsx", "ods", "csv"],
+    output_extensions: &["xlsx", "ods", "csv"],
+};
+const SLIDE_IMAGES: Operation = Operation {
+    engine: Engine::LibreOffice,
+    input_extensions: &["ppt", "pptx", "odp"],
+    output_extensions: &["png", "jpg"],
+};
+const PDF: Operation = Operation {
+    engine: Engine::Poppler,
+    input_extensions: &["pdf"],
+    output_extensions: &["png", "jpg", "txt", "md"],
+};
+const PDF_DOCUMENT: Operation = Operation {
+    engine: Engine::Poppler,
+    input_extensions: &["pdf"],
+    output_extensions: &["docx", "epub"],
 };
 
 pub fn is_audio_input(extension: &str) -> bool {
@@ -96,7 +118,10 @@ pub fn operations_for(extension: &str, engines: Engines) -> Vec<Operation> {
         (engines.ffmpeg, [&AUDIO, &VIDEO, &SUBTITLE][..].to_vec()),
         (engines.pandoc, vec![&DOCUMENT]),
         (engines.imagemagick, vec![&RAW, &IMAGE]),
-        (engines.libreoffice, vec![&OFFICE_PDF]),
+        (engines.libreoffice, vec![&OFFICE_PDF, &SPREADSHEET]),
+        (engines.poppler, vec![&PDF]),
+        (engines.poppler && engines.pandoc, vec![&PDF_DOCUMENT]),
+        (engines.libreoffice && engines.poppler, vec![&SLIDE_IMAGES]),
     ]
     .into_iter()
     .filter(|(available, _)| *available)
@@ -134,6 +159,7 @@ pub fn all_engine_status() -> Engines {
         pandoc: find_executable("pandoc").is_some(),
         imagemagick: find_executable("magick").is_some(),
         libreoffice: find_executable("soffice").is_some(),
+        poppler: find_executable("pdftoppm").is_some() && find_executable("pdftotext").is_some(),
     }
 }
 
@@ -157,11 +183,15 @@ pub fn pandoc_args(input: &Path, output: &Path) -> Vec<OsString> {
 }
 
 pub fn imagemagick_args(input: &Path, output: &Path) -> Vec<OsString> {
-    [input.as_os_str().to_owned(), output.as_os_str().to_owned()].to_vec()
+    [OsString::from(format!("{}[0]", input.to_string_lossy())), output.as_os_str().to_owned()].to_vec()
 }
 
 pub fn libreoffice_args(input: &Path, output_dir: &Path) -> Vec<OsString> {
-    ["--headless", "--convert-to", "pdf", "--outdir"]
+    libreoffice_convert_args(input, output_dir, "pdf")
+}
+
+pub fn libreoffice_convert_args(input: &Path, output_dir: &Path, format: &str) -> Vec<OsString> {
+    ["--headless", "--convert-to", format, "--outdir"]
         .into_iter()
         .map(OsString::from)
         .chain([

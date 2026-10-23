@@ -13,6 +13,7 @@ type NativeFile = { path: string; name: string; size: number; extension: string;
 type Format = { extension: string; label: string }
 type Position = { x: number; y: number }
 const imageExtensions = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp']
+const extendedImageExtensions = [...imageExtensions, 'heic', 'heif', 'avif', 'tif', 'tiff', 'svg']
 const isMac = navigator.platform.startsWith('Mac')
 const toolActions = [
   { id: 'images-to-pdf', label: 'Images to PDF' as const, glyph: 'PDF' },
@@ -22,6 +23,7 @@ const toolActions = [
   { id: 'grayscale', label: 'Grayscale' as const, glyph: '◐' },
   { id: 'square', label: 'Square crop' as const, glyph: '□' },
   { id: 'compress', label: 'Compress' as const, glyph: '◒' },
+  { id: 'metadata', label: 'Remove metadata' as const, glyph: '◇' },
 ]
 const videoToolActions = [
   { id: 'compress-video', label: 'Compress' as const, glyph: '◒' },
@@ -44,8 +46,9 @@ const fileActions = [
   { id: 'open-terminal', label: 'Open Terminal' as const, glyph: '>_' },
 ]
 
-function toolActionsFor(files: NativeFile[], ffmpegAvailable: boolean) {
+function toolActionsFor(files: NativeFile[], ffmpegAvailable: boolean, imagemagickAvailable: boolean) {
   if (files.length && files.every((file) => imageExtensions.includes(file.extension))) return toolActions
+  if (imagemagickAvailable && files.length && files.every((file) => extendedImageExtensions.includes(file.extension))) return toolActions.filter((action) => !['images-to-pdf', 'square'].includes(action.id))
   if (ffmpegAvailable && files.length && files.every((file) => file.mime.startsWith('video/'))) return videoToolActions
   if (ffmpegAvailable && files.length && files.every((file) => file.mime.startsWith('audio/'))) return audioToolActions
   return []
@@ -75,10 +78,12 @@ export default function QuickMenu() {
   const [active, setActive] = useState(-1)
   const [status, setStatus] = useState('')
   const [ffmpegAvailable, setFfmpegAvailable] = useState(false)
+  const [imagemagickAvailable, setImagemagickAvailable] = useState(false)
   const dragModeRef = useRef(false)
   const wheelModeRef = useRef<'convert' | 'tools' | 'actions'>('convert')
   const filesRef = useRef<NativeFile[]>([])
   const ffmpegAvailableRef = useRef(false)
+  const imagemagickAvailableRef = useRef(false)
   const formatsRef = useRef<Format[]>([])
   const dropHandled = useRef(false)
   const hideTimer = useRef<number | undefined>(undefined)
@@ -126,10 +131,14 @@ export default function QuickMenu() {
 
   async function convertTo(file: NativeFile, format: Format) {
     const stem = file.name.replace(/\.[^.]+$/, '')
-    if (imageExtensions.includes(file.extension)) {
+    if (imageExtensions.includes(file.extension) && (format.extension === 'pdf' || ['png', 'jpg', 'webp'].includes(format.extension))) {
       const preferences = loadSettings()
       const bytes = await invoke<number[]>('read_dropped_file', { inputPath: file.path })
       const input = new File([Uint8Array.from(bytes)], file.name, { type: file.mime })
+      if (format.extension === 'pdf') {
+        const pdf = await imagesToPdf([input], preferences.quality)
+        return invoke<string>('save_output', { fileName: `${stem}.pdf`, inputPath: file.path, bytes: Array.from(pdf) })
+      }
       const outputType = format.extension === 'png' ? 'image/png' : format.extension === 'jpg' ? 'image/jpeg' : 'image/webp'
       const blob = await convertImage(input, { format: outputType, quality: preferences.quality, width: preferences.width, height: preferences.height })
       return invoke<string>('save_output', {
@@ -180,7 +189,11 @@ export default function QuickMenu() {
         return
       }
       for (const file of items) {
-        if (!imageExtensions.includes(file.extension)) throw new Error('Image tools are available for images')
+        if (!imageExtensions.includes(file.extension)) {
+          const output = await invoke<string>('process_image_tool', { inputPath: file.path, actionId })
+          await emit('flickvert://job-completed', { fileName: file.name, size: file.size, output })
+          continue
+        }
         const bytes = await invoke<number[]>('read_dropped_file', { inputPath: file.path })
         const input = new File([Uint8Array.from(bytes)], file.name, { type: file.mime })
         const bitmap = await createImageBitmap(input)
@@ -202,7 +215,7 @@ export default function QuickMenu() {
         const format = extension === 'png' ? 'image/png' : extension === 'jpg' || extension === 'jpeg' ? 'image/jpeg' : 'image/webp'
         const quality = actionId === 'compress' ? Math.min(loadSettings().quality, 76) / 100 : loadSettings().quality / 100
         const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((result) => result ? resolve(result) : reject(new Error('Image processing failed')), format, quality))
-        const suffix = actionId === 'resize' ? '-resized' : actionId === 'rotate' ? '-rotated' : actionId === 'flip' ? '-flipped' : actionId === 'grayscale' ? '-grayscale' : actionId === 'square' ? '-square' : '-compressed'
+        const suffix = actionId === 'resize' ? '-resized' : actionId === 'rotate' ? '-rotated' : actionId === 'flip' ? '-flipped' : actionId === 'grayscale' ? '-grayscale' : actionId === 'square' ? '-square' : actionId === 'metadata' ? '-clean' : '-compressed'
         const output = await invoke<string>('save_output', {
           fileName: `${file.name.replace(/\.[^.]+$/, '')}${suffix}.${extension === 'jpeg' ? 'jpg' : extension}`,
           inputPath: file.path,
@@ -249,7 +262,7 @@ export default function QuickMenu() {
         return
       }
       if (wheelModeRef.current === 'tools') {
-        const actions = toolActionsFor(received, ffmpegAvailableRef.current)
+        const actions = toolActionsFor(received, ffmpegAvailableRef.current, imagemagickAvailableRef.current)
         const index = selectedSector(point, size, actions.length)
         if (index >= 0) await runTool(actions[index].id, received)
         return
@@ -265,7 +278,7 @@ export default function QuickMenu() {
     let disposed = false
     const stops: (() => void)[] = []
     const addStop = (stop: () => void) => { if (disposed) stop(); else stops.push(stop) }
-    void invoke<{ ffmpeg: boolean }>('engine_status').then(({ ffmpeg }) => { ffmpegAvailableRef.current = ffmpeg; setFfmpegAvailable(ffmpeg) }).catch(() => {})
+    void invoke<{ ffmpeg: boolean; imagemagick: boolean }>('engine_status').then(({ ffmpeg, imagemagick }) => { ffmpegAvailableRef.current = ffmpeg; setFfmpegAvailable(ffmpeg); imagemagickAvailableRef.current = imagemagick; setImagemagickAvailable(imagemagick) }).catch(() => {})
 
     void getCurrentWindow().onFocusChanged(({ payload }) => {
       if (!payload) {
@@ -297,7 +310,7 @@ export default function QuickMenu() {
         setDragVisible(true)
         void refreshFiles(payload.paths).catch((error) => setStatus(String(error)))
       } else if (payload.type === 'over') {
-        void getCurrentWindow().innerSize().then((size) => setActive(selectedSector(payload.position, size, wheelModeRef.current === 'tools' ? toolActionsFor(filesRef.current, ffmpegAvailableRef.current).length : wheelModeRef.current === 'actions' ? fileActions.length : formatsRef.current.length)))
+        void getCurrentWindow().innerSize().then((size) => setActive(selectedSector(payload.position, size, wheelModeRef.current === 'tools' ? toolActionsFor(filesRef.current, ffmpegAvailableRef.current, imagemagickAvailableRef.current).length : wheelModeRef.current === 'actions' ? fileActions.length : formatsRef.current.length)))
       } else if (payload.type === 'drop') {
         if (hideTimer.current !== undefined) window.clearTimeout(hideTimer.current)
         dropHandled.current = true
@@ -358,7 +371,7 @@ export default function QuickMenu() {
     }
   }
 
-  const actions = files.length ? wheelMode === 'actions' ? fileActions : wheelMode === 'tools' ? toolActionsFor(files, ffmpegAvailable) : [] : []
+  const actions = files.length ? wheelMode === 'actions' ? fileActions : wheelMode === 'tools' ? toolActionsFor(files, ffmpegAvailable, imagemagickAvailable) : [] : []
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') { hide(); return }
@@ -400,7 +413,7 @@ export default function QuickMenu() {
         const angle = (index / entries.length) * Math.PI * 2 - Math.PI / 2
         const needsOneFile = ['extract-zip', 'reveal', 'copy-path', 'open-terminal'].includes(action.id)
         const imageTool = allToolActions.some((tool) => tool.id === action.id)
-        const unavailableTool = imageTool && dragMode && !toolActionsFor(files, ffmpegAvailable).some((tool) => tool.id === action.id)
+        const unavailableTool = imageTool && dragMode && !toolActionsFor(files, ffmpegAvailable, imagemagickAvailable).some((tool) => tool.id === action.id)
         const unavailableArchive = dragMode && (action.id === 'create-zip' ? files.length === 0 : action.id === 'extract-zip' && (files.length !== 1 || files[0]?.extension !== 'zip'))
         return <button key={action.id} className={`quick-action action-${action.id}${active === index ? ' active' : ''}`} style={{ left: `${50 + Math.cos(angle) * 34}%`, top: `${50 + Math.sin(angle) * 34}%`, '--petal-angle': `${index / entries.length * 360}deg` } as CSSProperties} onClick={() => void choose(action.id)} disabled={(needsOneFile && files.length !== 1) || unavailableTool || unavailableArchive}><span className="quick-petal-content"><span className="quick-glyph">{action.glyph}</span><small>{tr(action.label)}</small></span></button>
       })}

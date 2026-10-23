@@ -36,7 +36,7 @@ Closing the main window keeps FlickVert in the tray. Choose **Show FlickVert** f
 
 The default shortcut, **Ctrl+Alt+Space**, opens quick actions. Drop a file onto the wheel, use **1/2/3** to switch modes, arrow keys to select a target, and **Enter** to run it. **Esc** closes the wheel. Change the shortcut in **Settings**. The shortcut alone does not read the current selection in Explorer or Finder.
 
-While dragging, press **Ctrl** (Windows) or **Command** (macOS) for tools, or **Alt/Option** for file actions. The tools wheel can resize, rotate, flip, grayscale, square-crop, compress images, or combine up to 100 images into a PDF. With FFmpeg installed, it also offers video compression, mute, audio extraction, thumbnails, audio compression, and loudness normalization. Actions can create or safely extract ZIP archives, copy or move selected files and folders to `Downloads/FlickVert`, reveal one item in Explorer/Finder, copy its path, or open its folder in a terminal.
+While dragging, press **Ctrl** (Windows) or **Command** (macOS) for tools, or **Alt/Option** for file actions. The tools wheel can resize, rotate, flip, grayscale, square-crop, compress, remove image metadata, or combine up to 100 images into a PDF. HEIC, AVIF, TIFF, and SVG tools require ImageMagick; these save PNG or JPEG output. With FFmpeg installed, the wheel also offers video compression, mute, audio extraction, thumbnails, audio compression, and loudness normalization. Actions can create or safely extract ZIP archives, copy or move selected files and folders to `Downloads/FlickVert`, reveal one item in Explorer/Finder, copy its path, or open its folder in a terminal.
 
 ## How the drag wheel works
 
@@ -50,13 +50,18 @@ The wheel needs a file drag that starts in Explorer or Finder. You can also open
 
 | Files | Available formats | Notes |
 | --- | --- | --- |
-| Images | PNG, JPEG, WebP, GIF, BMP, HEIC, TIFF, AVIF, SVG, camera RAW | PNG/JPEG/WebP are built in. HEIC, TIFF, AVIF, SVG, and RAW need ImageMagick. |
+| Images | PNG, JPEG, WebP, BMP, HEIC, TIFF, AVIF, PDF | PNG/JPEG/WebP/PDF output from common images is built in. Other formats and HEIC/TIFF/AVIF/SVG/RAW input need ImageMagick. Animated GIFs use the first frame in built-in conversions. |
 | Audio and video | Depends on FFmpeg | Install FFmpeg separately. |
 | Subtitles | SRT, VTT, ASS | Requires FFmpeg; converts between these subtitle formats. |
 | Text documents and ebooks | Depends on Pandoc | Install Pandoc separately. |
 | Office documents to PDF | Depends on LibreOffice | Install LibreOffice separately. |
+| Spreadsheets | XLSX, ODS, CSV | LibreOffice converts between these; XLS is input only. |
+| Slides | PPT/PPTX/ODP to PDF, PNG, JPEG | LibreOffice is required; PNG/JPEG also need Poppler and save all slides in a new folder. |
+| PDF input | PNG, JPEG, TXT, Markdown; DOCX and EPUB with Pandoc | Install Poppler. Images from all pages are saved in a new folder at 300 DPI. Text and document output needs selectable text and does not preserve the original PDF layout. |
 | Camera RAW | Depends on ImageMagick | Install ImageMagick separately. |
 | Archives | ZIP create and extract | Saved beside the selected file; unsafe paths and links are rejected. |
+
+**Still missing:** OCR for scanned PDFs; PDF to PAGES/PPTX/XLSX; area-based redaction, annotation and background editing; TAR/GZIP/RAR; interactive trim, split and merge. The shortcut alone does not read an Explorer or Finder selection.
 
 ## Where files are saved
 
