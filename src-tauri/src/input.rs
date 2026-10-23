@@ -206,6 +206,8 @@ mod windows {
     const WM_SYSKEYUP: u32 = 0x0105;
     const WM_LBUTTONDOWN: u32 = 0x0201;
     const WM_LBUTTONUP: u32 = 0x0202;
+    const WM_RBUTTONDOWN: u32 = 0x0204;
+    const WM_RBUTTONUP: u32 = 0x0205;
     const WM_MOUSEMOVE: u32 = 0x0200;
     const VK_SHIFT: u32 = 0x10;
     const VK_LSHIFT: u32 = 0xa0;
@@ -255,14 +257,14 @@ mod windows {
         if code >= 0 {
             let input = &*(data as *const MouseData);
             match message as u32 {
-                WM_LBUTTONDOWN => handle(InputEvent::LeftDown(
+                WM_LBUTTONDOWN | WM_RBUTTONDOWN => handle(InputEvent::LeftDown(
                     input.point.x as f64,
                     input.point.y as f64,
                 )),
                 WM_MOUSEMOVE => {
                     handle(InputEvent::Move(input.point.x as f64, input.point.y as f64));
                 }
-                WM_LBUTTONUP => handle(InputEvent::LeftUp),
+                WM_LBUTTONUP | WM_RBUTTONUP => handle(InputEvent::LeftUp),
                 _ => {}
             }
         }
@@ -344,8 +346,13 @@ mod macos {
         let _ = thread::Builder::new()
             .name("flickvert-input".into())
             .spawn(|| unsafe {
-                let mask =
-                    (1_u64 << 1) | (1_u64 << 2) | (1_u64 << 6) | (1_u64 << 10) | (1_u64 << 12);
+                let mask = (1_u64 << 1)
+                    | (1_u64 << 2)
+                    | (1_u64 << 3)
+                    | (1_u64 << 4)
+                    | (1_u64 << 6)
+                    | (1_u64 << 10)
+                    | (1_u64 << 12);
                 let tap = CGEventTapCreate(0, 0, 1, mask, event_proc, std::ptr::null_mut());
                 if tap.is_null() {
                     eprintln!("FlickVert needs Accessibility permission for Shift-drag on macOS");
@@ -368,6 +375,8 @@ mod macos {
         match event_type {
             1 => handle(InputEvent::LeftDown(point.x, point.y)),
             2 => handle(InputEvent::LeftUp),
+            3 => handle(InputEvent::LeftDown(point.x, point.y)),
+            4 => handle(InputEvent::LeftUp),
             6 => handle(InputEvent::Move(point.x, point.y)),
             12 => {
                 let flags = CGEventGetFlags(event);

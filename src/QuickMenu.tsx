@@ -35,6 +35,7 @@ const audioToolActions = [
   { id: 'compress-audio', label: 'Compress' as const, glyph: '◒' },
   { id: 'normalize-audio', label: 'Normalize audio' as const, glyph: '▂' },
 ]
+const archiveToolActions = [{ id: 'extract-zip', label: 'Extract ZIP' as const, glyph: 'ZIP' }]
 const allToolActions = [...toolActions, ...videoToolActions, ...audioToolActions]
 const fileActions = [
   { id: 'create-zip', label: 'Create ZIP' as const, glyph: '▱' },
@@ -47,6 +48,7 @@ const fileActions = [
 ]
 
 function toolActionsFor(files: NativeFile[], ffmpegAvailable: boolean, imagemagickAvailable: boolean) {
+  if (files.length === 1 && files[0].extension === 'zip') return archiveToolActions
   if (files.length && files.every((file) => imageExtensions.includes(file.extension))) return toolActions
   if (imagemagickAvailable && files.length && files.every((file) => extendedImageExtensions.includes(file.extension))) return toolActions.filter((action) => !['images-to-pdf', 'square'].includes(action.id))
   if (ffmpegAvailable && files.length && files.every((file) => file.mime.startsWith('video/'))) return videoToolActions
@@ -235,6 +237,10 @@ export default function QuickMenu() {
   }
 
   async function runTool(actionId: string, items: NativeFile[]) {
+    if (actionId === 'extract-zip') {
+      await choose(actionId)
+      return
+    }
     if (toolActions.some((action) => action.id === actionId)) {
       await processImages(items, actionId)
       return
@@ -306,6 +312,7 @@ export default function QuickMenu() {
     void listen<string[]>('flickvert://shortcut-files', ({ payload }) => {
       setActiveWheelMode('convert')
       if (payload.length) void refreshFiles(payload).catch((error) => setStatus(String(error)))
+      else if (dragModeRef.current) { filesRef.current = []; formatsRef.current = []; setFiles([]); setFormats([]); setStatus(tr('No selected files found')) }
       else { filesRef.current = []; formatsRef.current = []; setFiles([]); setFormats([]); setDragVisible(false) }
     }).then(addStop)
     void invoke<boolean>('take_drag_trigger').then((opened) => {
@@ -416,7 +423,7 @@ export default function QuickMenu() {
         </button>
       })}
     </div> : <div className="quick-orbit quick-actions">
-      <div className="quick-center"><img className="quick-monogram" src="/fv-mark.svg" alt="FlickVert"/><span>{status || (files.length ? wheelMode === 'convert' || !actions.length ? tr('No formats available') : files.length === 1 ? files[0].name : `${files.length} ${tr('files')}` : tr('Drag a file here'))}</span></div>
+      <div className="quick-center"><img className="quick-monogram" src="/fv-mark.svg" alt="FlickVert"/><span>{status || (files.length ? wheelMode === 'convert' || !actions.length ? tr('No formats available') : files.length === 1 ? files[0].name : `${files.length} ${tr('files')}` : tr('No selected files found'))}</span></div>
       {actions.map((action, index, entries) => {
         const angle = (index / entries.length) * Math.PI * 2 - Math.PI / 2
         const needsOneFile = ['extract-zip', 'reveal', 'copy-path', 'open-terminal'].includes(action.id)

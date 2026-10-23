@@ -486,21 +486,20 @@ button:focus-visible,select:focus-visible,input:focus-visible,.dropzone:focus-vi
 .simple-page h1{margin-bottom:4px}
 .preference-heading{font-size:14px;font-weight:600;margin:24px 0 0}
 .theme-options{margin-top:10px}
-.home-page{min-height:calc(100vh - 58px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding-bottom:70px}
-.home-art{position:relative;width:230px;height:230px;display:grid;place-items:center;margin-bottom:25px}
-.home-art img{position:relative;z-index:1;width:92px;height:72px;object-fit:contain;filter:drop-shadow(0 12px 18px #18345a24)}
-.home-ring{position:absolute;inset:7px;border:1px solid color-mix(in srgb,var(--accent) 23%,var(--line));border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--accent) 10%,var(--surface)) 0,transparent 70%)}
-.home-ring-two{inset:37px;border-color:color-mix(in srgb,var(--accent) 30%,var(--line));background:none}
+.home-page{min-height:calc(100vh - 58px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px 24px 70px}
+.brand-mark{width:22px;height:22px;object-fit:contain}
 .home-page .eyebrow{margin:0 0 8px}
-.home-page h1{font-size:42px;line-height:1.1;margin:0}
-.home-lead{font-size:18px;font-weight:600;margin:16px 0 0}
+.home-page h1{max-width:520px;font-size:34px;line-height:1.15;letter-spacing:-.035em;margin:0}
 .home-description{max-width:480px;font-size:13px;line-height:1.6;color:var(--muted);margin:8px 0 0}
+.home-pick{margin-top:20px;min-height:40px;padding:0 18px}
+.home-pick:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .home-steps{display:flex;gap:10px;margin-top:33px}
 .home-steps>div{min-width:124px;display:flex;flex-direction:column;align-items:center;gap:10px;padding:17px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);font-size:12px;font-weight:600}
 .home-steps kbd,.home-footnote kbd{font:11px system-ui,-apple-system,"Segoe UI",sans-serif;padding:5px 7px;border:1px solid var(--line);border-radius:5px;background:var(--surface-2)}
 .home-footnote{color:var(--muted);font-size:11px;margin-top:26px}
 .home-settings{display:flex;flex-wrap:wrap;gap:16px;margin-top:12px}.home-settings .field{min-width:145px}.home-settings input[type=range]{width:145px}
 @media(max-width:900px){.home-steps>div{min-width:106px}.home-page{padding-inline:18px}}
+@media(max-width:620px){.home-page{padding-bottom:28px}.home-page h1{font-size:30px}.home-steps{gap:6px;margin-top:24px}.home-steps>div{min-width:0;padding:12px 8px}.home-footnote{line-height:1.8}}
 @media(prefers-color-scheme:dark){
   .app.system{--bg:#1c1c1e;--surface:#2c2c2e;--surface-2:#303033;--sidebar:#242426;--text:#f5f5f7;--muted:#b4b4ba;--faint:#898990;--line:#424246;--accent:#0a84ff;--accent-soft:#173a5f;--good:#32d583;--good-soft:#1d3b2d}
 }

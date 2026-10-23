@@ -165,7 +165,7 @@ fn quick_formats(
     ))
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn read_dropped_file(
     input_path: String,
     dropped: tauri::State<'_, DroppedFiles>,
@@ -189,7 +189,7 @@ fn read_dropped_file(
     fs::read(input).map_err(|error| error.to_string())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn convert_file(
     app: AppHandle,
     input_path: String,
@@ -353,7 +353,7 @@ fn convert_pdf(input: &Path, work_dir: &Path, destination: &Path, stem: &str, ex
     result
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn process_image_tool(
     app: AppHandle,
     input_path: String,
@@ -407,7 +407,7 @@ fn process_image_tool(
     result
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn process_media_tool(
     app: AppHandle,
     input_path: String,
@@ -492,7 +492,7 @@ fn process_media_tool(
     result
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn create_zip_archive(
     app: AppHandle,
     input_paths: Vec<String>,
@@ -548,7 +548,7 @@ fn create_zip_archive(
     result
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn extract_zip_archive(
     input_path: String,
     dropped: tauri::State<'_, DroppedFiles>,
@@ -619,9 +619,26 @@ fn show_quick(app: &AppHandle, activate: bool) {
 }
 
 pub(crate) fn show_drag_quick(app: &AppHandle) {
+    let foreground = selection::foreground_window();
     *app.state::<DragTrigger>().0.lock().unwrap() = true;
     show_quick(app, false);
     let _ = app.emit("flickvert://drag-wheel-open", ());
+    let handle = app.clone();
+    std::thread::spawn(move || {
+        let paths = selection::selected_paths(foreground);
+        let _ = handle.emit("flickvert://shortcut-files", paths);
+    });
+}
+
+#[tauri::command(async)]
+fn choose_files(app: AppHandle) -> Result<(), String> {
+    let paths = selection::choose_paths();
+    if paths.is_empty() {
+        return Ok(());
+    }
+    show_quick(&app, true);
+    app.emit("flickvert://shortcut-files", paths)
+        .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -757,7 +774,7 @@ end run"#;
     }
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn copy_to_flickvert_folder(
     app: AppHandle,
     input_path: String,
@@ -781,7 +798,7 @@ fn copy_to_flickvert_folder(
     Ok(output.to_string_lossy().into_owned())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn move_to_flickvert_folder(
     app: AppHandle,
     input_path: String,
@@ -904,7 +921,7 @@ fn output_directory(app: tauri::AppHandle) -> Result<String, String> {
         .map_err(|error| error.to_string())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn save_output(
     app: tauri::AppHandle,
     file_name: String,
@@ -954,6 +971,7 @@ fn main() {
             copy_to_flickvert_folder,
             move_to_flickvert_folder,
             register_shortcut,
+            choose_files,
             take_drag_trigger,
             quick_formats,
             read_dropped_file,

@@ -40,7 +40,7 @@ While dragging, press **Ctrl** (Windows) or **Command** (macOS) for tools, or **
 
 ## How the drag wheel works
 
-1. Start dragging a file from File Explorer or Finder with the left mouse button.
+1. Start dragging a selected file from File Explorer or Finder with either mouse button.
 2. While still holding the mouse button, press **Shift**. The format wheel opens under the pointer; you can then release Shift.
 3. Move over a format and release the mouse button to convert. Press **Esc** to cancel.
 

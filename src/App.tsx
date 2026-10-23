@@ -26,6 +26,7 @@ export default function App() {
   const [history, setHistory] = useState<HistoryEntry[]>(loadHistory)
   const [preferences, setPreferences] = useState<AppSettings>(loadSettings)
   const [shortcutError, setShortcutError] = useState(false)
+  const [pickError, setPickError] = useState(false)
   const [engines, setEngines] = useState<Engines>({ ffmpeg: false, pandoc: false, imagemagick: false, libreoffice: false, poppler: false })
   const tr = (key: MessageKey) => t(preferences.language, key)
 
@@ -68,6 +69,11 @@ export default function App() {
     } catch { setShortcutError(true) }
   }
 
+  async function chooseFiles() {
+    try { await invoke('choose_files'); setPickError(false) }
+    catch { setPickError(true) }
+  }
+
   return <div className={`app ${preferences.appearance}`}>
     <aside className="sidebar">
       <div className="brand"><img className="brand-mark" src="/fv-mark.svg" alt=""/><span>FlickVert</span></div>
@@ -86,11 +92,11 @@ export default function App() {
     <main className="main">
       <header className="topbar"><div className="breadcrumb">FlickVert <span>›</span><span>{tr(section === 'home' ? 'Home' : section === 'history' ? 'History' : 'Settings')}</span></div></header>
       {section === 'home' && <div className="page home-page">
-        <div className="home-art" aria-hidden="true"><span className="home-ring home-ring-one"/><span className="home-ring home-ring-two"/><img src="/fv-mark.svg" alt=""/></div>
         <p className="eyebrow">{tr('PRIVATE BY DESIGN')}</p>
-        <h1>FlickVert</h1>
-        <p className="home-lead">{tr('Work with files where they are.')}</p>
-        <p className="home-description">{tr('Drag a file in Explorer or Finder, press Shift, and drop it on an action.')}</p>
+        <h1>{tr('Work with files where they are.')}</h1>
+        <p className="home-description">{tr('Select a file in Explorer or Finder, then use the shortcut or choose files here.')}</p>
+        <button className="primary-button home-pick" onClick={() => void chooseFiles()}>{tr('Choose files')}</button>
+        {pickError && <p className="shortcut-error">{tr('Could not open files')}</p>}
         <div className="home-steps" aria-label={tr('Quick shortcut')}>
           <div><kbd>⇧ Shift</kbd><span>{tr('Convert')}</span></div>
           <div><kbd>{navigator.platform.startsWith('Mac') ? '⌘ Command' : 'Ctrl'}</kbd><span>{tr('Tools')}</span></div>

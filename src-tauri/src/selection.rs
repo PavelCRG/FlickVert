@@ -22,8 +22,18 @@ pub fn selected_paths(foreground: isize) -> Vec<String> {
     let script = format!(
         "$ErrorActionPreference='Stop'; $paths=New-Object 'System.Collections.Generic.List[string]'; try {{ $shell=New-Object -ComObject Shell.Application; foreach ($window in $shell.Windows()) {{ try {{ if ([long]$window.HWND -eq {foreground}) {{ foreach ($item in $window.Document.SelectedItems()) {{ $paths.Add($item.Path) }}; break }} }} catch {{}} }} }} catch {{}}; if ($paths.Count -eq 0) {{ try {{ foreach ($path in (Get-Clipboard -Format FileDropList)) {{ $paths.Add($path) }} }} catch {{}} }}; $stream=[Console]::OpenStandardOutput(); foreach ($path in $paths) {{ $bytes=[Text.Encoding]::UTF8.GetBytes($path + [char]0); $stream.Write($bytes,0,$bytes.Length) }}"
     );
+    windows_paths(&script)
+}
+
+#[cfg(windows)]
+pub fn choose_paths() -> Vec<String> {
+    windows_paths("Add-Type -AssemblyName System.Windows.Forms; $dialog=New-Object System.Windows.Forms.OpenFileDialog; $dialog.Multiselect=$true; if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { $stream=[Console]::OpenStandardOutput(); foreach ($path in $dialog.FileNames) { $bytes=[Text.Encoding]::UTF8.GetBytes($path + [char]0); $stream.Write($bytes,0,$bytes.Length) } }")
+}
+
+#[cfg(windows)]
+fn windows_paths(script: &str) -> Vec<String> {
     let output = Command::new("powershell.exe")
-        .args(["-NoProfile", "-NonInteractive", "-Sta", "-Command", &script])
+        .args(["-NoProfile", "-NonInteractive", "-Sta", "-Command", script])
         .creation_flags(0x0800_0000)
         .output();
     output
@@ -49,6 +59,16 @@ set foundPaths to foundPaths & (POSIX path of (selectedItem as alias)) & linefee
 end repeat
 return foundPaths
 end tell"#;
+    apple_paths(script)
+}
+
+#[cfg(target_os = "macos")]
+pub fn choose_paths() -> Vec<String> {
+    apple_paths("set foundPaths to \"\"\nrepeat with selectedItem in (choose file with prompt \"Choose files for FlickVert\" with multiple selections allowed)\nset foundPaths to foundPaths & (POSIX path of (selectedItem as alias)) & linefeed\nend repeat\nreturn foundPaths")
+}
+
+#[cfg(target_os = "macos")]
+fn apple_paths(script: &str) -> Vec<String> {
     let output = Command::new("osascript").args(["-e", script]).output();
     output
         .ok()
@@ -64,5 +84,10 @@ end tell"#;
 
 #[cfg(not(any(windows, target_os = "macos")))]
 pub fn selected_paths(_: isize) -> Vec<String> {
+    Vec::new()
+}
+
+#[cfg(not(any(windows, target_os = "macos")))]
+pub fn choose_paths() -> Vec<String> {
     Vec::new()
 }
