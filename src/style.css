@@ -500,6 +500,28 @@ button:focus-visible,select:focus-visible,input:focus-visible,.dropzone:focus-vi
 .home-settings{display:flex;flex-wrap:wrap;gap:16px;margin-top:12px}.home-settings .field{min-width:145px}.home-settings input[type=range]{width:145px}
 @media(max-width:900px){.home-steps>div{min-width:106px}.home-page{padding-inline:18px}}
 @media(max-width:620px){.home-page{padding-bottom:28px}.home-page h1{font-size:30px}.home-steps{gap:6px;margin-top:24px}.home-steps>div{min-width:0;padding:12px 8px}.home-footnote{line-height:1.8}}
+.image-editor-backdrop{position:fixed;z-index:20;inset:0;display:grid;place-items:center;padding:24px;background:#10151d80;backdrop-filter:blur(5px)}
+.image-editor{width:min(1040px,calc(100vw - 48px));max-height:calc(100vh - 48px);display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--text);box-shadow:0 24px 80px #0005}
+.image-editor-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 20px;border-bottom:1px solid var(--line)}
+.image-editor-header>div{min-width:0;display:flex;flex-direction:column;gap:4px}.image-editor-header strong{font-size:15px}.image-editor-header span{max-width:65vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:12px}
+.image-editor-tools{display:flex;gap:6px;padding:10px 16px;border-bottom:1px solid var(--line);overflow-x:auto}
+.image-editor-tools button{padding:7px 11px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--muted);font:500 12px system-ui,-apple-system,"Segoe UI",sans-serif;white-space:nowrap;cursor:pointer}
+.image-editor-tools button:hover,.image-editor-tools button.selected{border-color:var(--line);background:var(--surface);color:var(--text)}
+.image-editor-body{min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 240px;flex:1}
+.image-editor-preview{min-height:320px;max-height:calc(100vh - 190px);display:grid;place-items:center;overflow:auto;padding:18px;background:#17191d}
+.image-editor-image{position:relative;max-width:100%;max-height:100%;touch-action:none;cursor:crosshair;user-select:none}
+.image-editor-image>img{display:block;max-width:100%;max-height:calc(100vh - 240px);object-fit:contain;pointer-events:none}
+.image-editor-selection{position:absolute;border:1px solid #fff;outline:1px solid #111;box-shadow:0 0 0 9999px #0005;pointer-events:none}
+.image-editor-selection.redact{background:#000e}
+.image-editor-caption-marker{position:absolute;max-width:80%;padding:3px 5px;border:1px dashed #fff8;background:#1118;font-size:13px;white-space:pre-wrap;pointer-events:none}
+.image-editor-controls{display:flex;flex-direction:column;gap:14px;padding:18px;border-left:1px solid var(--line);overflow:auto}
+.image-editor-controls>p{margin:0;color:var(--muted);font-size:12px;line-height:1.5}
+.image-editor-controls .field{display:flex;flex-direction:column;gap:7px;font-size:12px;color:var(--muted)}
+.image-editor-controls input[type=color]{width:46px;height:34px;padding:3px;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+.image-editor-controls input[type=range]{width:100%;accent-color:var(--accent)}
+.image-editor-save{margin-top:auto;min-height:38px;padding-inline:12px}
+.image-editor-error{color:#d14343!important}.image-editor-controls .image-editor-error{overflow-wrap:anywhere}
+@media(max-width:760px){.image-editor-backdrop{padding:10px}.image-editor{width:calc(100vw - 20px);max-height:calc(100vh - 20px)}.image-editor-body{grid-template-columns:minmax(0,1fr)}.image-editor-preview{min-height:200px;max-height:48vh}.image-editor-image>img{max-height:46vh}.image-editor-controls{max-height:34vh;border-left:0;border-top:1px solid var(--line);padding:14px}.image-editor-save{margin-top:8px}}
 @media(prefers-color-scheme:dark){
   .app.system{--bg:#1c1c1e;--surface:#2c2c2e;--surface-2:#303033;--sidebar:#242426;--text:#f5f5f7;--muted:#b4b4ba;--faint:#898990;--line:#424246;--accent:#0a84ff;--accent-soft:#173a5f;--good:#32d583;--good-soft:#1d3b2d}
 }

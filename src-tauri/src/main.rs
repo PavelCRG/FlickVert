@@ -45,6 +45,13 @@ struct NativeFile {
     is_directory: bool,
 }
 
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ImageEditorRequest {
+    input_path: String,
+    initial_tool: String,
+}
+
 fn file_mime(extension: &str) -> Option<&'static str> {
     match extension {
         "png" => Some("image/png"),
@@ -651,6 +658,24 @@ fn quick_action(app: AppHandle, action_id: String) -> Result<(), String> {
         .map_err(|error| error.to_string())
 }
 
+#[tauri::command(async)]
+fn open_image_editor(
+    app: AppHandle,
+    input_path: String,
+    dropped: tauri::State<'_, DroppedFiles>,
+) -> Result<(), String> {
+    let input = selected_dropped_file(&input_path, &dropped)?;
+    let extension = input.extension().and_then(|value| value.to_str()).unwrap_or("").to_ascii_lowercase();
+    if !["png", "jpg", "jpeg", "webp", "gif", "bmp"].contains(&extension.as_str()) {
+        return Err("The built-in editor supports PNG, JPEG, WebP, GIF, and BMP images".into());
+    }
+    show_main(&app);
+    app.emit("flickvert://image-editor-open", ImageEditorRequest {
+        input_path: input.to_string_lossy().into_owned(),
+        initial_tool: "adjust".into(),
+    }).map_err(|error| error.to_string())
+}
+
 #[tauri::command]
 fn reveal_dropped_file(
     input_path: String,
@@ -965,6 +990,7 @@ fn main() {
             output_directory,
             save_output,
             quick_action,
+            open_image_editor,
             reveal_dropped_file,
             copy_dropped_file_path,
             open_terminal,

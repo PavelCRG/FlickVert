@@ -1,24 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
   <defs>
-    <linearGradient id="tile" x1="64" y1="18" x2="443" y2="495" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFBD69"/>
-      <stop offset=".5" stop-color="#F17D3D"/>
-      <stop offset="1" stop-color="#D95132"/>
+    <linearGradient id="disc" x1="65" y1="39" x2="432" y2="473" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFB36B"/><stop offset="1" stop-color="#E45B3E"/>
     </linearGradient>
-    <linearGradient id="letters" x1="173" y1="187" x2="376" y2="341" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFF9EF"/>
-      <stop offset="1" stop-color="#FFE8C7"/>
+    <linearGradient id="shine" x1="154" y1="80" x2="368" y2="403" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF" stop-opacity=".34"/><stop offset=".58" stop-color="#FFF" stop-opacity="0"/>
     </linearGradient>
+    <filter id="shadow" x="12" y="12" width="488" height="488" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#7C291A" flood-opacity=".3"/>
+    </filter>
   </defs>
-  <path d="M110 12h292a98 98 0 0 1 98 98v292a98 98 0 0 1-98 98H110a98 98 0 0 1-98-98V110a98 98 0 0 1 98-98Z" fill="#923C2D" opacity=".4" transform="translate(0 8)"/>
-  <path d="M110 4h292a98 98 0 0 1 98 98v292a98 98 0 0 1-98 98H110a98 98 0 0 1-98-98V102a98 98 0 0 1 98-98Z" fill="url(#tile)"/>
-  <g transform="translate(110 176) scale(2.8)" fill="#813D2D" opacity=".46">
-    <path d="M12 10h56v11H25v10h29v10H25v19H12V10Z"/>
-    <path d="M53 25h14l12 23 12-23h14L84 60H74L53 25Z"/>
+  <g filter="url(#shadow)">
+    <circle cx="256" cy="244" r="208" fill="url(#disc)"/>
+    <circle cx="256" cy="244" r="207" stroke="#FFF" stroke-opacity=".4" stroke-width="2"/>
+    <path d="M74 239a182 182 0 0 1 319-118 208 208 0 0 1-242 294 182 182 0 0 1-77-176Z" fill="url(#shine)"/>
   </g>
-  <g transform="translate(110 172) scale(2.8)" fill="url(#letters)">
-    <path d="M12 8h56v11H25v10h29v10H25v19H12V8Z"/>
-    <path d="M53 23h14l12 23 12-23h14L84 58H74L53 23Z"/>
+  <g transform="translate(-32) scale(5.333)" fill="#FFF">
+    <path d="M27 29h29v6H34v7h17v6H34v18h-7V29Z"/>
+    <path d="M49 43h8l8 16 8-16h8L68 67h-6L49 43Z"/>
   </g>
-  <path d="m157 207 94 0m20 42 22 40" stroke="#FFF" stroke-linecap="round" stroke-opacity=".85" stroke-width="8"/>
+  <path d="m142 176 104 0m15 74 38 73" stroke="#FFF" stroke-linecap="round" stroke-opacity=".72" stroke-width="8"/>
 </svg>

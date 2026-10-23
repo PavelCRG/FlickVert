@@ -7,6 +7,7 @@ import { convertImage, fitWithin } from './conversion/images'
 import { imagesToPdf } from './conversion/pdf'
 import { loadSettings } from './settings'
 import { t, type MessageKey } from './i18n'
+import { canRunSelectedTool } from './quick-actions'
 import './quick-menu.css'
 
 type NativeFile = { path: string; name: string; size: number; extension: string; mime: string; isDirectory: boolean }
@@ -16,6 +17,7 @@ const imageExtensions = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp']
 const extendedImageExtensions = [...imageExtensions, 'heic', 'heif', 'avif', 'tif', 'tiff', 'svg']
 const isMac = navigator.platform.startsWith('Mac')
 const toolActions = [
+  { id: 'image-editor', label: 'Edit image' as const, glyph: '✦' },
   { id: 'images-to-pdf', label: 'Images to PDF' as const, glyph: 'PDF' },
   { id: 'resize', label: 'Resize' as const, glyph: '↔' },
   { id: 'rotate', label: 'Rotate' as const, glyph: '↻' },
@@ -50,7 +52,7 @@ const fileActions = [
 function toolActionsFor(files: NativeFile[], ffmpegAvailable: boolean, imagemagickAvailable: boolean) {
   if (files.length === 1 && files[0].extension === 'zip') return archiveToolActions
   if (files.length && files.every((file) => imageExtensions.includes(file.extension))) return toolActions
-  if (imagemagickAvailable && files.length && files.every((file) => extendedImageExtensions.includes(file.extension))) return toolActions.filter((action) => !['images-to-pdf', 'square'].includes(action.id))
+  if (imagemagickAvailable && files.length && files.every((file) => extendedImageExtensions.includes(file.extension))) return toolActions.filter((action) => !['image-editor', 'images-to-pdf', 'square'].includes(action.id))
   if (ffmpegAvailable && files.length && files.every((file) => file.mime.startsWith('video/'))) return videoToolActions
   if (ffmpegAvailable && files.length && files.every((file) => file.mime.startsWith('audio/'))) return audioToolActions
   return []
@@ -177,6 +179,12 @@ export default function QuickMenu() {
     dropHandled.current = true
     setStatus(tr(actionId === 'resize' ? 'Resizing...' : 'Processing...'))
     try {
+      if (actionId === 'image-editor') {
+        if (items.length !== 1) throw new Error('Edit one image at a time')
+        await invoke('open_image_editor', { inputPath: items[0].path })
+        hide()
+        return
+      }
       if (actionId === 'images-to-pdf') {
         if (items.length > 100) throw new Error('Select up to 100 images')
         if (items.reduce((size, file) => size + file.size, 0) > 32 * 1024 * 1024) throw new Error('Images exceed the 32 MB limit')
@@ -344,10 +352,7 @@ export default function QuickMenu() {
 
   async function choose(actionId: string) {
     try {
-      if (actionId === 'resize' && dragModeRef.current && filesRef.current.length) {
-        await runTool(actionId, filesRef.current)
-        return
-      } else if (allToolActions.some((action) => action.id === actionId) && dragModeRef.current && filesRef.current.length) {
+      if (canRunSelectedTool(actionId, allToolActions.map((action) => action.id), filesRef.current.length)) {
         await runTool(actionId, filesRef.current)
         return
       } else if (actionId === 'create-zip') {
@@ -426,11 +431,13 @@ export default function QuickMenu() {
       <div className="quick-center"><img className="quick-monogram" src="/fv-mark.svg" alt="FlickVert"/><span>{status || (files.length ? wheelMode === 'convert' || !actions.length ? tr('No formats available') : files.length === 1 ? files[0].name : `${files.length} ${tr('files')}` : tr('No selected files found'))}</span></div>
       {actions.map((action, index, entries) => {
         const angle = (index / entries.length) * Math.PI * 2 - Math.PI / 2
+        const actionRadius = entries.length > 8 ? 36 : 34
         const needsOneFile = ['extract-zip', 'reveal', 'copy-path', 'open-terminal'].includes(action.id)
         const imageTool = allToolActions.some((tool) => tool.id === action.id)
         const unavailableTool = imageTool && dragMode && !toolActionsFor(files, ffmpegAvailable, imagemagickAvailable).some((tool) => tool.id === action.id)
+        const multipleEditorFiles = action.id === 'image-editor' && files.length !== 1
         const unavailableArchive = dragMode && (action.id === 'create-zip' ? files.length === 0 : action.id === 'extract-zip' && (files.length !== 1 || files[0]?.extension !== 'zip'))
-        return <button key={action.id} className={`quick-action action-${action.id}${active === index ? ' active' : ''}`} style={{ left: `${50 + Math.cos(angle) * 34}%`, top: `${50 + Math.sin(angle) * 34}%`, '--petal-angle': `${index / entries.length * 360}deg` } as CSSProperties} onClick={() => void choose(action.id)} disabled={(needsOneFile && files.length !== 1) || unavailableTool || unavailableArchive}><span className="quick-petal-content"><span className="quick-glyph">{action.glyph}</span><small>{tr(action.label)}</small></span></button>
+        return <button key={action.id} className={`quick-action action-${action.id}${active === index ? ' active' : ''}`} style={{ left: `${50 + Math.cos(angle) * actionRadius}%`, top: `${50 + Math.sin(angle) * actionRadius}%`, '--petal-angle': `${index / entries.length * 360}deg` } as CSSProperties} onClick={() => void choose(action.id)} disabled={(needsOneFile && files.length !== 1) || unavailableTool || unavailableArchive || multipleEditorFiles}><span className="quick-petal-content"><span className="quick-glyph">{action.glyph}</span><small>{tr(action.label)}</small></span></button>
       })}
     </div>}
     {!dragMode && <div className="quick-keyhint"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> · ← → · Enter · Esc</div>}

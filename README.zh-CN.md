@@ -9,6 +9,7 @@
   </p>
   <p><a href="README.md">English</a> · <a href="README.ru.md">Русский</a></p>
 </div>
+<p>在 <strong>Tools → Edit image</strong> 中可以裁剪图片、涂黑区域、添加注释或背景，并调整亮度和对比度。结果以 PNG 格式保存在原图旁边。</p>
 
 FlickVert 可与文件资源管理器和 Finder 配合使用。拖动文件时按 Shift，然后将文件放到指针旁转盘中的操作上。主窗口显示开始页、历史记录和设置。
 

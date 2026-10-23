@@ -3,6 +3,7 @@ import { invoke, isTauri } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { loadSettings, normalizeSettings, saveSettings, type AppSettings } from './settings'
 import { t, type MessageKey } from './i18n'
+import ImageEditor, { type ImageEditTool } from './ImageEditor'
 
 type HistoryEntry = { id: string; fileName: string; size: number; output: string }
 type Engines = { ffmpeg: boolean; pandoc: boolean; imagemagick: boolean; libreoffice: boolean; poppler: boolean }
@@ -27,6 +28,7 @@ export default function App() {
   const [preferences, setPreferences] = useState<AppSettings>(loadSettings)
   const [shortcutError, setShortcutError] = useState(false)
   const [pickError, setPickError] = useState(false)
+  const [imageEdit, setImageEdit] = useState<{ inputPath: string; initialTool: ImageEditTool } | null>(null)
   const [engines, setEngines] = useState<Engines>({ ffmpeg: false, pandoc: false, imagemagick: false, libreoffice: false, poppler: false })
   const tr = (key: MessageKey) => t(preferences.language, key)
 
@@ -35,6 +37,9 @@ export default function App() {
     const stops: (() => void)[] = []
     const addStop = (stop: () => void) => { if (disposed) stop(); else stops.push(stop) }
     void listen<string>('flickvert://quick-action', ({ payload }) => setSection(payload === 'settings' ? 'settings' : 'home')).then(addStop)
+    void listen<{ inputPath: string; initialTool: ImageEditTool }>('flickvert://image-editor-open', ({ payload }) => {
+      if (typeof payload.inputPath === 'string') { setSection('home'); setImageEdit(payload) }
+    }).then(addStop)
     void listen<Omit<HistoryEntry, 'id'>>('flickvert://job-completed', ({ payload }) => {
       if (typeof payload.fileName !== 'string' || typeof payload.output !== 'string' || !Number.isFinite(payload.size)) return
       setHistory((current) => [{ id: crypto.randomUUID(), ...payload }, ...current].slice(0, 100))
@@ -107,5 +112,6 @@ export default function App() {
       {section === 'history' && <div className="page simple-page"><p className="eyebrow">{tr('RECENT WORK')}</p><h1>{tr('History')}</h1><p className="subtitle">{tr('Recent conversions are stored on this device.')}</p>{history.length ? <div className="file-list history-list">{history.map((item) => <article className="file-row" key={item.id}><div className="file-icon">✓</div><div className="file-info"><strong title={item.output}>{item.output}</strong><span>{item.fileName} · {sizeOf(item.size)}</span></div><span className="status done">{tr('Converted')}</span></article>)}</div> : <div className="empty-queue history-empty"><div className="empty-glyph">◷</div><div><strong>{tr('No completed conversions yet')}</strong><p>{tr('Completed conversions will appear here.')}</p></div></div>}</div>}
       {section === 'settings' && <div className="page simple-page"><p className="eyebrow">{tr('MAKE IT YOURS')}</p><h1>{tr('Settings')}</h1><p className="subtitle">{tr('Choose how FlickVert looks.')}</p><h2 className="preference-heading">{tr('Appearance')}</h2><div className="theme-options">{(['system', 'light', 'dark'] as const).map((appearance) => <button key={appearance} className={preferences.appearance === appearance ? 'theme-option selected' : 'theme-option'} onClick={() => updatePreferences({ appearance })}>{tr(appearance === 'system' ? 'System' : appearance === 'light' ? 'Light' : 'Dark')}</button>)}</div><h2 className="preference-heading">{tr('Language')}</h2><div className="theme-options">{(['en', 'ru', 'zh'] as const).map((language) => <button key={language} className={preferences.language === language ? 'theme-option selected' : 'theme-option'} onClick={() => updatePreferences({ language })}>{tr(language === 'en' ? 'English' : language === 'ru' ? 'Russian' : 'Chinese')}</button>)}</div><h2 className="preference-heading">{tr('Quick shortcut')}</h2><label className="field shortcut-field"><select value={preferences.shortcut} onChange={(event) => { void updateShortcut(event.target.value) }}><option value="CTRL+ALT+SPACE">Ctrl + Alt + Space</option><option value="CTRL+SHIFT+SPACE">Ctrl + Shift + Space</option><option value="ALT+SHIFT+SPACE">Alt + Shift + Space</option></select></label>{shortcutError && <p className="shortcut-error">{tr('Shortcut unavailable. Use the tray menu.')}</p>}<h2 className="preference-heading">{tr('Output settings')}</h2><div className="home-settings"><label className="field"><span>{tr('Quality')} · {preferences.quality}%</span><input type="range" min="40" max="100" value={preferences.quality} onChange={(event) => updatePreferences({ quality: Number(event.target.value) })}/></label><label className="field"><span>{tr('Max width')}</span><input type="number" min="1" max="32768" value={preferences.width ?? ''} onChange={(event) => updatePreferences({ width: event.target.value ? Number(event.target.value) : undefined })}/></label><label className="field"><span>{tr('Max height')}</span><input type="number" min="1" max="32768" value={preferences.height ?? ''} onChange={(event) => updatePreferences({ height: event.target.value ? Number(event.target.value) : undefined })}/></label></div><h2 className="preference-heading">{tr('Conversion engines')}</h2><div className="engine-status">{[['FFmpeg', engines.ffmpeg], ['Pandoc', engines.pandoc], ['ImageMagick', engines.imagemagick], ['LibreOffice', engines.libreoffice], ['Poppler', engines.poppler]].map(([name, available]) => <div key={String(name)}><span>{name}</span><span className={available ? 'engine-found' : ''}>{tr(available ? 'Detected' : 'Not detected on PATH')}</span></div>)}</div><div className="settings-note">{tr('Your files stay on this device. Processing runs locally.')}</div></div>}
     </main>
+    {imageEdit && <ImageEditor inputPath={imageEdit.inputPath} initialTool={imageEdit.initialTool} onClose={() => setImageEdit(null)}/>}
   </div>
 }

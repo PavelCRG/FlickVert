@@ -38,6 +38,8 @@ The default shortcut, **Ctrl+Alt+Space**, opens quick actions for files selected
 
 While dragging, press **Ctrl** (Windows) or **Command** (macOS) for tools, or **Alt/Option** for file actions. The tools wheel can resize, rotate, flip, grayscale, square-crop, compress, remove image metadata, or combine up to 100 images into a PDF. HEIC, AVIF, TIFF, and SVG tools require ImageMagick; these save PNG or JPEG output. With FFmpeg installed, the wheel also offers video compression, mute, audio extraction, thumbnails, audio compression, and loudness normalization. Actions can create or safely extract ZIP archives, copy or move selected files and folders to `Downloads/FlickVert`, reveal one item in Explorer/Finder, copy its path, or open its folder in a terminal.
 
+For detailed image work, choose **Edit image** in Tools. The editor can crop or redact a selected area, add a text annotation or background fill, and adjust brightness and contrast. It saves a new PNG beside the source and leaves the original unchanged.
+
 ## How the drag wheel works
 
 1. Start dragging a selected file from File Explorer or Finder with either mouse button.
@@ -61,7 +63,7 @@ The wheel needs a file drag that starts in Explorer or Finder. You can also open
 | Camera RAW | Depends on ImageMagick | Install ImageMagick separately. |
 | Archives | ZIP create and extract | Saved beside the selected file; unsafe paths and links are rejected. |
 
-**Still missing:** OCR for scanned PDFs; PDF to PAGES/PPTX/XLSX; area-based redaction, annotation and background editing; TAR/GZIP/RAR; interactive trim, split and merge.
+**Still missing:** OCR for scanned PDFs; PDF to PAGES/PPTX/XLSX; TAR/GZIP/RAR; interactive audio/video trim, split and merge.
 
 ## Where files are saved
 

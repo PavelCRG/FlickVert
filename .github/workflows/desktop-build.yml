@@ -45,9 +45,11 @@ jobs:
 
           With FFmpeg installed, the tools wheel also supports video compression, mute, audio extraction, thumbnails, audio compression and loudness normalization.
 
+          The Tools wheel's Edit image opens a local editor for cropping, redaction, text annotations, background fills, brightness and contrast. Edited images are saved as new PNG files beside the originals.
+
           Files are processed locally. FFmpeg, Pandoc, ImageMagick and LibreOffice are optional and must be installed separately for their formats. Windows 10/11 requires Microsoft Edge WebView2 Runtime.
 
-          FlickVert starts in the tray. The wheel opens beside the pointer while dragging a file. Use the tray menu to open settings or quit FlickVert.
+          FlickVert opens its start window on launch and stays in the tray when the window is closed. The wheel opens beside the pointer while dragging a file. Use the tray menu to reopen settings or quit FlickVert.
           '@ | Set-Content (Join-Path $package 'INSTALL.txt') -Encoding utf8
           Compress-Archive -Path (Join-Path $package '*') -DestinationPath (Join-Path $env:RUNNER_TEMP 'FlickVert-Windows-x64-portable.zip') -CompressionLevel Optimal
       - uses: actions/upload-artifact@v4
