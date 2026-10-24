@@ -22,8 +22,8 @@ mod operations;
 mod quick_window;
 mod selection;
 
-const QUICK_WIDTH: u32 = 336;
-const QUICK_HEIGHT: u32 = 336;
+const QUICK_WIDTH: u32 = 320;
+const QUICK_HEIGHT: u32 = 320;
 static MEDIA_TEMP_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 #[derive(Default)]
