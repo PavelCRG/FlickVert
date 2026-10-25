@@ -399,15 +399,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn opens_wheel_when_modifier_is_pressed_during_drag() {
+    fn switches_wheel_mode_when_modifier_is_pressed_during_drag() {
         let mut gesture = Gesture::default();
         assert!(gesture
             .transition(InputEvent::LeftDown(10.0, 10.0))
             .is_none());
-        assert!(gesture.transition(InputEvent::Move(20.0, 10.0)).is_none());
+        assert!(matches!(
+            gesture.transition(InputEvent::Move(20.0, 10.0)),
+            Some(Action::Open(WheelMode::Convert))
+        ));
         assert!(matches!(
             gesture.transition(InputEvent::ModifierDown(WheelMode::Convert)),
-            Some(Action::Open(WheelMode::Convert))
+            Some(Action::Switch(WheelMode::Convert))
         ));
         assert!(gesture
             .transition(InputEvent::ModifierUp(WheelMode::Convert))

@@ -3,6 +3,17 @@ const center = size / 2
 const innerRadius = 80
 const outerRadius = 174
 
+export function wheelSectorAt(point: { x: number; y: number }, size: { width: number; height: number }, count: number) {
+  if (!Number.isInteger(count) || count < 1 || !Number.isFinite(point.x) || !Number.isFinite(point.y) || !Number.isFinite(size.width) || !Number.isFinite(size.height) || size.width <= 0 || size.height <= 0) return -1
+  const dx = point.x - size.width / 2
+  const dy = point.y - size.height / 2
+  const radius = Math.hypot(dx, dy)
+  const diameter = Math.min(size.width, size.height)
+  if (radius < diameter * 0.215 || radius > diameter * 0.47) return -1
+  const angle = (Math.atan2(dy, dx) + Math.PI / 2 + Math.PI * 2) % (Math.PI * 2)
+  return Math.floor((angle + Math.PI / count) / (Math.PI * 2 / count)) % count
+}
+
 const point = (angle: number, radius: number) => [
   Number((center + Math.cos(angle) * radius).toFixed(2)),
   Number((center + Math.sin(angle) * radius).toFixed(2)),

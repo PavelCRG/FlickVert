@@ -7,8 +7,8 @@ import { convertImage, fitWithin } from './conversion/images'
 import { imagesToPdf } from './conversion/pdf'
 import { loadSettings } from './settings'
 import { t, type MessageKey } from './i18n'
-import { canRunSelectedTool } from './quick-actions'
-import { wheelLabelPosition, wheelSlicePath } from './radial-wheel'
+import { canRunFileAction, canRunSelectedTool, canRunWheelTool } from './quick-actions'
+import { wheelLabelPosition, wheelSectorAt, wheelSlicePath } from './radial-wheel'
 import './quick-menu.css'
 
 type NativeFile = { path: string; name: string; size: number; extension: string; mime: string; isDirectory: boolean }
@@ -62,16 +62,6 @@ function toolActionsFor(files: NativeFile[], ffmpegAvailable: boolean, imagemagi
 
 function outputLabel(extension: string) {
   return extension === 'jpg' ? 'JPEG' : extension.toUpperCase()
-}
-
-function selectedSector(point: Position, size: { width: number; height: number }, count: number) {
-  if (!count) return -1
-  const dx = point.x - size.width / 2
-  const dy = point.y - size.height / 2
-  const radius = Math.hypot(dx, dy)
-  if (radius < Math.min(size.width, size.height) * 0.215 || radius > Math.min(size.width, size.height) * 0.47) return -1
-  const angle = (Math.atan2(dy, dx) + Math.PI / 2 + Math.PI * 2) % (Math.PI * 2)
-  return Math.floor((angle + Math.PI / count) / (Math.PI * 2 / count)) % count
 }
 
 function WheelChoices({ items, active, onActive }: { items: WheelChoice[]; active: number; onActive: (index: number) => void }) {
@@ -322,19 +312,23 @@ export default function QuickMenu() {
     try {
       const { received, options } = await refreshFiles(paths)
       if (wheelModeRef.current === 'actions') {
-        const index = selectedSector(point, wheelSize.current, fileActions.length)
+        const index = wheelSectorAt(point, wheelSize.current, fileActions.length)
         const id = fileActions[index]?.id
-        if (index >= 0 && received.length && (id === 'copy-to-folder' || id === 'move-to-folder' || id === 'create-zip' || received.length === 1)) await choose(id)
+        if (id && canRunFileAction(id, received)) await choose(id)
+        else hide()
         return
       }
       if (wheelModeRef.current === 'tools') {
         const actions = toolActionsFor(received, ffmpegAvailableRef.current, imagemagickAvailableRef.current)
-        const index = selectedSector(point, wheelSize.current, actions.length)
-        if (index >= 0) await runTool(actions[index].id, received)
+        const index = wheelSectorAt(point, wheelSize.current, actions.length)
+        const action = actions[index]
+        if (!action || !canRunWheelTool(action.id, received.length, received.reduce((sum, file) => sum + file.size, 0))) { hide(); return }
+        await runTool(action.id, received)
         return
       }
-      const index = selectedSector(point, wheelSize.current, options.length)
+      const index = wheelSectorAt(point, wheelSize.current, options.length)
       if (wheelModeRef.current === 'convert' && index >= 0 && received.length) await convertFiles(received, options[index])
+      else hide()
     } catch (error) {
       setStatus(String(error).slice(0, 160))
     }
@@ -383,8 +377,14 @@ export default function QuickMenu() {
         setDragVisible(true)
         void refreshFiles(payload.paths).catch((error) => setStatus(String(error)))
       } else if (payload.type === 'over') {
-        const count = wheelModeRef.current === 'tools' ? toolActionsFor(filesRef.current, ffmpegAvailableRef.current, imagemagickAvailableRef.current).length : wheelModeRef.current === 'actions' ? fileActions.length : formatsRef.current.length
-        setActive(selectedSector(payload.position, wheelSize.current, count))
+        const actions = wheelModeRef.current === 'tools' ? toolActionsFor(filesRef.current, ffmpegAvailableRef.current, imagemagickAvailableRef.current) : []
+        const count = wheelModeRef.current === 'tools' ? actions.length : wheelModeRef.current === 'actions' ? fileActions.length : formatsRef.current.length
+        const index = wheelSectorAt(payload.position, wheelSize.current, count)
+        const action = actions[index]
+        const fileAction = fileActions[index]
+        const disabledTool = action && !canRunWheelTool(action.id, filesRef.current.length, filesRef.current.reduce((sum, file) => sum + file.size, 0))
+        const disabledFileAction = wheelModeRef.current === 'actions' && (!fileAction || !canRunFileAction(fileAction.id, filesRef.current))
+        setActive(disabledTool || disabledFileAction ? -1 : index)
       } else if (payload.type === 'drop') {
         if (hideTimer.current !== undefined) window.clearTimeout(hideTimer.current)
         dropHandled.current = true
@@ -446,12 +446,11 @@ export default function QuickMenu() {
   const choices: WheelChoice[] = wheelMode === 'convert'
     ? formats.map((format) => ({ key: format.extension, label: format.label, disabled: false, onChoose: () => void convertFiles(filesRef.current, format) }))
     : actions.map((action) => {
-      const needsOneFile = ['extract-zip', 'reveal', 'copy-path', 'open-terminal'].includes(action.id)
       const imageTool = allToolActions.some((tool) => tool.id === action.id)
       const unavailableTool = imageTool && dragMode && !toolActionsFor(files, ffmpegAvailable, imagemagickAvailable).some((tool) => tool.id === action.id)
-      const multipleEditorFiles = action.id === 'image-editor' && files.length !== 1
-      const unavailableArchive = dragMode && (action.id === 'create-zip' ? files.length === 0 : action.id === 'extract-zip' && (files.length !== 1 || files[0]?.extension !== 'zip'))
-      return { key: action.id, label: tr(action.label), glyph: action.glyph, disabled: (needsOneFile && files.length !== 1) || unavailableTool || unavailableArchive || multipleEditorFiles, onChoose: () => void choose(action.id) }
+      const totalBytes = files.reduce((sum, file) => sum + file.size, 0)
+      const disabledBySelection = imageTool ? !canRunWheelTool(action.id, files.length, totalBytes) : !canRunFileAction(action.id, files)
+      return { key: action.id, label: tr(action.label), glyph: action.glyph, disabled: unavailableTool || disabledBySelection, onChoose: () => void choose(action.id) }
     })
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

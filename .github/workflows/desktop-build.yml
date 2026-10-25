@@ -75,19 +75,35 @@ jobs:
         with:
           pattern: flickvert-*
           path: artifacts
-          merge-multiple: true
       - name: Collect installers and checksums
         shell: bash
         run: |
           mkdir release-assets
-          find artifacts -type f \( -iname '*.msi' -o -iname '*.exe' -o -iname '*.dmg' -o -iname '*.zip' \) -print0 \
-            | while IFS= read -r -d '' file; do cp "$file" release-assets/; done
-          test "$(find release-assets -maxdepth 1 -iname '*.msi' | wc -l)" -eq 1
-          test "$(find release-assets -maxdepth 1 -iname '*setup.exe' | wc -l)" -eq 1
-          test "$(find release-assets -maxdepth 1 -iname '*.dmg' | wc -l)" -ge 2
-          test "$(find release-assets -maxdepth 1 -iname '*portable.zip' | wc -l)" -eq 1
+          copy_one() {
+            local directory="$1" pattern="$2" destination="$3"
+            mapfile -d '' files < <(find "artifacts/$directory" -type f -iname "$pattern" -print0)
+            if [[ "${#files[@]}" -ne 1 ]]; then
+              echo "Expected one $pattern in artifacts/$directory, found ${#files[@]}" >&2
+              exit 1
+            fi
+            cp "${files[0]}" "release-assets/$destination"
+          }
+          copy_one flickvert-x86_64-pc-windows-msvc '*.msi' FlickVert-Windows-x64-Setup.msi
+          copy_one flickvert-x86_64-pc-windows-msvc '*-setup.exe' FlickVert-Windows-x64-Setup.exe
+          copy_one flickvert-windows-portable '*-portable.zip' FlickVert-Windows-x64-Portable.zip
+          copy_one flickvert-x86_64-apple-darwin '*.dmg' FlickVert-macOS-Intel.dmg
+          copy_one flickvert-aarch64-apple-darwin '*.dmg' FlickVert-macOS-Apple-Silicon.dmg
           (cd release-assets && sha256sum * > SHA256SUMS.txt)
       - uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
+          body: |
+            ## Install
+
+            - **Windows:** choose the MSI or setup EXE, or use the portable ZIP. Windows 10/11 x64; WebView2 Runtime is required.
+            - **macOS:** choose Apple Silicon or Intel DMG. macOS 13 or later. These builds are not signed or notarized and may show a first-open security warning.
+            - Optional conversion engines (FFmpeg, Pandoc, ImageMagick, LibreOffice, Poppler) must be installed separately for the formats that need them.
+            - Files are processed locally. See the README files in the portable ZIP for usage and supported formats.
+
+            Verify downloads with `SHA256SUMS.txt`.
           files: release-assets/*

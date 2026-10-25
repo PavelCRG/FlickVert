@@ -601,9 +601,18 @@ fn extract_zip_archive(
 }
 
 fn show_main(app: &AppHandle) {
-    if let Some(window) = app.get_webview_window("main") {
-        let _ = window.show();
-        let _ = window.set_focus();
+    let Some(window) = app.get_webview_window("main") else {
+        eprintln!("Main webview is missing; registered windows: {:?}", app.webview_windows().keys());
+        return;
+    };
+    if let Err(error) = window.unminimize() {
+        eprintln!("Could not restore the main window: {error}");
+    }
+    if let Err(error) = window.show() {
+        eprintln!("Could not show the main window: {error}");
+    }
+    if let Err(error) = window.set_focus() {
+        eprintln!("Could not focus the main window: {error}");
     }
 }
 
@@ -1043,14 +1052,6 @@ fn main() {
             if let Err(error) = register_shortcut(app.handle().clone(), "CTRL+ALT+SPACE".into()) {
                 eprintln!("Could not register the default shortcut: {error}");
             }
-            WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
-                .title("FlickVert")
-                .inner_size(900.0, 720.0)
-                .min_inner_size(760.0, 600.0)
-                .resizable(true)
-                .center()
-                .visible(true)
-                .build()?;
             app.manage(DroppedFiles::default());
             app.manage(DragTrigger::default());
             match WebviewWindowBuilder::new(app, "quick", WebviewUrl::App("index.html".into()))
@@ -1100,10 +1101,8 @@ fn main() {
                 }
                 Err(error) => {
                     eprintln!("Tray unavailable; keep FlickVert open to access it: {error}");
-                    show_main(app.handle());
                 }
             }
-            show_main(app.handle());
             input::start(app.handle().clone());
             Ok(())
         })
@@ -1119,7 +1118,11 @@ fn main() {
         })
         .build(tauri::generate_context!())
         .expect("FlickVert failed to start")
-        .run(|_, _| {});
+        .run(|app, event| {
+            if matches!(event, tauri::RunEvent::Ready) {
+                show_main(app);
+            }
+        });
 }
 
 #[cfg(test)]

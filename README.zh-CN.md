@@ -13,7 +13,14 @@
 
 FlickVert 可与文件资源管理器和 Finder 配合使用。开始拖动文件后，指针旁会立即出现圆形菜单。将文件放到格式或操作上即可执行。主窗口包含历史记录和设置。
 
-<p align="center"><a href="https://github.com/PavelCRG/FlickVert/releases/latest"><strong>下载适用于 Windows 或 macOS 的 FlickVert →</strong></a></p>
+<p align="center">
+  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.msi"><strong>Windows 安装包 (MSI)</strong></a> ·
+  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.exe">Windows 安装包 (EXE)</a> ·
+  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Portable.zip">Windows 便携版 (ZIP)</a> ·
+  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-macOS-Apple-Silicon.dmg">macOS Apple Silicon</a> ·
+  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-macOS-Intel.dmg">macOS Intel</a>
+</p>
+<p align="center">macOS 安装包目前未经签名，首次打开时系统可能显示安全提示。</p>
 
 ## 目录
 

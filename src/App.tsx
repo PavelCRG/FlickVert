@@ -25,6 +25,12 @@ function SegmentedControl<Value extends string>({ label, value, options, onChang
   </div>
 }
 
+function NavIcon({ section }: { section: Section }) {
+  return section === 'settings'
+    ? <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 5h13M3.5 10h13M3.5 15h13"/><circle cx="7" cy="5" r="1.5"/><circle cx="13" cy="10" r="1.5"/><circle cx="9" cy="15" r="1.5"/></svg>
+    : <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="M10 6v4l2.5 1.5"/></svg>
+}
+
 function loadHistory(): HistoryEntry[] {
   try {
     const value: unknown = JSON.parse(localStorage.getItem('flickvert-history') || '[]')
@@ -105,8 +111,9 @@ export default function App() {
       <div className="brand"><img className="brand-mark" src="/fv-mark.svg" alt=""/><span>FlickVert</span></div>
       <div className="side-label">{tr('Workspace')}</div>
       <nav aria-label="Main navigation">
-        <button className={section === 'settings' ? 'nav-item active' : 'nav-item'} onClick={() => setSection('settings')}>{tr('Settings')}</button>
-        <button className={section === 'history' ? 'nav-item active' : 'nav-item'} onClick={() => setSection('history')}>{tr('History')}</button>
+        {(['settings', 'history'] as const).map((item) => <button key={item} aria-current={section === item ? 'page' : undefined} className={section === item ? 'nav-item active' : 'nav-item'} onClick={() => setSection(item)}>
+          <NavIcon section={item}/><span>{tr(item === 'settings' ? 'Settings' : 'History')}</span>
+        </button>)}
       </nav>
       <div className="sidebar-bottom">
         <div className="privacy"><span className="privacy-icon">●</span><div><strong>{tr('Your files stay here')}</strong><small>{tr('Processed on this device')}</small></div></div>

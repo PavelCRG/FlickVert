@@ -13,7 +13,14 @@
 
 FlickVert работает рядом с Проводником и Finder. Начните перетаскивать файл — круговое меню появится возле указателя. Отпустите файл на формате или действии, чтобы запустить обработку. В главном окне доступны история и настройки.
 
-<p align="center"><a href="https://github.com/PavelCRG/FlickVert/releases/latest"><strong>Скачать FlickVert для Windows или macOS →</strong></a></p>
+<p align="center">
+  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.msi"><strong>Windows: установщик MSI</strong></a> ·
+  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.exe">Windows: установщик EXE</a> ·
+  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Portable.zip">Windows: ZIP без установки</a> ·
+  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-macOS-Apple-Silicon.dmg">macOS: Apple Silicon</a> ·
+  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-macOS-Intel.dmg">macOS: Intel</a>
+</p>
+<p align="center">Сборки macOS пока не подписаны; при первом запуске система может показать предупреждение безопасности.</p>
 
 ## Содержание
 

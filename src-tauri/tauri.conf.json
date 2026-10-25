@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "FlickVert",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "identifier": "app.flickvert.desktop",
   "build": {
     "beforeDevCommand": null,
@@ -13,13 +13,14 @@
     "windows": [{
       "label": "main",
       "title": "FlickVert",
-      "create": false,
+      "create": true,
       "width": 900,
       "height": 720,
       "minWidth": 760,
       "minHeight": 600,
       "resizable": true,
-      "center": true
+      "center": true,
+      "visible": true
     }],
     "security": {
       "csp": "default-src 'self' asset: http://asset.localhost; img-src 'self' asset: http://asset.localhost blob: data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src ipc: http://ipc.localhost"

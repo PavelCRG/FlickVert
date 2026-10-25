@@ -240,16 +240,21 @@ mod tests {
     use super::*;
     use std::{
         fs,
+        sync::atomic::{AtomicU64, Ordering},
         time::{SystemTime, UNIX_EPOCH},
     };
 
+    static NEXT_TEST_DIR: AtomicU64 = AtomicU64::new(0);
+
     fn dir() -> PathBuf {
         let path = std::env::temp_dir().join(format!(
-            "flickvert-test-{}",
+            "flickvert-test-{}-{}-{}",
+            std::process::id(),
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
-                .as_nanos()
+                .as_nanos(),
+            NEXT_TEST_DIR.fetch_add(1, Ordering::Relaxed)
         ));
         fs::create_dir_all(&path).unwrap();
         path
@@ -321,7 +326,7 @@ mod tests {
         assert_eq!(destination_directory(&input, None).unwrap(), source_folder);
         assert_eq!(
             destination_directory(&input, Some(selected_folder.to_str().unwrap())).unwrap(),
-            selected_folder
+            fs::canonicalize(&selected_folder).unwrap()
         );
         assert!(destination_directory(&input, Some("missing-folder")).is_err());
         fs::remove_dir_all(root).unwrap();

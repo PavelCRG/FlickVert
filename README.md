@@ -12,7 +12,14 @@
 
 FlickVert sits beside File Explorer and Finder. Start dragging a file and the circular action wheel appears beside the pointer. Drop the file on a format or action to run it. The main window has history and settings.
 
-<p align="center"><a href="https://github.com/PavelCRG/FlickVert/releases/latest"><strong>Download FlickVert for Windows or macOS →</strong></a></p>
+<p align="center">
+  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.msi"><strong>Windows installer (MSI)</strong></a> ·
+  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.exe">Windows installer (EXE)</a> ·
+  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Portable.zip">Windows portable (ZIP)</a> ·
+  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-macOS-Apple-Silicon.dmg">macOS Apple Silicon</a> ·
+  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-macOS-Intel.dmg">macOS Intel</a>
+</p>
+<p align="center">macOS images are currently unsigned and may show a first-open security warning.</p>
 
 ## Contents
 
