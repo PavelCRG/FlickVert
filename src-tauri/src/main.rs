@@ -22,9 +22,15 @@ mod operations;
 mod quick_window;
 mod selection;
 
-const QUICK_WIDTH: u32 = 320;
-const QUICK_HEIGHT: u32 = 320;
+const QUICK_WIDTH: u32 = 288;
+const QUICK_HEIGHT: u32 = 288;
 static MEDIA_TEMP_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+#[cfg(all(windows, debug_assertions))]
+fn dev_webview_data_directory() -> PathBuf {
+    // Keep debug data writable and separate from the installed app profile.
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("target/debug/flickvert-webview-data")
+}
 
 #[derive(Default)]
 struct DroppedFiles(Mutex<HashSet<PathBuf>>);
@@ -1049,12 +1055,26 @@ fn main() {
             extract_zip_archive
         ])
         .setup(|app| {
+            let main_config = app
+                .config()
+                .app
+                .windows
+                .iter()
+                .find(|window| window.label == "main")
+                .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "main window config is missing"))?;
+            let main_window = WebviewWindowBuilder::from_config(app, main_config)?;
+            #[cfg(all(windows, debug_assertions))]
+            let main_window = main_window.data_directory(dev_webview_data_directory());
+            main_window.build()?;
             if let Err(error) = register_shortcut(app.handle().clone(), "CTRL+ALT+SPACE".into()) {
                 eprintln!("Could not register the default shortcut: {error}");
             }
             app.manage(DroppedFiles::default());
             app.manage(DragTrigger::default());
-            match WebviewWindowBuilder::new(app, "quick", WebviewUrl::App("index.html".into()))
+            let quick_window = WebviewWindowBuilder::new(app, "quick", WebviewUrl::App("index.html".into()));
+            #[cfg(all(windows, debug_assertions))]
+            let quick_window = quick_window.data_directory(dev_webview_data_directory());
+            match quick_window
                 .title("FlickVert Quick Actions")
                 .inner_size(QUICK_WIDTH as f64, QUICK_HEIGHT as f64)
                 .resizable(false)

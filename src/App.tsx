@@ -117,7 +117,7 @@ export default function App() {
       </nav>
       <div className="sidebar-bottom">
         <div className="privacy"><span className="privacy-icon">●</span><div><strong>{tr('Your files stay here')}</strong><small>{tr('Processed on this device')}</small></div></div>
-        <div className="version">FlickVert <span>0.1.0</span></div>
+        <div className="version">FlickVert <span>0.2.0</span></div>
       </div>
     </aside>
 

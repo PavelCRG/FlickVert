@@ -3,54 +3,66 @@ html:has(.quick-shell), body:has(.quick-shell), #root:has(.quick-shell) {
   overflow: hidden; background: transparent;
 }
 .quick-shell {
-  position: relative; width: 100%; height: 100%; box-sizing: border-box;
-  color: CanvasText; font: 13px system-ui, -apple-system, "Segoe UI", sans-serif;
+  position: relative; width: 100%; height: 100%; color: CanvasText;
+  --wheel-accent: #5368d8;
+  font: 12px system-ui, -apple-system, "Segoe UI", sans-serif;
   user-select: none; pointer-events: none;
 }
 .quick-orbit {
-  position: absolute; top: 8px; left: 8px; width: 304px; height: 304px;
+  position: absolute; top: 8px; left: 8px; width: 272px; height: 272px;
   border-radius: 50%; pointer-events: none;
 }
 .quick-orbit::before {
-  position:absolute;inset:1px;content:"";border:1px solid color-mix(in srgb,#2563eb 12%,transparent);
-  border-radius:50%;pointer-events:none;
+  position: absolute; inset: 1px; content: "";
+  border: 1px solid color-mix(in srgb, var(--wheel-accent) 15%, transparent);
+  border-radius: 50%; pointer-events: none;
 }
-.quick-segments {position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+.quick-segments { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .quick-segment {
-  fill:color-mix(in srgb,Canvas 94%,#dce7f2);
-  stroke:color-mix(in srgb,CanvasText 12%,transparent);stroke-width:1.3;stroke-linejoin:round;
-  cursor:pointer;pointer-events:visiblePainted;
-  transition:fill .08s ease,stroke .08s ease;
+  fill: color-mix(in srgb, Canvas 95%, #cbd5e1);
+  stroke: color-mix(in srgb, CanvasText 11%, transparent);
+  stroke-width: 1.2; stroke-linejoin: round; cursor: pointer; pointer-events: visiblePainted;
+  transition: fill .13s ease, stroke .13s ease, stroke-width .13s ease;
 }
-.quick-segment:hover,.quick-segment.active,.quick-segment:focus-visible {
-  fill:color-mix(in srgb,#3478d4 86%,Canvas);stroke:#3478d4;stroke-width:2;outline:none;
+.quick-segment:hover, .quick-segment.active, .quick-segment:focus-visible {
+  fill: color-mix(in srgb, var(--wheel-accent) 15%, Canvas);
+  stroke: var(--wheel-accent); stroke-width: 2; outline: none;
 }
-.quick-segment.disabled {fill:color-mix(in srgb,Canvas 56%,transparent);stroke:color-mix(in srgb,CanvasText 6%,transparent);cursor:default}
-.quick-labels {position:absolute;inset:0;pointer-events:none}
+.quick-segment.disabled {
+  fill: color-mix(in srgb, Canvas 58%, transparent);
+  stroke: color-mix(in srgb, CanvasText 6%, transparent); cursor: default;
+}
+.quick-labels { position: absolute; inset: 0; pointer-events: none; }
 .quick-label {
-  position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-  width:80px;min-height:36px;transform:translate(-50%,-50%);text-align:center;
-  color:color-mix(in srgb,CanvasText 86%,transparent);transition:color .08s ease;
+  position: absolute; width: 72px; min-height: 34px; display: flex;
+  flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  transform: translate(-50%, -50%); color: color-mix(in srgb, CanvasText 86%, transparent);
+  text-align: center; transition: color .13s ease;
 }
-.quick-label strong {max-width:80px;font-size:10px;line-height:1.12;font-weight:650;text-wrap:balance}
-.quick-label .quick-glyph {font-size:16px;line-height:1;color:color-mix(in srgb,CanvasText 62%,transparent)}
-.quick-label.active {color:#fff}
-.quick-label.active .quick-glyph {color:#fff}
-.quick-label.disabled {opacity:.44}
+.quick-label strong { max-width: 72px; font-size: 9px; line-height: 1.15; font-weight: 650; text-wrap: balance; }
+.quick-label .quick-glyph { color: color-mix(in srgb, CanvasText 62%, transparent); font-size: 15px; line-height: 1; }
+.quick-label.active { color: var(--wheel-accent); }
+.quick-label.active .quick-glyph { color: var(--wheel-accent); }
+.quick-label.disabled { opacity: .42; }
 .quick-center {
-  position:absolute;top:50%;left:50%;width:112px;height:112px;transform:translate(-50%,-50%);
-  box-sizing:border-box;padding:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
-  border:1px solid color-mix(in srgb,CanvasText 9%,transparent);border-radius:50%;
-  background:color-mix(in srgb,Canvas 96%,transparent);box-shadow:0 4px 14px #18364b18;
-  text-align:center;pointer-events:none;
+  position: absolute; top: 50%; left: 50%; width: 100px; height: 100px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+  padding: 12px; transform: translate(-50%, -50%); border: 1px solid color-mix(in srgb, CanvasText 9%, transparent);
+  border-radius: 50%; background: color-mix(in srgb, Canvas 97%, transparent);
+  box-shadow: 0 3px 12px #18364b14; text-align: center; pointer-events: none;
 }
-.quick-center strong {display:-webkit-box;max-width:88px;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2;text-overflow:ellipsis;font-size:12px;line-height:1.2;font-weight:650;color:CanvasText}
-.quick-center small {max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px;color:color-mix(in srgb,CanvasText 58%,transparent)}
-.quick-empty .quick-orbit::before {display:none}
-.quick-empty .quick-center {width:auto;height:auto;min-width:142px;min-height:44px;padding:10px 15px;border-radius:999px;box-shadow:0 4px 14px #18364b18}
-.quick-empty .quick-center strong {max-width:190px;font-weight:500}
-.quick-shell.drag-mode .quick-orbit {animation:wheel-arrive .16s cubic-bezier(.2,.75,.25,1) both;transform-origin:center}
-@keyframes wheel-arrive {from{opacity:0;scale:.94}to{opacity:1;scale:1}}
-@media(prefers-reduced-motion:reduce) {
-  .quick-segment,.quick-label,.quick-shell.drag-mode .quick-orbit {transition:none!important;animation:none!important}
+.quick-center strong {
+  display: -webkit-box; max-width: 80px; overflow: hidden; color: CanvasText;
+  font-size: 11px; font-weight: 650; line-height: 1.2; text-overflow: ellipsis;
+  -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+}
+.quick-center small { max-width: 78px; overflow: hidden; color: color-mix(in srgb, CanvasText 58%, transparent); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.quick-empty .quick-orbit::before { display: none; }
+.quick-empty .quick-center { width: auto; height: auto; min-width: 136px; min-height: 42px; padding: 9px 14px; border-radius: 999px; }
+.quick-empty .quick-center strong { max-width: 180px; font-weight: 500; }
+.quick-shell.drag-mode .quick-orbit { transform-origin: center; animation: wheel-arrive .16s cubic-bezier(.2, .75, .25, 1) both; }
+@keyframes wheel-arrive { from { opacity: 0; scale: .96; } to { opacity: 1; scale: 1; } }
+@media (prefers-color-scheme: dark) { .quick-shell { --wheel-accent: #a5b0ff; } }
+@media (prefers-reduced-motion: reduce) {
+  .quick-segment, .quick-label, .quick-shell.drag-mode .quick-orbit { transition: none !important; animation: none !important; }
 }

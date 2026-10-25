@@ -40,7 +40,7 @@ const audioToolActions = [
 ]
 const archiveToolActions = [{ id: 'extract-zip', label: 'Extract ZIP' as const, glyph: 'ZIP' }]
 const allToolActions = [...toolActions, ...videoToolActions, ...audioToolActions]
-const quickWindowSize = { width: 320, height: 320 }
+const quickWindowSize = { width: 288, height: 288 }
 const fileActions = [
   { id: 'create-zip', label: 'Create ZIP' as const, glyph: '▱' },
   { id: 'extract-zip', label: 'Extract ZIP' as const, glyph: '▣' },
