@@ -19,6 +19,12 @@
 
 On **Windows 10/11 x64**, download and open the Setup EXE above. The MSI is also available on the [releases page](https://github.com/PavelCRG/FlickVert/releases/latest). To run without installing, download the Portable ZIP and open `FlickVert.exe` inside it. Windows may show a SmartScreen warning because the installer is not Authenticode-signed.
 
+To install the latest Windows release from PowerShell, run:
+
+```powershell
+$installer = Join-Path $env:TEMP 'FlickVert-Setup.exe'; Invoke-WebRequest 'https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.exe' -OutFile $installer; Start-Process $installer -Wait; Remove-Item $installer
+```
+
 On **macOS 13 or later**, download the DMG for Apple Silicon or Intel from the [releases page](https://github.com/PavelCRG/FlickVert/releases/latest), open it, and drag FlickVert into Applications. These builds are not notarized and macOS may show a first-open security warning.
 
 Windows requires the Microsoft Edge WebView2 Runtime. Optional conversion engines are installed separately.

@@ -37,9 +37,9 @@ fn valid_name(name: &str) -> bool {
 fn exists_case_aware(directory: &Path, candidate: &str) -> Result<bool, FileError> {
     for entry in fs::read_dir(directory)? {
         let name = entry?.file_name().to_string_lossy().into_owned();
-        #[cfg(windows)]
+        #[cfg(any(windows, target_os = "macos"))]
         let matches = name.eq_ignore_ascii_case(candidate);
-        #[cfg(not(windows))]
+        #[cfg(not(any(windows, target_os = "macos")))]
         let matches = name == candidate;
         if matches {
             return Ok(true);
@@ -284,7 +284,7 @@ mod tests {
     }
 
     #[test]
-    fn rejects_case_insensitive_windows_collisions() {
+    fn rejects_case_insensitive_filesystem_collisions() {
         let root = dir();
         fs::write(root.join("Photo.webp"), b"keep").unwrap();
         assert_eq!(

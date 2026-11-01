@@ -17,8 +17,8 @@ export async function syncReleaseVersion(root, tag) {
   const cargoToml = await read('src-tauri/Cargo.toml')
   const cargoLock = await read('src-tauri/Cargo.lock')
   const app = await read('src/App.tsx')
-  const cargoPackage = /(\[package\][\s\S]*?\nname = "flickvert"\nversion = ")[^"]+(\")/
-  const cargoLockPackage = /(\[\[package\]\]\nname = "flickvert"\nversion = ")[^"]+(\")/
+  const cargoPackage = /(\[package\][\s\S]*?\r?\nname = "flickvert"\r?\nversion = ")[^"]+(\")/
+  const cargoLockPackage = /(\[\[package\]\]\r?\nname = "flickvert"\r?\nversion = ")[^"]+(\")/
   const appVersion = /(<div className="version">FlickVert <span>)[^<]+(<\/span><\/div>)/
   if (!packageLock.packages?.[''] || !cargoPackage.test(cargoToml) || !cargoLockPackage.test(cargoLock) || !appVersion.test(app)) {
     throw new Error('Could not find every FlickVert version field')
