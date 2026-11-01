@@ -1,8 +1,8 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { invoke, isTauri } from '@tauri-apps/api/core'
-import { listen } from '@tauri-apps/api/event'
+import { emit, listen } from '@tauri-apps/api/event'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { loadSettings, normalizeSettings, saveSettings, type AppSettings } from './settings'
+import { accentColors, loadSettings, normalizeSettings, saveSettings, type AccentColor, type AppSettings } from './settings'
 import { t, type MessageKey } from './i18n'
 import ImageEditor, { type ImageEditTool } from './image-editor/ImageEditor'
 import UpdateNotice from './updates/UpdateNotice'
@@ -24,6 +24,30 @@ function SegmentedControl<Value extends string>({ label, value, options, onChang
 }) {
   return <div className="segmented-control" role="group" aria-label={label}>
     {options.map((option) => <button key={option.value} type="button" aria-pressed={value === option.value} className={value === option.value ? 'selected' : ''} onClick={() => onChange(option.value)}>{option.label}</button>)}
+  </div>
+}
+
+function AccentPicker({ label, value, onChange, tr }: {
+  label: string
+  value: AccentColor
+  onChange: (value: AccentColor) => void
+  tr: (key: MessageKey) => string
+}) {
+  const options: { value: AccentColor; label: MessageKey }[] = [
+    { value: 'blue', label: 'Blue' }, { value: 'violet', label: 'Violet' }, { value: 'teal', label: 'Teal' },
+    { value: 'green', label: 'Green' }, { value: 'rose', label: 'Rose' },
+  ]
+  return <div className="accent-picker" role="group" aria-label={label}>
+    {options.map((option) => <button
+      key={option.value}
+      type="button"
+      className={value === option.value ? 'accent-swatch selected' : 'accent-swatch'}
+      style={{ '--swatch': accentColors[option.value] } as CSSProperties}
+      aria-label={`${label}: ${tr(option.label)}`}
+      aria-pressed={value === option.value}
+      title={tr(option.label)}
+      onClick={() => onChange(option.value)}
+    ><span aria-hidden="true"/></button>)}
   </div>
 }
 
@@ -58,6 +82,7 @@ export default function App() {
   const windowLabels = preferences.language === 'ru' ? ['Свернуть', 'Развернуть или восстановить', 'Закрыть'] : preferences.language === 'zh' ? ['最小化', '最大化或还原', '关闭'] : ['Minimize', 'Maximize or restore', 'Close']
 
   useEffect(() => {
+    if (!isTauri()) return
     let disposed = false
     const stops: (() => void)[] = []
     const addStop = (stop: () => void) => { if (disposed) stop(); else stops.push(stop) }
@@ -89,6 +114,7 @@ export default function App() {
     const next = normalizeSettings({ ...preferences, ...patch })
     setPreferences(next)
     saveSettings(next)
+    if (isTauri()) void emit('flickvert://settings-changed', next).catch(() => {})
   }
 
   async function updateShortcut(shortcut: string) {
@@ -109,7 +135,7 @@ export default function App() {
     if (folder) updatePreferences({ outputFolder: folder })
   }
 
-  return <div className={`app ${preferences.appearance}`}>
+  return <div className={`app ${preferences.appearance}`} data-accent={preferences.accent} style={{ '--accent-base': accentColors[preferences.accent] } as CSSProperties}>
     <header className="window-bar">
       <div className="window-drag" onMouseDown={(event) => { if (event.button === 0 && isTauri()) { if (event.detail === 2) void getCurrentWindow().toggleMaximize(); else void getCurrentWindow().startDragging() } }}><span>FlickVert</span></div>
       <div className="window-controls">
@@ -120,7 +146,7 @@ export default function App() {
     </header>
     {(['North', 'South', 'East', 'West', 'NorthEast', 'NorthWest', 'SouthEast', 'SouthWest'] as const).map((direction) => <div key={direction} className={`window-resize resize-${direction}`} aria-hidden="true" onMouseDown={(event) => { if (event.button === 0 && isTauri()) void getCurrentWindow().startResizeDragging(direction) }}/>) }
     <aside className="sidebar">
-      <div className="brand"><img className="brand-mark" src="/fv-file-orange.png" alt=""/><span>FlickVert</span></div>
+      <div className="brand"><span className="brand-mark" aria-hidden="true" style={{ maskImage: "url('/fv-file-orange.png')", WebkitMaskImage: "url('/fv-file-orange.png')" }}/><span>FlickVert</span></div>
       <div className="side-label">{tr('Workspace')}</div>
       <nav aria-label="Main navigation">
         {(['settings', 'history'] as const).map((item) => <button key={item} aria-current={section === item ? 'page' : undefined} className={section === item ? 'nav-item active' : 'nav-item'} onClick={() => setSection(item)}>
@@ -130,7 +156,7 @@ export default function App() {
       <div className="sidebar-bottom">
         <UpdateNotice language={preferences.language}/>
         <div className="privacy"><svg className="privacy-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5 16 5v4.4c0 3.8-2.6 6.4-6 8.1-3.4-1.7-6-4.3-6-8.1V5l6-2.5Z"/><path d="m7.2 9.8 1.8 1.8 3.8-4"/></svg><div><strong>{tr('Your files stay here')}</strong><small>{tr('Processed on this device')}</small></div></div>
-        <div className="version">FlickVert <span>0.2.1</span></div>
+        <div className="version">FlickVert <span>0.1.0</span></div>
       </div>
     </aside>
 
@@ -155,6 +181,7 @@ export default function App() {
         <section className="settings-group" aria-labelledby="general-title">
           <h2 id="general-title">{tr('General')}</h2>
           <SettingsRow label={tr('Appearance')}><SegmentedControl label={tr('Appearance')} value={preferences.appearance} options={(['system', 'light', 'dark'] as const).map((value) => ({ value, label: tr(value === 'system' ? 'System' : value === 'light' ? 'Light' : 'Dark') }))} onChange={(appearance) => updatePreferences({ appearance })}/></SettingsRow>
+          <SettingsRow label={tr('Accent color')}><AccentPicker label={tr('Accent color')} value={preferences.accent} onChange={(accent) => updatePreferences({ accent })} tr={tr}/></SettingsRow>
           <SettingsRow label={tr('Language')}><SegmentedControl label={tr('Language')} value={preferences.language} options={(['en', 'ru', 'zh'] as const).map((value) => ({ value, label: tr(value === 'en' ? 'English' : value === 'ru' ? 'Russian' : 'Chinese') }))} onChange={(language) => updatePreferences({ language })}/></SettingsRow>
         </section>
 

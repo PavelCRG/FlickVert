@@ -62,8 +62,10 @@ impl Gesture {
         match event {
             InputEvent::Move(x, y) => {
                 self.cursor = (x, y);
-                if self.left_down && !self.dragging
-                    && ((x - self.start.0).abs() >= 8.0 || (y - self.start.1).abs() >= 8.0) {
+                if self.left_down
+                    && !self.dragging
+                    && ((x - self.start.0).abs() >= 8.0 || (y - self.start.1).abs() >= 8.0)
+                {
                     self.dragging = true;
                     let mode = [WheelMode::Actions, WheelMode::Tools, WheelMode::Convert]
                         .into_iter()
@@ -444,10 +446,21 @@ mod tests {
         let mut gesture = Gesture::default();
         gesture.transition(InputEvent::LeftDown(10.0, 10.0));
         assert!(gesture.transition(InputEvent::Move(20.0, 10.0)).is_none());
-        assert!(matches!(gesture.transition(InputEvent::ModifierDown(WheelMode::Tools)), Some(Action::Open(WheelMode::Tools))));
-        assert!(gesture.transition(InputEvent::ModifierUp(WheelMode::Tools)).is_none());
-        assert!(matches!(gesture.transition(InputEvent::ModifierDown(WheelMode::Actions)), Some(Action::Switch(WheelMode::Actions))));
-        assert!(matches!(gesture.transition(InputEvent::LeftUp), Some(Action::End)));
+        assert!(matches!(
+            gesture.transition(InputEvent::ModifierDown(WheelMode::Tools)),
+            Some(Action::Open(WheelMode::Tools))
+        ));
+        assert!(gesture
+            .transition(InputEvent::ModifierUp(WheelMode::Tools))
+            .is_none());
+        assert!(matches!(
+            gesture.transition(InputEvent::ModifierDown(WheelMode::Actions)),
+            Some(Action::Switch(WheelMode::Actions))
+        ));
+        assert!(matches!(
+            gesture.transition(InputEvent::LeftUp),
+            Some(Action::End)
+        ));
     }
 
     #[test]
@@ -455,7 +468,10 @@ mod tests {
         let mut gesture = Gesture::default();
         gesture.transition(InputEvent::ModifierDown(WheelMode::Tools));
         gesture.transition(InputEvent::LeftDown(10.0, 10.0));
-        assert!(matches!(gesture.transition(InputEvent::Move(20.0, 10.0)), Some(Action::Open(WheelMode::Tools))));
+        assert!(matches!(
+            gesture.transition(InputEvent::Move(20.0, 10.0)),
+            Some(Action::Open(WheelMode::Tools))
+        ));
     }
 
     #[test]
@@ -463,9 +479,17 @@ mod tests {
         let mut gesture = Gesture::default();
         gesture.transition(InputEvent::LeftDown(10.0, 10.0));
         gesture.transition(InputEvent::Move(20.0, 10.0));
-        assert!(matches!(gesture.transition(InputEvent::ModifierDown(WheelMode::Convert)), Some(Action::Open(WheelMode::Convert))));
-        assert!(gesture.transition(InputEvent::ModifierUp(WheelMode::Convert)).is_none());
-        assert!(matches!(gesture.transition(InputEvent::Escape), Some(Action::Cancel)));
+        assert!(matches!(
+            gesture.transition(InputEvent::ModifierDown(WheelMode::Convert)),
+            Some(Action::Open(WheelMode::Convert))
+        ));
+        assert!(gesture
+            .transition(InputEvent::ModifierUp(WheelMode::Convert))
+            .is_none());
+        assert!(matches!(
+            gesture.transition(InputEvent::Escape),
+            Some(Action::Cancel)
+        ));
         assert!(gesture.transition(InputEvent::LeftUp).is_none());
     }
 }

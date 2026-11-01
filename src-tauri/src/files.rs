@@ -90,13 +90,16 @@ pub fn destination_directory(input: &Path, selected: Option<&str>) -> Result<Pat
     if let Some(selected) = selected.filter(|value| !value.trim().is_empty()) {
         let directory = fs::canonicalize(selected)?;
         if !directory.is_dir() {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput, "Output path is not a folder").into());
+            return Err(
+                io::Error::new(io::ErrorKind::InvalidInput, "Output path is not a folder").into(),
+            );
         }
         return Ok(directory);
     }
-    input.parent().map(Path::to_path_buf).ok_or_else(|| {
-        io::Error::new(io::ErrorKind::InvalidInput, "Input folder not found").into()
-    })
+    input
+        .parent()
+        .map(Path::to_path_buf)
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Input folder not found").into())
 }
 
 pub fn copy_directory(source: &Path, destination: &Path) -> Result<PathBuf, FileError> {

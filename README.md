@@ -11,39 +11,23 @@
 <p align="center">
   <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.exe"><strong>Download for Windows</strong></a> ·
   <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-macOS-Apple-Silicon.dmg"><strong>Download for macOS</strong></a> ·
+  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Portable.zip">Portable ZIP</a> ·
   <a href="https://github.com/PavelCRG/FlickVert/releases/latest">All downloads</a>
 </p>
 <p align="center"><sub>Windows 10/11 · macOS 13+ · Free · Files stay on your device</sub></p>
-## Install from the terminal
+## Download and install
 
-On **Windows 10/11 x64**, open PowerShell. This downloads the latest MSI and opens its installer:
+On **Windows 10/11 x64**, download and open the Setup EXE above. The MSI is also available on the [releases page](https://github.com/PavelCRG/FlickVert/releases/latest). To run without installing, download the Portable ZIP and open `FlickVert.exe` inside it. Windows may show a SmartScreen warning because the installer is not Authenticode-signed.
 
-```powershell
-$release = 'https://github.com/PavelCRG/FlickVert/releases/latest/download'
-$setup = Join-Path $env:TEMP 'FlickVert.msi'
-Invoke-WebRequest "$release/FlickVert-Windows-x64-Setup.msi" -OutFile $setup
-if ($?) { Start-Process msiexec.exe -ArgumentList @('/i', ('"{0}"' -f $setup)) }
-```
+On **macOS 13 or later**, download the DMG for Apple Silicon or Intel from the [releases page](https://github.com/PavelCRG/FlickVert/releases/latest), open it, and drag FlickVert into Applications. These builds are not notarized and macOS may show a first-open security warning.
 
-On **macOS 13 or later**, run these commands. Open the downloaded image and drag FlickVert into Applications.
-
-```sh
-release=https://github.com/PavelCRG/FlickVert/releases/latest/download
-case "$(uname -m)" in
-  arm64) chip=Apple-Silicon ;; x86_64) chip=Intel ;;
-  *) chip=unsupported ;;
-esac
-curl -fL "$release/FlickVert-macOS-$chip.dmg" -o ~/Downloads/FlickVert.dmg &&
-open ~/Downloads/FlickVert.dmg
-```
-
-The commands require a published release containing these installers. Windows requires WebView2 Runtime; the macOS builds are unsigned.
+Windows requires the Microsoft Edge WebView2 Runtime. Optional conversion engines are installed separately.
 
 After installing a release that includes the updater, FlickVert checks for signed updates at startup and every six hours while running. Use **Updates** in the sidebar to check again and install an available update. On Windows, the app selects the matching EXE or MSI update automatically. The portable build must be updated manually from GitHub Releases.
 
 ## Contents
 
-- [Install from the terminal](#install-from-the-terminal)
+- [Download and install](#download-and-install)
 - [Quick start](#quick-start)
 - [Close and reopen](#close-and-reopen)
 - [How the drag wheel works](#how-the-drag-wheel-works)
@@ -114,7 +98,9 @@ Run `npm test` and `cargo test --locked --manifest-path src-tauri/Cargo.toml` to
 
 ### Publishing an update
 
-Set the repository's `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` GitHub Actions secrets to the signing key corresponding to the public key in `src-tauri/tauri.conf.json`. Keep the private key outside the repository. Update the app version, then push a matching tag such as `v0.2.1`: the release workflow builds the installers, signs update artifacts, and publishes `latest.json`. An existing installation can only install updates signed by its configured key.
+The first release is `v0.1.0`. Run `scripts/publish-v0.1.0.ps1` to check and publish it. For each patch after that, tag the committed changes and push the tag, for example `git tag v0.1.1; git push origin v0.1.1`. GitHub Actions syncs the app version to the tag, builds the Windows and macOS downloads, signs updater packages, and publishes `latest.json`. Installed copies check for updates at launch and every six hours. Portable Windows builds update manually.
+
+The repository must have `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` Actions secrets matching the public key in `src-tauri/tauri.conf.json`. Keep the private key outside the repository. An existing installation only accepts updates signed with its configured key.
 
 FlickVert supports Windows 10/11 and macOS 13 or later. On macOS, allow Accessibility and Input Monitoring access for the drag wheel. The configured keyboard shortcut is an alternative for opening quick actions.
 

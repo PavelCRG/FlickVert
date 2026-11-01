@@ -26,38 +26,21 @@ FlickVert 可与文件资源管理器和 Finder 配合使用。拖动文件并�
 </p>
 <p align="center">macOS 安装包目前未经签名，首次打开时系统可能显示安全提示。</p>
 
-## 通过终端安装
+## 下载和安装
 
-在 **Windows 10/11 x64** 上打开 PowerShell，下载最新 MSI 并启动安装程序：
+在 **Windows 10/11 x64** 上点击页面顶部的 EXE 安装包并打开下载文件。页面也提供 MSI 和便携 ZIP。便携版解压后运行 `FlickVert.exe` 即可。
 
-```powershell
-$release = 'https://github.com/PavelCRG/FlickVert/releases/latest/download'
-$setup = Join-Path $env:TEMP 'FlickVert.msi'
-Invoke-WebRequest "$release/FlickVert-Windows-x64-Setup.msi" -OutFile $setup
-if ($?) { Start-Process msiexec.exe -ArgumentList @('/i', ('"{0}"' -f $setup)) }
-```
+在 **macOS 13 或更高版本**上，从 Releases 页面选择 Apple Silicon 或 Intel DMG，打开后将 FlickVert 拖入 Applications。由于应用尚未经过公证，macOS 首次打开时可能显示安全提示。
 
-在 **macOS 13 或更高版本**上运行以下命令，然后将打开的磁盘映像中的 FlickVert 拖入 Applications。
+Windows 需要 Microsoft Edge WebView2 Runtime。其他转换引擎需单独安装。
 
-```sh
-release=https://github.com/PavelCRG/FlickVert/releases/latest/download
-case "$(uname -m)" in
-  arm64) chip=Apple-Silicon ;; x86_64) chip=Intel ;;
-  *) chip=unsupported ;;
-esac
-curl -fL "$release/FlickVert-macOS-$chip.dmg" -o ~/Downloads/FlickVert.dmg &&
-open ~/Downloads/FlickVert.dmg
-```
-
-这些命令需要已发布且包含上述安装包的版本。Windows 需要 WebView2 Runtime；macOS 版本尚未签名。
-
-安装包含更新功能的版本后，FlickVert 会在启动时及运行期间每六小时检查经过签名的更新。可在侧栏的 **更新** 中重新检查并安装新版本。在 Windows 上会自动选择匹配的 EXE 或 MSI 更新包。便携版需要从 GitHub Releases 手动更新。
+首个正式版本为 `0.1.0`。安装版会在启动时及每六小时检查一次签名更新；Windows 安装版使用匹配的 EXE 或 MSI 更新。便携版需手动更新。旧的本地 `0.2.1` 版本不能自动降级到首个 `0.1.0`，请先卸载旧版。
 
 ## 目录
 
-- [通过终端安装](#通过终端安装)
+- [下载和安装](#下载和安装)
 - [快速开始](#快速开始)
-- [重新打开应用](#重新打开应用)
+- [退出应用](#退出应用)
 - [拖放转盘](#拖放转盘)
 - [支持的格式](#支持的格式)
 - [文件保存位置](#文件保存位置)
@@ -66,13 +49,13 @@ open ~/Downloads/FlickVert.dmg
 
 ## 快速开始
 
-1. 启动 FlickVert。紧凑的设置窗口会打开；关闭窗口后，FlickVert 留在系统托盘中，你可以继续在资源管理器或 Finder 中工作。
+1. 启动 FlickVert。应用窗口会打开；只要 FlickVert 保持运行，拖放转盘和全局快捷键即可使用。
 2. 拖动文件并按 **Shift**，然后将其放到转盘中的目标格式上。
-3. 转换后的文件保存在原文件旁边。从托盘打开主窗口即可查看历史记录或更改设置。
+3. 转换后的文件保存在原文件旁边。在主窗口中查看历史记录或更改设置。
 
-## 重新打开应用
+## 退出应用
 
-关闭窗口后，FlickVert 会继续在系统托盘中运行，以便拖放转盘和快捷键继续可用。点击托盘图标并选择 **Show FlickVert** 可重新打开窗口。选择 **Quit** 可完全退出应用。
+关闭主窗口会退出 FlickVert。若要使用拖放转盘和全局快捷键，请保持应用运行。
 
 默认快捷键为 **Ctrl+Alt+Space**，用于为资源管理器或 Finder 中选中的文件打开快捷操作菜单。可在 **Settings** 中更改，也可以把文件拖到转盘上。按 **1/2/3** 切换模式，用方向键选择目标，再按 **Enter** 执行。按 **Esc** 关闭转盘。
 

@@ -6,7 +6,7 @@ import { emit, listen } from '@tauri-apps/api/event'
 import { convertImage, fitWithin } from '../conversion/images'
 import { mapConcurrent } from '../conversion/concurrent'
 import { imagesToPdf } from '../conversion/pdf'
-import { loadSettings } from '../settings'
+import { accentColors, loadSettings, normalizeSettings, saveSettings } from '../settings'
 import { t, type MessageKey } from '../i18n'
 import { canRunFileAction, canRunSelectedTool, canRunWheelTool, canUseNativeImagePath, commonFormats } from './quick-actions'
 import { wheelLabelPosition, wheelSectorAt, wheelSlicePath } from './radial-wheel'
@@ -92,7 +92,7 @@ function WheelChoices({ items, active, onActive }: { items: WheelChoice[]; activ
 }
 
 export default function QuickMenu() {
-  const settings = loadSettings()
+  const [settings, setSettings] = useState(loadSettings)
   const tr = (key: MessageKey) => t(settings.language, key)
   const [dragMode, setDragMode] = useState(false)
   const [wheelMode, setWheelMode] = useState<'convert' | 'tools' | 'actions'>('convert')
@@ -355,13 +355,19 @@ export default function QuickMenu() {
     let disposed = false
     const stops: (() => void)[] = []
     const addStop = (stop: () => void) => { if (disposed) stop(); else stops.push(stop) }
+    void listen<unknown>('flickvert://settings-changed', ({ payload }) => {
+      const next = normalizeSettings(payload)
+      setSettings(next)
+      saveSettings(next)
+    }).then(addStop)
     void invoke<{ ffmpeg: boolean; imagemagick: boolean }>('engine_status').then(({ ffmpeg, imagemagick }) => { ffmpegAvailableRef.current = ffmpeg; setFfmpegAvailable(ffmpeg); imagemagickAvailableRef.current = imagemagick; setImagemagickAvailable(imagemagick) }).catch(() => {})
 
     void getCurrentWindow().onFocusChanged(({ payload }) => {
       if (!payload) {
         hideTimer.current = window.setTimeout(() => { if (!dragModeRef.current) hide() }, 150)
-      } else if (hideTimer.current !== undefined) {
-        window.clearTimeout(hideTimer.current)
+      } else {
+        setSettings(loadSettings())
+        if (hideTimer.current !== undefined) window.clearTimeout(hideTimer.current)
       }
     }).then(addStop)
     void listen('flickvert://drag-wheel-open', () => {
@@ -496,7 +502,7 @@ export default function QuickMenu() {
   const activeChoice = choices[active]
   const centerTitle = status || activeChoice?.label || (files.length === 1 ? files[0].name : files.length ? `${files.length} ${tr('files')}` : tr('Drag a file here'))
   const centerDetail = status ? (files.length === 1 ? files[0].name : '') : activeChoice ? wheelMode === 'convert' ? `${tr('Convert to')} ${activeChoice.label}` : (files.length === 1 ? files[0].name : '') : files.length ? wheelMode === 'convert' ? tr('Select output format') : '' : ''
-  return <main className={`quick-shell${dragMode ? ' drag-mode' : ''}${emptyWheel ? ' quick-empty' : ''}`} aria-label="FlickVert quick actions">
+  return <main className={`quick-shell${dragMode ? ' drag-mode' : ''}${emptyWheel ? ' quick-empty' : ''}`} data-appearance={settings.appearance} style={{ '--wheel-accent-base': accentColors[settings.accent] } as CSSProperties} aria-label="FlickVert quick actions">
     <div className={`quick-orbit${emptyWheel ? ' no-choices' : ''}`} aria-label={tr(wheelMode === 'convert' ? 'Select output format' : wheelMode === 'tools' ? 'Tools' : 'Actions')}>
       <WheelChoices items={choices} active={active} onActive={setActive}/>
       <div className="quick-center" aria-live="polite"><strong>{centerTitle}</strong>{centerDetail && <small>{centerDetail}</small>}</div>

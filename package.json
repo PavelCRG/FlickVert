@@ -1,12 +1,12 @@
 {
   "name": "flickvert",
   "private": true,
-  "version": "0.2.1",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "npm run build && tauri dev",
     "build": "tsc -b && node scripts/prepare-dist.mjs && esbuild src/main.tsx --bundle --outdir=dist/assets --jsx=automatic --platform=browser --target=safari16 --minify",
-    "test": "node --experimental-strip-types --test --test-isolation=none src/settings.test.ts src/conversion/images.test.ts src/conversion/concurrent.test.ts src/image-editor/image-editor.test.ts src/quick-menu/quick-actions.test.ts src/quick-menu/radial-wheel.test.ts scripts/create-update-manifest.test.mjs",
+    "test": "node --experimental-strip-types --test --test-isolation=none src/settings.test.ts src/i18n.test.ts src/conversion/images.test.ts src/conversion/concurrent.test.ts src/image-editor/image-editor.test.ts src/quick-menu/quick-actions.test.ts src/quick-menu/radial-wheel.test.ts scripts/create-update-manifest.test.mjs scripts/sync-release-version.test.mjs",
     "preview": "vite preview",
     "tauri": "tauri"
   },
@@ -18,7 +18,7 @@
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.8.0",
+    "@tauri-apps/cli": "^2.11.5",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "@vitejs/plugin-react": "^5.0.0",

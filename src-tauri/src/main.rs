@@ -26,10 +26,23 @@ const QUICK_WIDTH: u32 = 288;
 const QUICK_HEIGHT: u32 = 288;
 static MEDIA_TEMP_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
-#[cfg(all(windows, debug_assertions))]
-fn dev_webview_data_directory(window: &str) -> PathBuf {
-    // WebView2 must set child-process ACLs on its profile directory.
-    std::env::temp_dir().join(format!("FlickVert-WebView2-dev-{window}"))
+#[cfg(windows)]
+fn webview_data_directory(root: &Path, window: &str) -> std::io::Result<PathBuf> {
+    let directory = root
+        .join("app.flickvert.desktop.v2")
+        .join(format!("webview-{window}"));
+    fs::create_dir_all(&directory)?;
+    Ok(directory)
+}
+
+#[cfg(windows)]
+fn windows_webview_data_directory(window: &str) -> std::io::Result<PathBuf> {
+    let root = std::env::var_os("LOCALAPPDATA")
+        .map(PathBuf::from)
+        .unwrap_or_else(std::env::temp_dir);
+    webview_data_directory(&root, window).or_else(|_| {
+        webview_data_directory(&std::env::temp_dir().join("FlickVert-WebView2"), window)
+    })
 }
 
 #[derive(Default)]
@@ -43,7 +56,9 @@ struct StartupFiles(Mutex<Vec<String>>);
 #[tauri::command]
 fn take_startup_files(files: tauri::State<'_, StartupFiles>, app: AppHandle) -> Vec<String> {
     let paths = std::mem::take(&mut *files.0.lock().unwrap());
-    if !paths.is_empty() { show_quick(&app, true); }
+    if !paths.is_empty() {
+        show_quick(&app, true);
+    }
     paths
 }
 
@@ -150,14 +165,21 @@ fn engine_status() -> operations::Engines {
 #[tauri::command]
 fn supports_in_app_updates() -> bool {
     #[cfg(windows)]
-    { supports_windows_update(tauri::utils::platform::bundle_type()) }
+    {
+        supports_windows_update(tauri::utils::platform::bundle_type())
+    }
     #[cfg(not(windows))]
-    { cfg!(target_os = "macos") }
+    {
+        cfg!(target_os = "macos")
+    }
 }
 
 #[cfg(any(windows, test))]
 fn supports_windows_update(bundle: Option<tauri::utils::config::BundleType>) -> bool {
-    matches!(bundle, Some(tauri::utils::config::BundleType::Msi | tauri::utils::config::BundleType::Nsis))
+    matches!(
+        bundle,
+        Some(tauri::utils::config::BundleType::Msi | tauri::utils::config::BundleType::Nsis)
+    )
 }
 
 #[tauri::command]
@@ -280,13 +302,20 @@ fn convert_file(
             let destination = destination_for(&input, destination_folder.as_deref())?;
             return convert_pdf(&input, &work_dir, &destination, stem, &output_extension);
         }
-        if operation.engine == operations::Engine::LibreOffice && ["png", "jpg"].contains(&output_extension.as_str()) {
-            let soffice = operations::find_executable("soffice").ok_or("LibreOffice is not installed")?;
+        if operation.engine == operations::Engine::LibreOffice
+            && ["png", "jpg"].contains(&output_extension.as_str())
+        {
+            let soffice =
+                operations::find_executable("soffice").ok_or("LibreOffice is not installed")?;
             let args = operations::libreoffice_args(&input, &work_dir);
             let output = operations::run(&soffice, &args).map_err(|error| error.to_string())?;
-            if !output.status.success() { return Err(String::from_utf8_lossy(&output.stderr).trim().to_owned()); }
+            if !output.status.success() {
+                return Err(String::from_utf8_lossy(&output.stderr).trim().to_owned());
+            }
             let pdf = work_dir.join(format!("{stem}.pdf"));
-            if !pdf.is_file() { return Err("LibreOffice did not export slides to PDF".into()); }
+            if !pdf.is_file() {
+                return Err("LibreOffice did not export slides to PDF".into());
+            }
             let destination = destination_for(&input, destination_folder.as_deref())?;
             return convert_pdf(&pdf, &work_dir, &destination, stem, &output_extension);
         }
@@ -316,7 +345,13 @@ fn convert_file(
             ),
             operations::Engine::ImageMagick => (
                 operations::find_executable("magick").ok_or("ImageMagick is not installed")?,
-                operations::imagemagick_args(&input, &output_temp, quality.unwrap_or(88), width, height),
+                operations::imagemagick_args(
+                    &input,
+                    &output_temp,
+                    quality.unwrap_or(88),
+                    width,
+                    height,
+                ),
             ),
             operations::Engine::LibreOffice => (
                 operations::find_executable("soffice").ok_or("LibreOffice is not installed")?,
@@ -351,45 +386,82 @@ fn convert_file(
     result
 }
 
-fn convert_pdf(input: &Path, work_dir: &Path, destination: &Path, stem: &str, extension: &str) -> Result<String, String> {
+fn convert_pdf(
+    input: &Path,
+    work_dir: &Path,
+    destination: &Path,
+    stem: &str,
+    extension: &str,
+) -> Result<String, String> {
     if ["txt", "md", "docx", "epub"].contains(&extension) {
-        let executable = operations::find_executable("pdftotext").ok_or("Poppler is not installed")?;
+        let executable =
+            operations::find_executable("pdftotext").ok_or("Poppler is not installed")?;
         let temporary = work_dir.join("result.txt");
-        let args = [std::ffi::OsString::from("-layout"), input.as_os_str().to_owned(), temporary.as_os_str().to_owned()];
+        let args = [
+            std::ffi::OsString::from("-layout"),
+            input.as_os_str().to_owned(),
+            temporary.as_os_str().to_owned(),
+        ];
         let output = operations::run(&executable, &args).map_err(|error| error.to_string())?;
-        if !output.status.success() { return Err(String::from_utf8_lossy(&output.stderr).trim().to_owned()); }
-        if !temporary.is_file() || fs::metadata(&temporary).map_err(|error| error.to_string())?.len() == 0 {
+        if !output.status.success() {
+            return Err(String::from_utf8_lossy(&output.stderr).trim().to_owned());
+        }
+        if !temporary.is_file()
+            || fs::metadata(&temporary)
+                .map_err(|error| error.to_string())?
+                .len()
+                == 0
+        {
             return Err("This PDF has no extractable text".into());
         }
         let source = if ["docx", "epub"].contains(&extension) {
             let pandoc = operations::find_executable("pandoc").ok_or("Pandoc is not installed")?;
             let target = work_dir.join(format!("result.{extension}"));
-            let args = [std::ffi::OsString::from("--output"), target.as_os_str().to_owned(), temporary.as_os_str().to_owned()];
+            let args = [
+                std::ffi::OsString::from("--output"),
+                target.as_os_str().to_owned(),
+                temporary.as_os_str().to_owned(),
+            ];
             let output = operations::run(&pandoc, &args).map_err(|error| error.to_string())?;
-            if !output.status.success() { return Err(String::from_utf8_lossy(&output.stderr).trim().to_owned()); }
+            if !output.status.success() {
+                return Err(String::from_utf8_lossy(&output.stderr).trim().to_owned());
+            }
             target
-        } else { temporary };
+        } else {
+            temporary
+        };
         return files::write_output_file(destination, &format!("{stem}.{extension}"), &source)
-            .map(|path| path.to_string_lossy().into_owned()).map_err(|error| error.to_string());
+            .map(|path| path.to_string_lossy().into_owned())
+            .map_err(|error| error.to_string());
     }
     let executable = operations::find_executable("pdftoppm").ok_or("Poppler is not installed")?;
     let prefix = work_dir.join("page");
     let args = [
-        std::ffi::OsString::from("-r"), std::ffi::OsString::from("300"),
+        std::ffi::OsString::from("-r"),
+        std::ffi::OsString::from("300"),
         std::ffi::OsString::from(if extension == "png" { "-png" } else { "-jpeg" }),
-        input.as_os_str().to_owned(), prefix.as_os_str().to_owned(),
+        input.as_os_str().to_owned(),
+        prefix.as_os_str().to_owned(),
     ];
     let output = operations::run(&executable, &args).map_err(|error| error.to_string())?;
-    if !output.status.success() { return Err(String::from_utf8_lossy(&output.stderr).trim().to_owned()); }
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).trim().to_owned());
+    }
     let image_extension = if extension == "png" { "png" } else { "jpg" };
-    let mut pages = fs::read_dir(work_dir).map_err(|error| error.to_string())?
-        .filter_map(Result::ok).map(|entry| entry.path())
+    let mut pages = fs::read_dir(work_dir)
+        .map_err(|error| error.to_string())?
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
         .filter(|path| path.extension().and_then(|value| value.to_str()) == Some(image_extension))
         .collect::<Vec<_>>();
     pages.sort();
-    if pages.is_empty() { return Err("Poppler did not render any PDF pages".into()); }
+    if pages.is_empty() {
+        return Err("Poppler did not render any PDF pages".into());
+    }
     let folder = loop {
-        let candidate = files::unique_output_path(destination, &format!("{stem}-{extension}-pages")).map_err(|error| error.to_string())?;
+        let candidate =
+            files::unique_output_path(destination, &format!("{stem}-{extension}-pages"))
+                .map_err(|error| error.to_string())?;
         match fs::create_dir(&candidate) {
             Ok(()) => break candidate,
             Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
@@ -398,12 +470,18 @@ fn convert_pdf(input: &Path, work_dir: &Path, destination: &Path, stem: &str, ex
     };
     let result = (|| {
         for page in pages {
-            let name = page.file_name().ok_or("PDF page name not found")?.to_string_lossy().into_owned();
+            let name = page
+                .file_name()
+                .ok_or("PDF page name not found")?
+                .to_string_lossy()
+                .into_owned();
             files::write_output_file(&folder, &name, &page).map_err(|error| error.to_string())?;
         }
         Ok(folder.to_string_lossy().into_owned())
     })();
-    if result.is_err() { let _ = fs::remove_dir_all(&folder); }
+    if result.is_err() {
+        let _ = fs::remove_dir_all(&folder);
+    }
     result
 }
 
@@ -419,7 +497,11 @@ fn process_image_tool(
     dropped: tauri::State<'_, DroppedFiles>,
 ) -> Result<String, String> {
     let input = selected_dropped_file(&input_path, &dropped)?;
-    let extension = input.extension().and_then(|value| value.to_str()).unwrap_or("").to_ascii_lowercase();
+    let extension = input
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
     if !["heic", "heif", "avif", "tif", "tiff", "svg"].contains(&extension.as_str()) {
         return Err("This image tool is unavailable for the selected file".into());
     }
@@ -428,20 +510,34 @@ fn process_image_tool(
         "resize" => {
             let width = width.unwrap_or(1920).clamp(1, 32768);
             let height = height.unwrap_or(1920).clamp(1, 32768);
-            options.extend([std::ffi::OsString::from("-resize"), std::ffi::OsString::from(format!("{width}x{height}>"))]);
+            options.extend([
+                std::ffi::OsString::from("-resize"),
+                std::ffi::OsString::from(format!("{width}x{height}>")),
+            ]);
         }
         "rotate" => options.extend(["-rotate", "90"].map(std::ffi::OsString::from)),
         "flip" => options.push("-flop".into()),
         "grayscale" => options.extend(["-colorspace", "Gray"].map(std::ffi::OsString::from)),
-        "compress" => options.extend([std::ffi::OsString::from("-quality"), std::ffi::OsString::from(quality.unwrap_or(76).clamp(40, 100).to_string())]),
+        "compress" => options.extend([
+            std::ffi::OsString::from("-quality"),
+            std::ffi::OsString::from(quality.unwrap_or(76).clamp(40, 100).to_string()),
+        ]),
         "metadata" => options.push("-strip".into()),
         _ => return Err("Unknown image tool".into()),
     }
     let magick = operations::find_executable("magick").ok_or("ImageMagick is not installed")?;
-    let work_root = app.path().app_cache_dir().map_err(|error| error.to_string())?.join("image-work");
+    let work_root = app
+        .path()
+        .app_cache_dir()
+        .map_err(|error| error.to_string())?
+        .join("image-work");
     fs::create_dir_all(&work_root).map_err(|error| error.to_string())?;
     let work_dir = loop {
-        let candidate = work_root.join(format!("{}-{}", std::process::id(), MEDIA_TEMP_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed)));
+        let candidate = work_root.join(format!(
+            "{}-{}",
+            std::process::id(),
+            MEDIA_TEMP_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+        ));
         match fs::create_dir(&candidate) {
             Ok(()) => break candidate,
             Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
@@ -449,22 +545,42 @@ fn process_image_tool(
         }
     };
     let result = (|| {
-        let output_extension = if action_id == "compress" { "jpg" } else { "png" };
+        let output_extension = if action_id == "compress" {
+            "jpg"
+        } else {
+            "png"
+        };
         let temporary = work_dir.join(format!("result.{output_extension}"));
-        let mut args = vec![std::ffi::OsString::from(format!("{}[0]", input.to_string_lossy()))];
+        let mut args = vec![std::ffi::OsString::from(format!(
+            "{}[0]",
+            input.to_string_lossy()
+        ))];
         args.extend(options);
         args.push(temporary.as_os_str().to_owned());
         let output = operations::run(&magick, &args).map_err(|error| error.to_string())?;
         if !output.status.success() {
             return Err(String::from_utf8_lossy(&output.stderr).trim().to_owned());
         }
-        if !temporary.is_file() || fs::metadata(&temporary).map_err(|error| error.to_string())?.len() == 0 {
+        if !temporary.is_file()
+            || fs::metadata(&temporary)
+                .map_err(|error| error.to_string())?
+                .len()
+                == 0
+        {
             return Err("ImageMagick did not create an output file".into());
         }
-        let stem = input.file_stem().and_then(|value| value.to_str()).unwrap_or("image");
+        let stem = input
+            .file_stem()
+            .and_then(|value| value.to_str())
+            .unwrap_or("image");
         let destination = destination_for(&input, destination_folder.as_deref())?;
-        files::write_output_file(&destination, &format!("{stem}-{}.{output_extension}", action_id), &temporary)
-            .map(|path| path.to_string_lossy().into_owned()).map_err(|error| error.to_string())
+        files::write_output_file(
+            &destination,
+            &format!("{stem}-{}.{output_extension}", action_id),
+            &temporary,
+        )
+        .map(|path| path.to_string_lossy().into_owned())
+        .map_err(|error| error.to_string())
     })();
     let _ = fs::remove_dir_all(work_dir);
     result
@@ -638,7 +754,10 @@ fn extract_zip_archive(
 
 fn show_main(app: &AppHandle) {
     let Some(window) = app.get_webview_window("main") else {
-        eprintln!("Main webview is missing; registered windows: {:?}", app.webview_windows().keys());
+        eprintln!(
+            "Main webview is missing; registered windows: {:?}",
+            app.webview_windows().keys()
+        );
         return;
     };
     if let Err(error) = window.show() {
@@ -738,15 +857,23 @@ fn open_image_editor(
     dropped: tauri::State<'_, DroppedFiles>,
 ) -> Result<(), String> {
     let input = selected_dropped_file(&input_path, &dropped)?;
-    let extension = input.extension().and_then(|value| value.to_str()).unwrap_or("").to_ascii_lowercase();
+    let extension = input
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
     if !["png", "jpg", "jpeg", "webp", "gif", "bmp"].contains(&extension.as_str()) {
         return Err("The built-in editor supports PNG, JPEG, WebP, GIF, and BMP images".into());
     }
     show_main(&app);
-    app.emit("flickvert://image-editor-open", ImageEditorRequest {
-        input_path: input.to_string_lossy().into_owned(),
-        initial_tool: "adjust".into(),
-    }).map_err(|error| error.to_string())
+    app.emit(
+        "flickvert://image-editor-open",
+        ImageEditorRequest {
+            input_path: input.to_string_lossy().into_owned(),
+            initial_tool: "adjust".into(),
+        },
+    )
+    .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -1094,13 +1221,29 @@ fn main() {
             }
             app.manage(DroppedFiles::default());
             app.manage(DragTrigger::default());
-            app.manage(StartupFiles(Mutex::new(std::env::args_os().skip(1).filter_map(|arg| {
-                let path = PathBuf::from(arg);
-                if path.is_file() || path.is_dir() { Some(path.to_string_lossy().into_owned()) } else { None }
-            }).collect())));
-            let quick_window = WebviewWindowBuilder::new(app, "quick", WebviewUrl::App("index.html".into()));
-            #[cfg(all(windows, debug_assertions))]
-            let quick_window = quick_window.data_directory(dev_webview_data_directory("quick"));
+            app.manage(StartupFiles(Mutex::new(
+                std::env::args_os()
+                    .skip(1)
+                    .filter_map(|arg| {
+                        let path = PathBuf::from(arg);
+                        if path.is_file() || path.is_dir() {
+                            Some(path.to_string_lossy().into_owned())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect(),
+            )));
+            let quick_window =
+                WebviewWindowBuilder::new(app, "quick", WebviewUrl::App("index.html".into()));
+            #[cfg(windows)]
+            let quick_window = match windows_webview_data_directory("quick") {
+                Ok(directory) => quick_window.data_directory(directory),
+                Err(error) => {
+                    eprintln!("Could not prepare quick actions profile: {error}");
+                    quick_window
+                }
+            };
             match quick_window
                 .title("FlickVert Quick Actions")
                 .inner_size(QUICK_WIDTH as f64, QUICK_HEIGHT as f64)
@@ -1172,17 +1315,28 @@ fn main() {
             if matches!(event, tauri::RunEvent::Ready) && app.get_webview_window("main").is_none() {
                 let handle = app.clone();
                 if let Err(error) = app.run_on_main_thread(move || {
-                    let window = WebviewWindowBuilder::new(&handle, "main", WebviewUrl::App("index.html".into()))
-                        .title("FlickVert")
-                        .inner_size(900.0, 720.0)
-                        .min_inner_size(760.0, 600.0)
-                        .resizable(true)
-                        .decorations(false)
-                        .center();
-                    #[cfg(all(windows, debug_assertions))]
-                    let window = window.data_directory(dev_webview_data_directory("main"));
+                    let window = WebviewWindowBuilder::new(
+                        &handle,
+                        "main",
+                        WebviewUrl::App("index.html".into()),
+                    )
+                    .title("FlickVert")
+                    .inner_size(900.0, 720.0)
+                    .min_inner_size(760.0, 600.0)
+                    .resizable(true)
+                    .decorations(false)
+                    .center();
+                    #[cfg(windows)]
+                    let window = match windows_webview_data_directory("main") {
+                        Ok(directory) => window.data_directory(directory),
+                        Err(error) => {
+                            eprintln!("Could not prepare main window profile: {error}");
+                            window
+                        }
+                    };
                     if let Err(error) = window.visible(true).focused(true).build() {
                         eprintln!("Could not create the main window: {error}");
+                        handle.exit(1);
                     }
                 }) {
                     eprintln!("Could not schedule main window creation: {error}");
@@ -1194,6 +1348,18 @@ fn main() {
 #[cfg(test)]
 mod file_type_tests {
     use super::file_mime;
+
+    #[cfg(windows)]
+    #[test]
+    fn webview_windows_get_separate_created_profiles() {
+        let root =
+            std::env::temp_dir().join(format!("flickvert-profile-test-{}", std::process::id()));
+        let quick = super::webview_data_directory(&root, "quick").unwrap();
+        let main = super::webview_data_directory(&root, "main").unwrap();
+        assert!(quick.is_dir() && main.is_dir());
+        assert_ne!(quick, main);
+        std::fs::remove_dir_all(root).unwrap();
+    }
 
     #[test]
     fn updater_accepts_installed_windows_bundles_but_not_portable_builds() {

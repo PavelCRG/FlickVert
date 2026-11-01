@@ -4,10 +4,14 @@ html:has(.quick-shell), body:has(.quick-shell), #root:has(.quick-shell) {
 }
 .quick-shell {
   position: relative; width: 100%; height: 100%; color: CanvasText;
-  --wheel-accent: #5368d8;
+  --wheel-accent-base: #315fce; --wheel-accent: var(--wheel-accent-base);
+  color-scheme: light dark;
   font: 12px system-ui, -apple-system, "Segoe UI", sans-serif;
   user-select: none; pointer-events: none;
 }
+.quick-shell[data-appearance="light"] { color-scheme: light; }
+.quick-shell[data-appearance="dark"] { color-scheme: dark; --wheel-accent: color-mix(in srgb, var(--wheel-accent-base) 66%, white); }
+.quick-shell[data-appearance="system"] { color-scheme: light dark; }
 .quick-orbit {
   position: absolute; top: 8px; left: 8px; width: 272px; height: 272px;
   border-radius: 50%; pointer-events: none;
@@ -37,11 +41,11 @@ html:has(.quick-shell), body:has(.quick-shell), #root:has(.quick-shell) {
   position: absolute; width: 72px; min-height: 34px; display: flex;
   flex-direction: column; align-items: center; justify-content: center; gap: 3px;
   transform: translate(-50%, -50%); color: color-mix(in srgb, CanvasText 86%, transparent);
-  text-align: center; transition: color .13s ease;
+  text-align: center; transition: color .13s ease, transform .16s cubic-bezier(.2, .75, .25, 1);
 }
 .quick-label strong { max-width: 72px; font-size: 9px; line-height: 1.15; font-weight: 650; text-wrap: balance; }
 .quick-label .quick-glyph { color: color-mix(in srgb, CanvasText 62%, transparent); font-size: 15px; line-height: 1; }
-.quick-label.active { color: var(--wheel-accent); }
+.quick-label.active { color: var(--wheel-accent); transform: translate(-50%, -50%) scale(1.06); }
 .quick-label.active .quick-glyph { color: var(--wheel-accent); }
 .quick-label.disabled { opacity: .42; }
 .quick-center {
@@ -62,7 +66,9 @@ html:has(.quick-shell), body:has(.quick-shell), #root:has(.quick-shell) {
 .quick-empty .quick-center strong { max-width: 180px; font-weight: 500; }
 .quick-shell.drag-mode .quick-orbit { transform-origin: center; animation: wheel-arrive .16s cubic-bezier(.2, .75, .25, 1) both; }
 @keyframes wheel-arrive { from { opacity: 0; scale: .96; } to { opacity: 1; scale: 1; } }
-@media (prefers-color-scheme: dark) { .quick-shell { --wheel-accent: #a5b0ff; } }
+@media (prefers-color-scheme: dark) {
+  .quick-shell[data-appearance="system"] { --wheel-accent: color-mix(in srgb, var(--wheel-accent-base) 66%, white); }
+}
 @media (prefers-reduced-motion: reduce) {
   .quick-segment, .quick-label, .quick-shell.drag-mode .quick-orbit { transition: none !important; animation: none !important; }
 }

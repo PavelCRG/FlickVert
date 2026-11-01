@@ -22,6 +22,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - name: Sync app version to release tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: node scripts/sync-release-version.mjs "$RELEASE_TAG"
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -57,7 +63,7 @@ jobs:
 
           Files are processed locally. FFmpeg, Pandoc, ImageMagick and LibreOffice are optional and must be installed separately for their formats. Windows 10/11 requires Microsoft Edge WebView2 Runtime.
 
-          FlickVert opens its start window on launch and stays in the tray when the window is closed. Press Shift while dragging a file to open the wheel beside the pointer. Use the tray menu to reopen settings or quit FlickVert.
+          FlickVert opens its start window on launch. Closing the main window quits FlickVert, including the drag wheel and shortcut. Press Shift while dragging a file to open the wheel beside the pointer.
           '@ | Set-Content (Join-Path $package 'INSTALL.txt') -Encoding utf8
           Compress-Archive -Path (Join-Path $package '*') -DestinationPath (Join-Path $env:RUNNER_TEMP 'FlickVert-Windows-x64-portable.zip') -CompressionLevel Optimal
       - uses: actions/upload-artifact@v4
@@ -116,23 +122,12 @@ jobs:
           body: |
             <img src="https://raw.githubusercontent.com/PavelCRG/FlickVert/${{ github.ref_name }}/public/fv-file-orange.png" width="96" alt="FlickVert logo">
 
-            ## Install
+            ## Download
 
-            - **Windows:** choose the MSI or setup EXE, or use the portable ZIP. Windows 10/11 x64; WebView2 Runtime is required.
-            - **macOS:** choose Apple Silicon or Intel DMG. macOS 13 or later. These builds are not signed or notarized and may show a first-open security warning.
-            - Optional conversion engines (FFmpeg, Pandoc, ImageMagick, LibreOffice, Poppler) must be installed separately for the formats that need them.
-            - Files are processed locally. See the README files in the portable ZIP for usage and supported formats.
+            - **Windows 10/11 x64:** [Setup](https://github.com/PavelCRG/FlickVert/releases/download/${{ github.ref_name }}/FlickVert-Windows-x64-Setup.exe) · [MSI](https://github.com/PavelCRG/FlickVert/releases/download/${{ github.ref_name }}/FlickVert-Windows-x64-Setup.msi) · [Portable ZIP](https://github.com/PavelCRG/FlickVert/releases/download/${{ github.ref_name }}/FlickVert-Windows-x64-Portable.zip)
+            - **macOS 13+:** [Apple Silicon](https://github.com/PavelCRG/FlickVert/releases/download/${{ github.ref_name }}/FlickVert-macOS-Apple-Silicon.dmg) · [Intel](https://github.com/PavelCRG/FlickVert/releases/download/${{ github.ref_name }}/FlickVert-macOS-Intel.dmg)
 
-            **Windows PowerShell:**
+            Setup builds check for signed updates at launch and every six hours. Portable builds update manually. Windows may show a SmartScreen warning; macOS builds are not notarized and may show a first-open security warning. Uninstall any older local `0.2.1` build before installing this first `0.1.0` release; the updater will then install later versions normally.
 
-            ```powershell
-            $release = 'https://github.com/PavelCRG/FlickVert/releases/latest/download'
-            $setup = Join-Path $env:TEMP 'FlickVert.msi'
-            Invoke-WebRequest "$release/FlickVert-Windows-x64-Setup.msi" -OutFile $setup
-            if ($?) { Start-Process msiexec.exe -ArgumentList @('/i', ('"{0}"' -f $setup)) }
-            ```
-
-            For macOS terminal commands, see the [installation guide](https://github.com/PavelCRG/FlickVert#install-from-the-terminal).
-
-            Verify downloads with `SHA256SUMS.txt`.
+            Files are processed locally. Optional engines (FFmpeg, Pandoc, ImageMagick, LibreOffice, Poppler) are installed separately. Verify downloads with `SHA256SUMS.txt`.
           files: release-assets/*

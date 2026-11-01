@@ -1,8 +1,10 @@
 export type Language = 'en' | 'ru' | 'zh'
 export type Appearance = 'system' | 'light' | 'dark'
+export type AccentColor = 'blue' | 'violet' | 'teal' | 'green' | 'rose'
 export type AppSettings = {
   language: Language
   appearance: Appearance
+  accent: AccentColor
   quality: number
   width?: number
   height?: number
@@ -12,7 +14,11 @@ export type AppSettings = {
 }
 
 export const defaultSettings: AppSettings = {
-  language: 'en', appearance: 'system', quality: 88, format: 'image/webp', shortcut: 'CTRL+ALT+SPACE',
+  language: 'en', appearance: 'system', accent: 'blue', quality: 88, format: 'image/webp', shortcut: 'CTRL+ALT+SPACE',
+}
+
+export const accentColors: Record<AccentColor, string> = {
+  blue: '#315FCE', violet: '#7258D7', teal: '#087F78', green: '#27845F', rose: '#BD4F70',
 }
 
 export function normalizeSettings(value: unknown): AppSettings {
@@ -22,6 +28,7 @@ export function normalizeSettings(value: unknown): AppSettings {
   return {
     language: raw.language === 'ru' || raw.language === 'zh' ? raw.language : 'en',
     appearance: raw.appearance === 'dark' || raw.appearance === 'light' ? raw.appearance : 'system',
+    accent: ['blue', 'violet', 'teal', 'green', 'rose'].includes(String(raw.accent)) ? raw.accent as AccentColor : 'blue',
     quality: Number.isInteger(raw.quality) && Number(raw.quality) >= 40 && Number(raw.quality) <= 100 ? Number(raw.quality) : 88,
     format: raw.format === 'image/png' || raw.format === 'image/jpeg' ? raw.format : 'image/webp',
     shortcut: ['CTRL+ALT+SPACE', 'CTRL+SHIFT+SPACE', 'ALT+SHIFT+SPACE'].includes(String(raw.shortcut)) ? String(raw.shortcut) : 'CTRL+ALT+SPACE',

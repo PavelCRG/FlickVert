@@ -37,13 +37,15 @@ const AUDIO: Operation = Operation {
         "aac", "aif", "aiff", "caf", "flac", "m4a", "m4b", "mka", "mp3", "oga", "ogg", "opus",
         "wav", "wma",
     ],
-    output_extensions: &["aac", "aiff", "flac", "m4a", "mp3", "ogg", "opus", "wav", "wma"],
+    output_extensions: &[
+        "aac", "aiff", "flac", "m4a", "mp3", "ogg", "opus", "wav", "wma",
+    ],
 };
 const VIDEO: Operation = Operation {
     engine: Engine::Ffmpeg,
     input_extensions: &[
-        "3gp", "avi", "flv", "gif", "m2ts", "m4v", "mkv", "mov", "mp4", "mpeg", "mpg", "mts", "ogv", "ts",
-        "vob", "webm", "wmv",
+        "3gp", "avi", "flv", "gif", "m2ts", "m4v", "mkv", "mov", "mp4", "mpeg", "mpg", "mts",
+        "ogv", "ts", "vob", "webm", "wmv",
     ],
     output_extensions: &["avi", "gif", "mkv", "mov", "mp3", "mp4", "webm", "wmv"],
 };
@@ -68,7 +70,9 @@ const RAW: Operation = Operation {
 };
 const IMAGE: Operation = Operation {
     engine: Engine::ImageMagick,
-    input_extensions: &["png", "jpg", "jpeg", "webp", "gif", "bmp", "avif", "heic", "heif", "svg", "tif", "tiff"],
+    input_extensions: &[
+        "png", "jpg", "jpeg", "webp", "gif", "bmp", "avif", "heic", "heif", "svg", "tif", "tiff",
+    ],
     output_extensions: &["png", "jpg", "webp", "bmp", "heic", "tiff", "avif", "pdf"],
 };
 const RASTER_PNG: Operation = Operation {
@@ -206,11 +210,24 @@ pub fn imagemagick_args(
     if width.is_some() || height.is_some() {
         args.extend([
             OsString::from("-resize"),
-            OsString::from(format!("{}x{}>", width.unwrap_or(32768), height.unwrap_or(32768))),
+            OsString::from(format!(
+                "{}x{}>",
+                width.unwrap_or(32768),
+                height.unwrap_or(32768)
+            )),
         ]);
     }
-    if output.extension().and_then(|value| value.to_str()).is_some_and(|ext| ["jpg", "jpeg", "webp", "avif", "heic"].contains(&ext.to_ascii_lowercase().as_str())) {
-        args.extend([OsString::from("-quality"), OsString::from(quality.clamp(40, 100).to_string())]);
+    if output
+        .extension()
+        .and_then(|value| value.to_str())
+        .is_some_and(|ext| {
+            ["jpg", "jpeg", "webp", "avif", "heic"].contains(&ext.to_ascii_lowercase().as_str())
+        })
+    {
+        args.extend([
+            OsString::from("-quality"),
+            OsString::from(quality.clamp(40, 100).to_string()),
+        ]);
     }
     args.push(output.as_os_str().to_owned());
     args
@@ -270,15 +287,9 @@ pub fn ffmpeg_image_args(
         Some("jpg") => {
             let quality = quality.clamp(40, 100);
             let qscale = 2 + (u16::from(100 - quality) * 18 / 60) as u8;
-            args.extend([
-                OsString::from("-q:v"),
-                OsString::from(qscale.to_string()),
-            ]);
+            args.extend([OsString::from("-q:v"), OsString::from(qscale.to_string())]);
         }
-        Some("png") => args.extend([
-            OsString::from("-compression_level"),
-            OsString::from("6"),
-        ]),
+        Some("png") => args.extend([OsString::from("-compression_level"), OsString::from("6")]),
         _ => {}
     }
     args.push(output.as_os_str().to_owned());
@@ -477,11 +488,32 @@ mod tests {
 
     #[test]
     fn image_magick_receives_quality_only_for_lossy_output_formats() {
-        let jpeg = imagemagick_args(Path::new("photo.raw"), Path::new("photo.jpg"), 120, Some(1200), None);
-        assert_eq!(jpeg[1..3], [OsString::from("-resize"), OsString::from("1200x32768>")]);
-        assert_eq!(jpeg[3..5], [OsString::from("-quality"), OsString::from("100")]);
-        let png = imagemagick_args(Path::new("photo.raw"), Path::new("photo.png"), 75, None, None);
-        assert_eq!(png, [OsString::from("photo.raw[0]"), OsString::from("photo.png")]);
+        let jpeg = imagemagick_args(
+            Path::new("photo.raw"),
+            Path::new("photo.jpg"),
+            120,
+            Some(1200),
+            None,
+        );
+        assert_eq!(
+            jpeg[1..3],
+            [OsString::from("-resize"), OsString::from("1200x32768>")]
+        );
+        assert_eq!(
+            jpeg[3..5],
+            [OsString::from("-quality"), OsString::from("100")]
+        );
+        let png = imagemagick_args(
+            Path::new("photo.raw"),
+            Path::new("photo.png"),
+            75,
+            None,
+            None,
+        );
+        assert_eq!(
+            png,
+            [OsString::from("photo.raw[0]"), OsString::from("photo.png")]
+        );
     }
 
     #[test]
