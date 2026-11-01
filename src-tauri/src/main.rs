@@ -148,6 +148,19 @@ fn engine_status() -> operations::Engines {
 }
 
 #[tauri::command]
+fn supports_in_app_updates() -> bool {
+    #[cfg(windows)]
+    { supports_windows_update(tauri::utils::platform::bundle_type()) }
+    #[cfg(not(windows))]
+    { cfg!(target_os = "macos") }
+}
+
+#[cfg(any(windows, test))]
+fn supports_windows_update(bundle: Option<tauri::utils::config::BundleType>) -> bool {
+    matches!(bundle, Some(tauri::utils::config::BundleType::Msi | tauri::utils::config::BundleType::Nsis))
+}
+
+#[tauri::command]
 fn take_drag_trigger(trigger: tauri::State<'_, DragTrigger>) -> bool {
     std::mem::take(&mut *trigger.0.lock().unwrap())
 }
@@ -1047,6 +1060,8 @@ fn tray_menu(app: &tauri::AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![
             output_directory,
             save_output,
@@ -1066,6 +1081,7 @@ fn main() {
             read_dropped_file,
             inspect_dropped_files,
             engine_status,
+            supports_in_app_updates,
             convert_file,
             process_image_tool,
             process_media_tool,
@@ -1178,6 +1194,14 @@ fn main() {
 #[cfg(test)]
 mod file_type_tests {
     use super::file_mime;
+
+    #[test]
+    fn updater_accepts_installed_windows_bundles_but_not_portable_builds() {
+        use tauri::utils::config::BundleType;
+        assert!(super::supports_windows_update(Some(BundleType::Msi)));
+        assert!(super::supports_windows_update(Some(BundleType::Nsis)));
+        assert!(!super::supports_windows_update(None));
+    }
 
     #[test]
     fn recognizes_document_and_raw_inputs_without_claiming_unknown_files() {

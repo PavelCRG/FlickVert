@@ -1,7 +1,10 @@
-<table><tr>
-  <td><img src="public/fv-file-orange.png" width="144" alt="FlickVert logo" /></td>
-  <td><h1>FlickVert</h1><p>A small, local file converter for Windows and macOS.</p></td>
-</tr></table>
+<img align="left" src="public/fv-file-orange.png" width="120" alt="FlickVert logo" />
+
+# FlickVert
+
+A small, local file converter for Windows and macOS.
+
+<br clear="left" />
 <div align="center">
   <p>
     <a href="#quick-start"><img alt="Quick start" src="https://img.shields.io/badge/Quick%20start-Drag%20%26%20convert-285FE8?style=for-the-badge"></a>
@@ -27,21 +30,27 @@ FlickVert sits beside File Explorer and Finder. Drag a file and press Shift to o
 On **Windows 10/11 x64**, open PowerShell. This downloads the latest MSI and opens its installer:
 
 ```powershell
-$installer = Join-Path $env:TEMP 'FlickVert-Setup.msi'
-Invoke-WebRequest 'https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.msi' -OutFile $installer
-if ($?) { Start-Process msiexec.exe -ArgumentList @('/i', ('"{0}"' -f $installer)) -Wait }
+$release = 'https://github.com/PavelCRG/FlickVert/releases/latest/download'
+$setup = Join-Path $env:TEMP 'FlickVert.msi'
+Invoke-WebRequest "$release/FlickVert-Windows-x64-Setup.msi" -OutFile $setup
+if ($?) { Start-Process msiexec.exe -ArgumentList @('/i', ('"{0}"' -f $setup)) }
 ```
 
-On **macOS 13 or later**, run the command for your Mac. Open the downloaded image and drag FlickVert into Applications.
+On **macOS 13 or later**, run these commands. Open the downloaded image and drag FlickVert into Applications.
 
 ```sh
-# Apple Silicon
-curl -fL -o ~/Downloads/FlickVert.dmg https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-macOS-Apple-Silicon.dmg && open ~/Downloads/FlickVert.dmg
-# Intel
-curl -fL -o ~/Downloads/FlickVert.dmg https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-macOS-Intel.dmg && open ~/Downloads/FlickVert.dmg
+release=https://github.com/PavelCRG/FlickVert/releases/latest/download
+case "$(uname -m)" in
+  arm64) chip=Apple-Silicon ;; x86_64) chip=Intel ;;
+  *) chip=unsupported ;;
+esac
+curl -fL "$release/FlickVert-macOS-$chip.dmg" -o ~/Downloads/FlickVert.dmg &&
+open ~/Downloads/FlickVert.dmg
 ```
 
 The commands require a published release containing these installers. Windows requires WebView2 Runtime; the macOS builds are unsigned.
+
+After installing a release that includes the updater, FlickVert checks for signed updates at startup and every six hours while running. Use **Updates** in the sidebar to check again and install an available update. On Windows, the app selects the matching EXE or MSI update automatically. The portable build must be updated manually from GitHub Releases.
 
 ## Contents
 

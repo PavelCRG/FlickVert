@@ -1,7 +1,10 @@
-<table><tr>
-  <td><img src="public/fv-file-orange.png" width="144" alt="Логотип FlickVert" /></td>
-  <td><h1>FlickVert</h1><p>Локальный помощник для конвертации файлов в Windows и macOS.</p></td>
-</tr></table>
+<img align="left" src="public/fv-file-orange.png" width="120" alt="Логотип FlickVert" />
+
+# FlickVert
+
+Локальный помощник для конвертации файлов в Windows и macOS.
+
+<br clear="left" />
 <div align="center">
   <p><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a></p>
 </div>
@@ -22,21 +25,27 @@ FlickVert помогает работать с файлами прямо из П
 В **Windows 10/11 x64** откройте PowerShell. Команды скачают последний MSI и запустят установщик:
 
 ```powershell
-$installer = Join-Path $env:TEMP 'FlickVert-Setup.msi'
-Invoke-WebRequest 'https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.msi' -OutFile $installer
-if ($?) { Start-Process msiexec.exe -ArgumentList @('/i', ('"{0}"' -f $installer)) -Wait }
+$release = 'https://github.com/PavelCRG/FlickVert/releases/latest/download'
+$setup = Join-Path $env:TEMP 'FlickVert.msi'
+Invoke-WebRequest "$release/FlickVert-Windows-x64-Setup.msi" -OutFile $setup
+if ($?) { Start-Process msiexec.exe -ArgumentList @('/i', ('"{0}"' -f $setup)) }
 ```
 
-В **macOS 13 или новее** выполните команду для своего Mac. В открывшемся образе перетащите FlickVert в Applications.
+В **macOS 13 или новее** выполните эти команды. В открывшемся образе перетащите FlickVert в Applications.
 
 ```sh
-# Apple Silicon
-curl -fL -o ~/Downloads/FlickVert.dmg https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-macOS-Apple-Silicon.dmg && open ~/Downloads/FlickVert.dmg
-# Intel
-curl -fL -o ~/Downloads/FlickVert.dmg https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-macOS-Intel.dmg && open ~/Downloads/FlickVert.dmg
+release=https://github.com/PavelCRG/FlickVert/releases/latest/download
+case "$(uname -m)" in
+  arm64) chip=Apple-Silicon ;; x86_64) chip=Intel ;;
+  *) chip=unsupported ;;
+esac
+curl -fL "$release/FlickVert-macOS-$chip.dmg" -o ~/Downloads/FlickVert.dmg &&
+open ~/Downloads/FlickVert.dmg
 ```
 
 Команды работают после публикации релиза с этими установщиками. В Windows необходим WebView2 Runtime; сборки macOS не подписаны.
+
+После установки версии с поддержкой обновлений FlickVert проверяет наличие подписанного обновления при запуске и каждые шесть часов работы. В разделе **Обновления** на боковой панели можно повторить проверку и установить новую версию. В Windows приложение само выберет подходящий пакет EXE или MSI. Портативную версию нужно обновлять вручную со страницы релизов GitHub.
 
 ## Содержание
 

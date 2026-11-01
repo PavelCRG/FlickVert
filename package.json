@@ -6,12 +6,14 @@
   "scripts": {
     "dev": "npm run build && tauri dev",
     "build": "tsc -b && node scripts/prepare-dist.mjs && esbuild src/main.tsx --bundle --outdir=dist/assets --jsx=automatic --platform=browser --target=safari16 --minify",
-    "test": "node --experimental-strip-types --test --test-isolation=none src/settings.test.ts src/conversion/images.test.ts src/conversion/concurrent.test.ts src/image-editor/image-editor.test.ts src/quick-menu/quick-actions.test.ts src/quick-menu/radial-wheel.test.ts",
+    "test": "node --experimental-strip-types --test --test-isolation=none src/settings.test.ts src/conversion/images.test.ts src/conversion/concurrent.test.ts src/image-editor/image-editor.test.ts src/quick-menu/quick-actions.test.ts src/quick-menu/radial-wheel.test.ts scripts/create-update-manifest.test.mjs",
     "preview": "vite preview",
     "tauri": "tauri"
   },
   "dependencies": {
-    "@tauri-apps/api": "2.11.1",
+    "@tauri-apps/api": "^2.12.4",
+    "@tauri-apps/plugin-process": "^2.4.0",
+    "@tauri-apps/plugin-updater": "^2.14.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },

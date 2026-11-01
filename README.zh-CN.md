@@ -1,7 +1,10 @@
-<table><tr>
-  <td><img src="public/fv-file-orange.png" width="144" alt="FlickVert 标志" /></td>
-  <td><h1>FlickVert</h1><p>适用于 Windows 和 macOS 的本地文件转换工具。</p></td>
-</tr></table>
+<img align="left" src="public/fv-file-orange.png" width="120" alt="FlickVert 标志" />
+
+# FlickVert
+
+适用于 Windows 和 macOS 的本地文件转换工具。
+
+<br clear="left" />
 <div align="center">
   <p>
     <a href="#快速开始"><img alt="快速开始" src="https://img.shields.io/badge/%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B-%E6%8B%96%E6%94%BE%E5%B9%B6%E8%BD%AC%E6%8D%A2-285FE8?style=for-the-badge"></a>
@@ -28,21 +31,27 @@ FlickVert 可与文件资源管理器和 Finder 配合使用。拖动文件并�
 在 **Windows 10/11 x64** 上打开 PowerShell，下载最新 MSI 并启动安装程序：
 
 ```powershell
-$installer = Join-Path $env:TEMP 'FlickVert-Setup.msi'
-Invoke-WebRequest 'https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.msi' -OutFile $installer
-if ($?) { Start-Process msiexec.exe -ArgumentList @('/i', ('"{0}"' -f $installer)) -Wait }
+$release = 'https://github.com/PavelCRG/FlickVert/releases/latest/download'
+$setup = Join-Path $env:TEMP 'FlickVert.msi'
+Invoke-WebRequest "$release/FlickVert-Windows-x64-Setup.msi" -OutFile $setup
+if ($?) { Start-Process msiexec.exe -ArgumentList @('/i', ('"{0}"' -f $setup)) }
 ```
 
-在 **macOS 13 或更高版本**上，根据芯片运行对应命令，然后将打开的磁盘映像中的 FlickVert 拖入 Applications。
+在 **macOS 13 或更高版本**上运行以下命令，然后将打开的磁盘映像中的 FlickVert 拖入 Applications。
 
 ```sh
-# Apple Silicon
-curl -fL -o ~/Downloads/FlickVert.dmg https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-macOS-Apple-Silicon.dmg && open ~/Downloads/FlickVert.dmg
-# Intel
-curl -fL -o ~/Downloads/FlickVert.dmg https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-macOS-Intel.dmg && open ~/Downloads/FlickVert.dmg
+release=https://github.com/PavelCRG/FlickVert/releases/latest/download
+case "$(uname -m)" in
+  arm64) chip=Apple-Silicon ;; x86_64) chip=Intel ;;
+  *) chip=unsupported ;;
+esac
+curl -fL "$release/FlickVert-macOS-$chip.dmg" -o ~/Downloads/FlickVert.dmg &&
+open ~/Downloads/FlickVert.dmg
 ```
 
 这些命令需要已发布且包含上述安装包的版本。Windows 需要 WebView2 Runtime；macOS 版本尚未签名。
+
+安装包含更新功能的版本后，FlickVert 会在启动时及运行期间每六小时检查经过签名的更新。可在侧栏的 **更新** 中重新检查并安装新版本。在 Windows 上会自动选择匹配的 EXE 或 MSI 更新包。便携版需要从 GitHub Releases 手动更新。
 
 ## 目录
 

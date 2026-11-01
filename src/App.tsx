@@ -5,6 +5,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window'
 import { loadSettings, normalizeSettings, saveSettings, type AppSettings } from './settings'
 import { t, type MessageKey } from './i18n'
 import ImageEditor, { type ImageEditTool } from './image-editor/ImageEditor'
+import UpdateNotice from './updates/UpdateNotice'
 
 type HistoryEntry = { id: string; fileName: string; size: number; output: string }
 type Engines = { ffmpeg: boolean; pandoc: boolean; imagemagick: boolean; libreoffice: boolean; poppler: boolean }
@@ -127,6 +128,7 @@ export default function App() {
         </button>)}
       </nav>
       <div className="sidebar-bottom">
+        <UpdateNotice language={preferences.language}/>
         <div className="privacy"><svg className="privacy-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5 16 5v4.4c0 3.8-2.6 6.4-6 8.1-3.4-1.7-6-4.3-6-8.1V5l6-2.5Z"/><path d="m7.2 9.8 1.8 1.8 3.8-4"/></svg><div><strong>{tr('Your files stay here')}</strong><small>{tr('Processed on this device')}</small></div></div>
         <div className="version">FlickVert <span>0.2.1</span></div>
       </div>

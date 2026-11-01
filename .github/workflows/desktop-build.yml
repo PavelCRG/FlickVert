@@ -31,7 +31,15 @@ jobs:
       - run: npm run test
       - run: npm run build
       - run: cargo test --locked --manifest-path src-tauri/Cargo.toml
-      - run: npm run tauri -- build --target ${{ matrix.target }}
+      - name: Build desktop application
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        run: npm run tauri -- build --target ${{ matrix.target }}
+      - name: Build signed update artifacts
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npm run tauri -- build --target ${{ matrix.target }} --config src-tauri/tauri.updater.conf.json
       - name: Package portable Windows app
         if: runner.os == 'Windows'
         shell: pwsh
@@ -71,6 +79,7 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           pattern: flickvert-*
@@ -93,6 +102,13 @@ jobs:
           copy_one flickvert-windows-portable '*-portable.zip' FlickVert-Windows-x64-Portable.zip
           copy_one flickvert-x86_64-apple-darwin '*.dmg' FlickVert-macOS-Intel.dmg
           copy_one flickvert-aarch64-apple-darwin '*.dmg' FlickVert-macOS-Apple-Silicon.dmg
+          copy_one flickvert-x86_64-pc-windows-msvc '*-setup.exe.sig' FlickVert-Windows-x64-Setup.exe.sig
+          copy_one flickvert-x86_64-pc-windows-msvc '*.msi.sig' FlickVert-Windows-x64-Setup.msi.sig
+          copy_one flickvert-x86_64-apple-darwin '*.app.tar.gz' FlickVert-macOS-Intel.app.tar.gz
+          copy_one flickvert-x86_64-apple-darwin '*.app.tar.gz.sig' FlickVert-macOS-Intel.app.tar.gz.sig
+          copy_one flickvert-aarch64-apple-darwin '*.app.tar.gz' FlickVert-macOS-Apple-Silicon.app.tar.gz
+          copy_one flickvert-aarch64-apple-darwin '*.app.tar.gz.sig' FlickVert-macOS-Apple-Silicon.app.tar.gz.sig
+          node scripts/create-update-manifest.mjs
           (cd release-assets && sha256sum * > SHA256SUMS.txt)
       - uses: softprops/action-gh-release@v2
         with:
@@ -110,9 +126,10 @@ jobs:
             **Windows PowerShell:**
 
             ```powershell
-            $installer = Join-Path $env:TEMP 'FlickVert-Setup.msi'
-            Invoke-WebRequest 'https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.msi' -OutFile $installer
-            if ($?) { Start-Process msiexec.exe -ArgumentList @('/i', ('"{0}"' -f $installer)) -Wait }
+            $release = 'https://github.com/PavelCRG/FlickVert/releases/latest/download'
+            $setup = Join-Path $env:TEMP 'FlickVert.msi'
+            Invoke-WebRequest "$release/FlickVert-Windows-x64-Setup.msi" -OutFile $setup
+            if ($?) { Start-Process msiexec.exe -ArgumentList @('/i', ('"{0}"' -f $setup)) }
             ```
 
             For macOS terminal commands, see the [installation guide](https://github.com/PavelCRG/FlickVert#install-from-the-terminal).

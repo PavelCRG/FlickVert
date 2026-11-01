@@ -26,6 +26,13 @@
       "csp": "default-src 'self' asset: http://asset.localhost; img-src 'self' asset: http://asset.localhost blob: data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src ipc: http://ipc.localhost"
     }
   },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM5MkQzNTA2ODkyQzc2QkMKUldTOGRpeUpCalV0T1VHS0lJYUdxT3FsWUJYT2JEdUR0VDJNTlJPN2k5akZ4UVlQTUdSR3hndVEK",
+      "requireSignedVersion": true,
+      "endpoints": ["https://github.com/PavelCRG/FlickVert/releases/latest/download/latest.json"]
+    }
+  },
   "bundle": {
     "active": true,
     "targets": "all",
