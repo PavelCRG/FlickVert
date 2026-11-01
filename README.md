@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="public/fv-mark.svg" width="72" height="48" alt="FlickVert FV mark" />
+  <img src="public/fv-file-orange.png" width="56" height="56" alt="FlickVert FV mark" />
   <h1>FlickVert</h1>
   <p>A small, local file converter for Windows and macOS.</p>
   <p>
@@ -21,8 +21,30 @@ FlickVert sits beside File Explorer and Finder. Start dragging a file and the ci
 </p>
 <p align="center">macOS images are currently unsigned and may show a first-open security warning.</p>
 
+## Install from the terminal
+
+On **Windows 10/11 x64**, open PowerShell. This downloads the latest MSI and opens its installer:
+
+```powershell
+$installer = Join-Path $env:TEMP 'FlickVert-Setup.msi'
+Invoke-WebRequest 'https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.msi' -OutFile $installer
+if ($?) { Start-Process msiexec.exe -ArgumentList @('/i', ('"{0}"' -f $installer)) -Wait }
+```
+
+On **macOS 13 or later**, run the command for your Mac. Open the downloaded image and drag FlickVert into Applications.
+
+```sh
+# Apple Silicon
+curl -fL -o ~/Downloads/FlickVert.dmg https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-macOS-Apple-Silicon.dmg && open ~/Downloads/FlickVert.dmg
+# Intel
+curl -fL -o ~/Downloads/FlickVert.dmg https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-macOS-Intel.dmg && open ~/Downloads/FlickVert.dmg
+```
+
+The commands require a published release containing these installers. Windows requires WebView2 Runtime; the macOS builds are unsigned.
+
 ## Contents
 
+- [Install from the terminal](#install-from-the-terminal)
 - [Quick start](#quick-start)
 - [Close and reopen](#close-and-reopen)
 - [How the drag wheel works](#how-the-drag-wheel-works)
@@ -79,6 +101,8 @@ The wheel needs a file drag that starts in Explorer or Finder. You can also open
 - Existing files are kept. If a name is taken, FlickVert adds a number, such as `photo (2).webp`.
 
 ## Build from source
+
+See the [project structure](docs/architecture.md) for a map of the frontend, native code, and build pipeline.
 
 Install Node.js 24, stable Rust, and the [Tauri system prerequisites](https://v2.tauri.app/start/prerequisites/). Then run:
 

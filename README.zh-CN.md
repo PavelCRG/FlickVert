@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="public/fv-mark.svg" width="72" height="48" alt="FlickVert FV 标志" />
+  <img src="public/fv-file-orange.png" width="56" height="56" alt="FlickVert FV 标志" />
   <h1>FlickVert</h1>
   <p>适用于 Windows 和 macOS 的本地文件转换工具。</p>
   <p>
@@ -22,8 +22,30 @@ FlickVert 可与文件资源管理器和 Finder 配合使用。开始拖动文�
 </p>
 <p align="center">macOS 安装包目前未经签名，首次打开时系统可能显示安全提示。</p>
 
+## 通过终端安装
+
+在 **Windows 10/11 x64** 上打开 PowerShell，下载最新 MSI 并启动安装程序：
+
+```powershell
+$installer = Join-Path $env:TEMP 'FlickVert-Setup.msi'
+Invoke-WebRequest 'https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.msi' -OutFile $installer
+if ($?) { Start-Process msiexec.exe -ArgumentList @('/i', ('"{0}"' -f $installer)) -Wait }
+```
+
+在 **macOS 13 或更高版本**上，根据芯片运行对应命令，然后将打开的磁盘映像中的 FlickVert 拖入 Applications。
+
+```sh
+# Apple Silicon
+curl -fL -o ~/Downloads/FlickVert.dmg https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-macOS-Apple-Silicon.dmg && open ~/Downloads/FlickVert.dmg
+# Intel
+curl -fL -o ~/Downloads/FlickVert.dmg https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-macOS-Intel.dmg && open ~/Downloads/FlickVert.dmg
+```
+
+这些命令需要已发布且包含上述安装包的版本。Windows 需要 WebView2 Runtime；macOS 版本尚未签名。
+
 ## 目录
 
+- [通过终端安装](#通过终端安装)
 - [快速开始](#快速开始)
 - [重新打开应用](#重新打开应用)
 - [拖放转盘](#拖放转盘)

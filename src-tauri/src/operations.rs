@@ -71,6 +71,16 @@ const IMAGE: Operation = Operation {
     input_extensions: &["png", "jpg", "jpeg", "webp", "gif", "bmp", "avif", "heic", "heif", "svg", "tif", "tiff"],
     output_extensions: &["png", "jpg", "webp", "bmp", "heic", "tiff", "avif", "pdf"],
 };
+const RASTER_PNG: Operation = Operation {
+    engine: Engine::Ffmpeg,
+    input_extensions: &["png", "jpg", "jpeg", "webp", "bmp", "gif"],
+    output_extensions: &["png"],
+};
+const RASTER_JPEG: Operation = Operation {
+    engine: Engine::Ffmpeg,
+    input_extensions: &["jpg", "jpeg"],
+    output_extensions: &["jpg"],
+};
 const OFFICE_PDF: Operation = Operation {
     engine: Engine::LibreOffice,
     input_extensions: &[
@@ -115,7 +125,10 @@ pub fn is_video_input(extension: &str) -> bool {
 pub fn operations_for(extension: &str, engines: Engines) -> Vec<Operation> {
     let extension = extension.to_ascii_lowercase();
     [
-        (engines.ffmpeg, [&AUDIO, &VIDEO, &SUBTITLE][..].to_vec()),
+        (
+            engines.ffmpeg,
+            [&AUDIO, &VIDEO, &SUBTITLE, &RASTER_PNG, &RASTER_JPEG][..].to_vec(),
+        ),
         (engines.pandoc, vec![&DOCUMENT]),
         (engines.imagemagick, vec![&RAW, &IMAGE]),
         (engines.libreoffice, vec![&OFFICE_PDF, &SPREADSHEET]),
@@ -230,6 +243,48 @@ pub fn ffmpeg_args(input: &Path, output: &Path) -> Vec<OsString> {
         .collect()
 }
 
+pub fn ffmpeg_image_args(
+    input: &Path,
+    output: &Path,
+    quality: u8,
+    width: Option<u32>,
+    height: Option<u32>,
+) -> Vec<OsString> {
+    let mut args = ["-nostdin", "-hide_banner", "-loglevel", "error", "-y", "-i"]
+        .into_iter()
+        .map(OsString::from)
+        .chain([input.as_os_str().to_owned()])
+        .collect::<Vec<_>>();
+    args.extend([OsString::from("-frames:v"), OsString::from("1")]);
+    if width.is_some() || height.is_some() {
+        let width = width.unwrap_or(32768).clamp(1, 32768);
+        let height = height.unwrap_or(32768).clamp(1, 32768);
+        args.extend([
+            OsString::from("-vf"),
+            OsString::from(format!(
+                "scale=w='min(iw,{width})':h='min(ih,{height})':force_original_aspect_ratio=decrease"
+            )),
+        ]);
+    }
+    match output.extension().and_then(|value| value.to_str()) {
+        Some("jpg") => {
+            let quality = quality.clamp(40, 100);
+            let qscale = 2 + (u16::from(100 - quality) * 18 / 60) as u8;
+            args.extend([
+                OsString::from("-q:v"),
+                OsString::from(qscale.to_string()),
+            ]);
+        }
+        Some("png") => args.extend([
+            OsString::from("-compression_level"),
+            OsString::from("6"),
+        ]),
+        _ => {}
+    }
+    args.push(output.as_os_str().to_owned());
+    args
+}
+
 pub fn ffmpeg_tool_args(action: &str, input: &Path, output: &Path) -> Option<Vec<OsString>> {
     let mut args = ["-nostdin", "-hide_banner", "-loglevel", "error", "-y"]
         .into_iter()
@@ -295,6 +350,46 @@ mod tests {
         );
         assert_eq!(args[6], OsString::from("C:/My Videos/clip one.mp4"));
         assert_eq!(args[7], OsString::from("C:/My Videos/out file.webm"));
+    }
+
+    #[test]
+    fn ffmpeg_image_args_keep_paths_separate_and_apply_quality_and_resize() {
+        let args = ffmpeg_image_args(
+            Path::new("C:/Photos/input image.jpg"),
+            Path::new("C:/Photos/output image.jpg"),
+            90,
+            Some(1600),
+            Some(1200),
+        );
+        assert!(args.contains(&OsString::from("-vf")));
+        assert!(args
+            .iter()
+            .any(|arg| arg.to_string_lossy().contains("min(iw,1600)")));
+        assert!(args.contains(&OsString::from("-q:v")));
+        assert!(args.contains(&OsString::from("5")));
+        assert_eq!(args[6], OsString::from("C:/Photos/input image.jpg"));
+        assert_eq!(
+            args.last().unwrap(),
+            &OsString::from("C:/Photos/output image.jpg")
+        );
+    }
+
+    #[test]
+    fn ffmpeg_only_accelerates_alpha_safe_image_targets() {
+        let engines = Engines {
+            ffmpeg: true,
+            ..Engines::default()
+        };
+        assert_eq!(
+            operation_for("jpg", "jpg", engines).unwrap().engine,
+            Engine::Ffmpeg
+        );
+        assert_eq!(
+            operation_for("png", "png", engines).unwrap().engine,
+            Engine::Ffmpeg
+        );
+        assert!(operation_for("png", "jpg", engines).is_none());
+        assert!(operation_for("svg", "png", engines).is_none());
     }
 
     #[test]

@@ -3,11 +3,12 @@ import { getCurrentWindow } from '@tauri-apps/api/window'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 import { invoke } from '@tauri-apps/api/core'
 import { emit, listen } from '@tauri-apps/api/event'
-import { convertImage, fitWithin } from './conversion/images'
-import { imagesToPdf } from './conversion/pdf'
-import { loadSettings } from './settings'
-import { t, type MessageKey } from './i18n'
-import { canRunFileAction, canRunSelectedTool, canRunWheelTool } from './quick-actions'
+import { convertImage, fitWithin } from '../conversion/images'
+import { mapConcurrent } from '../conversion/concurrent'
+import { imagesToPdf } from '../conversion/pdf'
+import { loadSettings } from '../settings'
+import { t, type MessageKey } from '../i18n'
+import { canRunFileAction, canRunSelectedTool, canRunWheelTool, canUseNativeImagePath } from './quick-actions'
 import { wheelLabelPosition, wheelSectorAt, wheelSlicePath } from './radial-wheel'
 import './quick-menu.css'
 
@@ -175,6 +176,16 @@ export default function QuickMenu() {
   async function convertTo(file: NativeFile, format: Format) {
     const stem = file.name.replace(/\.[^.]+$/, '')
     const preferences = loadSettings()
+    if (canUseNativeImagePath(file.extension, format.extension, ffmpegAvailableRef.current)) {
+      return invoke<string>('convert_file', {
+        inputPath: file.path,
+        outputExtension: format.extension,
+        quality: preferences.quality,
+        width: preferences.width,
+        height: preferences.height,
+        destinationFolder: preferences.outputFolder,
+      })
+    }
     if (imageExtensions.includes(file.extension) && (format.extension === 'pdf' || ['png', 'jpg', 'webp'].includes(format.extension))) {
       const bytes = await invoke<number[]>('read_dropped_file', { inputPath: file.path })
       const input = new File([Uint8Array.from(bytes)], file.name, { type: file.mime })
@@ -198,12 +209,17 @@ export default function QuickMenu() {
     dropHandled.current = true
     setStatus(tr('Converting...'))
     try {
-      const outputs: string[] = []
-      for (const file of items) {
+      const concurrency = ['png', 'jpg', 'webp'].includes(format.extension)
+        && items.every((file) => imageExtensions.includes(file.extension)
+          && file.size <= 16 * 1024 * 1024
+          && !canUseNativeImagePath(file.extension, format.extension, ffmpegAvailableRef.current))
+        ? 2
+        : 1
+      const outputs = await mapConcurrent(items, concurrency, async (file) => {
         const output = await convertTo(file, format)
-        outputs.push(output)
         await emit('flickvert://job-completed', { fileName: file.name, size: file.size, output })
-      }
+        return output
+      }, (completed) => setStatus(`${tr('Converting...')} · ${completed}/${items.length}`))
       setStatus(`${tr('Saved')} · ${outputs.length}`)
       window.setTimeout(hide, 650)
     } catch (error) {
@@ -366,6 +382,9 @@ export default function QuickMenu() {
       else if (dragModeRef.current) { filesRef.current = []; formatsRef.current = []; setFiles([]); setFormats([]); setStatus(tr('No selected files found')) }
       else { filesRef.current = []; formatsRef.current = []; setFiles([]); setFormats([]); setDragVisible(false) }
     }).then(addStop)
+    void invoke<string[]>('take_startup_files').then((paths) => {
+      if (paths.length) void refreshFiles(paths).catch((error) => setStatus(String(error)))
+    }).catch(() => {})
     void invoke<boolean>('take_drag_trigger').then((opened) => {
       if (opened) { setDragVisible(true); dropHandled.current = false }
     }).catch(() => {})

@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import { strict as assert } from 'node:assert'
-import { canRunFileAction, canRunSelectedTool, canRunWheelTool } from './quick-actions.ts'
+import { canRunFileAction, canRunSelectedTool, canRunWheelTool, canUseNativeImagePath } from './quick-actions.ts'
 
 test('routes selected-file tools even when the wheel was opened by shortcut', () => {
   assert.equal(canRunSelectedTool('resize', ['resize', 'rotate'], 1), true)
@@ -25,4 +25,12 @@ test('wheel only runs file actions that support the selected file set', () => {
   assert.equal(canRunFileAction('extract-zip', [{ extension: 'png' }]), false)
   assert.equal(canRunFileAction('reveal', [{ extension: 'png' }, { extension: 'jpg' }]), false)
   assert.equal(canRunFileAction('move-to-folder', []), false)
+})
+
+test('native image path only handles formats that preserve alpha and supported fallbacks', () => {
+  assert.equal(canUseNativeImagePath('png', 'png', true), true)
+  assert.equal(canUseNativeImagePath('jpg', 'jpg', true), true)
+  assert.equal(canUseNativeImagePath('png', 'jpg', true), false)
+  assert.equal(canUseNativeImagePath('svg', 'png', true), false)
+  assert.equal(canUseNativeImagePath('jpg', 'png', false), false)
 })

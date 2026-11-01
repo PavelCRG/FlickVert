@@ -1,7 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
-import QuickMenu from './QuickMenu'
+import QuickMenu from './quick-menu/QuickMenu'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import './style.css'
 

@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="public/fv-mark.svg" width="72" height="48" alt="Логотип FlickVert FV" />
+  <img src="public/fv-file-orange.png" width="56" height="56" alt="Логотип FlickVert FV" />
   <h1>FlickVert</h1>
   <p>Локальный помощник для конвертации файлов в Windows и macOS.</p>
   <p><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a></p>
@@ -16,8 +16,30 @@ FlickVert помогает работать с файлами прямо из П
 </p>
 <p align="center">Сборки macOS пока не подписаны. При первом запуске система может показать предупреждение безопасности.</p>
 
+## Установка через терминал
+
+В **Windows 10/11 x64** откройте PowerShell. Команды скачают последний MSI и запустят установщик:
+
+```powershell
+$installer = Join-Path $env:TEMP 'FlickVert-Setup.msi'
+Invoke-WebRequest 'https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.msi' -OutFile $installer
+if ($?) { Start-Process msiexec.exe -ArgumentList @('/i', ('"{0}"' -f $installer)) -Wait }
+```
+
+В **macOS 13 или новее** выполните команду для своего Mac. В открывшемся образе перетащите FlickVert в Applications.
+
+```sh
+# Apple Silicon
+curl -fL -o ~/Downloads/FlickVert.dmg https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-macOS-Apple-Silicon.dmg && open ~/Downloads/FlickVert.dmg
+# Intel
+curl -fL -o ~/Downloads/FlickVert.dmg https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-macOS-Intel.dmg && open ~/Downloads/FlickVert.dmg
+```
+
+Команды работают после публикации релиза с этими установщиками. В Windows необходим WebView2 Runtime; сборки macOS не подписаны.
+
 ## Содержание
 
+- [Установка через терминал](#установка-через-терминал)
 - [Быстрый старт](#быстрый-старт)
 - [Круговое меню](#круговое-меню)
 - [Поддерживаемые форматы](#поддерживаемые-форматы)
@@ -68,6 +90,8 @@ FlickVert помогает работать с файлами прямо из П
 FlickVert не перезаписывает существующие файлы. Если имя занято, к новому имени добавится номер, например photo (2).webp.
 
 ## Сборка из исходного кода
+
+Карта интерфейса, системного кода и сборки находится в [описании структуры проекта](docs/architecture.md).
 
 Установите Node.js 24, стабильный Rust и системные зависимости [Tauri](https://v2.tauri.app/start/prerequisites/), затем выполните:
 

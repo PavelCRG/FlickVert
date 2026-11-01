@@ -38,7 +38,14 @@ struct DroppedFiles(Mutex<HashSet<PathBuf>>);
 #[derive(Default)]
 struct DragTrigger(Mutex<bool>);
 
-struct TrayAvailable(bool);
+struct StartupFiles(Mutex<Vec<String>>);
+
+#[tauri::command]
+fn take_startup_files(files: tauri::State<'_, StartupFiles>, app: AppHandle) -> Vec<String> {
+    let paths = std::mem::take(&mut *files.0.lock().unwrap());
+    if !paths.is_empty() { show_quick(&app, true); }
+    paths
+}
 
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -278,7 +285,17 @@ fn convert_file(
         let (executable, args) = match operation.engine {
             operations::Engine::Ffmpeg => (
                 operations::find_executable("ffmpeg").ok_or("FFmpeg is not installed")?,
-                operations::ffmpeg_args(&input, &output_temp),
+                if ["png", "jpg"].contains(&output_extension.as_str()) {
+                    operations::ffmpeg_image_args(
+                        &input,
+                        &output_temp,
+                        quality.unwrap_or(88),
+                        width,
+                        height,
+                    )
+                } else {
+                    operations::ffmpeg_args(&input, &output_temp)
+                },
             ),
             operations::Engine::Pandoc => (
                 operations::find_executable("pandoc").ok_or("Pandoc is not installed")?,
@@ -1044,6 +1061,7 @@ fn main() {
             choose_files,
             choose_output_folder,
             take_drag_trigger,
+            take_startup_files,
             quick_formats,
             read_dropped_file,
             inspect_dropped_files,
@@ -1055,22 +1073,15 @@ fn main() {
             extract_zip_archive
         ])
         .setup(|app| {
-            let main_config = app
-                .config()
-                .app
-                .windows
-                .iter()
-                .find(|window| window.label == "main")
-                .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "main window config is missing"))?;
-            let main_window = WebviewWindowBuilder::from_config(app, main_config)?;
-            #[cfg(all(windows, debug_assertions))]
-            let main_window = main_window.data_directory(dev_webview_data_directory());
-            main_window.build()?;
             if let Err(error) = register_shortcut(app.handle().clone(), "CTRL+ALT+SPACE".into()) {
                 eprintln!("Could not register the default shortcut: {error}");
             }
             app.manage(DroppedFiles::default());
             app.manage(DragTrigger::default());
+            app.manage(StartupFiles(Mutex::new(std::env::args_os().skip(1).filter_map(|arg| {
+                let path = PathBuf::from(arg);
+                if path.is_file() || path.is_dir() { Some(path.to_string_lossy().into_owned()) } else { None }
+            }).collect())));
             let quick_window = WebviewWindowBuilder::new(app, "quick", WebviewUrl::App("index.html".into()));
             #[cfg(all(windows, debug_assertions))]
             let quick_window = quick_window.data_directory(dev_webview_data_directory());
@@ -1085,10 +1096,14 @@ fn main() {
                 .skip_taskbar(true)
                 .focused(false)
                 .focusable(false)
-                .visible(false)
+                .visible(true)
                 .build()
             {
-                Ok(_) => {}
+                Ok(window) => {
+                    if let Err(error) = window.hide() {
+                        eprintln!("Could not hide the prepared quick actions window: {error}");
+                    }
+                }
                 Err(error) => eprintln!("Could not prepare quick actions: {error}"),
             }
             let tray = tray_menu(app.handle()).and_then(|menu| {
@@ -1098,7 +1113,7 @@ fn main() {
                     .ok_or_else(|| tauri::Error::AssetNotFound("icons/icon.png".into()))?;
                 TrayIconBuilder::new()
                     .icon(icon)
-                    .icon_as_template(true)
+                    .icon_as_template(false)
                     .tooltip("FlickVert")
                     .menu(&menu)
                     .show_menu_on_left_click(true)
@@ -1114,7 +1129,6 @@ fn main() {
                     })
                     .build(app)
             });
-            app.manage(TrayAvailable(tray.is_ok()));
             match tray {
                 Ok(tray) => {
                     app.manage(tray);
@@ -1128,7 +1142,7 @@ fn main() {
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                if window.label() == "main" && !window.state::<TrayAvailable>().0 {
+                if window.label() == "main" {
                     window.app_handle().exit(0);
                     return;
                 }

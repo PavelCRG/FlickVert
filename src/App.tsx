@@ -3,7 +3,7 @@ import { invoke, isTauri } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { loadSettings, normalizeSettings, saveSettings, type AppSettings } from './settings'
 import { t, type MessageKey } from './i18n'
-import ImageEditor, { type ImageEditTool } from './ImageEditor'
+import ImageEditor, { type ImageEditTool } from './image-editor/ImageEditor'
 
 type HistoryEntry = { id: string; fileName: string; size: number; output: string }
 type Engines = { ffmpeg: boolean; pandoc: boolean; imagemagick: boolean; libreoffice: boolean; poppler: boolean }
@@ -108,7 +108,7 @@ export default function App() {
 
   return <div className={`app ${preferences.appearance}`}>
     <aside className="sidebar">
-      <div className="brand"><img className="brand-mark" src="/fv-mark.svg" alt=""/><span>FlickVert</span></div>
+      <div className="brand"><img className="brand-mark" src="/fv-file-orange.png" alt=""/><span>FlickVert</span></div>
       <div className="side-label">{tr('Workspace')}</div>
       <nav aria-label="Main navigation">
         {(['settings', 'history'] as const).map((item) => <button key={item} aria-current={section === item ? 'page' : undefined} className={section === item ? 'nav-item active' : 'nav-item'} onClick={() => setSection(item)}>

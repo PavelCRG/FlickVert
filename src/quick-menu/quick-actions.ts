@@ -15,3 +15,8 @@ export function canRunFileAction(actionId: string, files: { extension: string }[
   if (actionId === 'extract-zip') return files.length === 1 && files[0].extension === 'zip'
   return ['reveal', 'copy-path', 'open-terminal'].includes(actionId) && files.length === 1
 }
+
+export function canUseNativeImagePath(inputExtension: string, outputExtension: string, ffmpegAvailable: boolean) {
+  if (!ffmpegAvailable || inputExtension === 'svg') return false
+  return outputExtension === 'png' || (outputExtension === 'jpg' && ['jpg', 'jpeg'].includes(inputExtension))
+}

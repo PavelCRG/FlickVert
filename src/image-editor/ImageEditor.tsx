@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { emit } from '@tauri-apps/api/event'
-import { loadSettings } from './settings'
+import { loadSettings } from '../settings'
 import { selectionToPixels, normalizeSelection, type Selection } from './image-editor'
-import { t, type MessageKey } from './i18n'
+import { t, type MessageKey } from '../i18n'
 
 export type ImageEditTool = 'crop' | 'redact' | 'annotate' | 'background' | 'adjust'
 type Props = { inputPath: string; initialTool: ImageEditTool; outputFolder?: string; onClose: () => void }
