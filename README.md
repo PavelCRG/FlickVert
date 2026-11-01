@@ -1,7 +1,8 @@
+<table><tr>
+  <td><img src="public/fv-file-orange.png" width="144" alt="FlickVert logo" /></td>
+  <td><h1>FlickVert</h1><p>A small, local file converter for Windows and macOS.</p></td>
+</tr></table>
 <div align="center">
-  <img src="public/fv-file-orange.png" width="56" height="56" alt="FlickVert FV mark" />
-  <h1>FlickVert</h1>
-  <p>A small, local file converter for Windows and macOS.</p>
   <p>
     <a href="#quick-start"><img alt="Quick start" src="https://img.shields.io/badge/Quick%20start-Drag%20%26%20convert-285FE8?style=for-the-badge"></a>
     <a href="#supported-formats"><img alt="Supported formats" src="https://img.shields.io/badge/Formats-What%20works-59616D?style=for-the-badge"></a>

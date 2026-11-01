@@ -1,7 +1,8 @@
+<table><tr>
+  <td><img src="public/fv-file-orange.png" width="144" alt="FlickVert 标志" /></td>
+  <td><h1>FlickVert</h1><p>适用于 Windows 和 macOS 的本地文件转换工具。</p></td>
+</tr></table>
 <div align="center">
-  <img src="public/fv-file-orange.png" width="56" height="56" alt="FlickVert FV 标志" />
-  <h1>FlickVert</h1>
-  <p>适用于 Windows 和 macOS 的本地文件转换工具。</p>
   <p>
     <a href="#快速开始"><img alt="快速开始" src="https://img.shields.io/badge/%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B-%E6%8B%96%E6%94%BE%E5%B9%B6%E8%BD%AC%E6%8D%A2-285FE8?style=for-the-badge"></a>
     <a href="#支持的格式"><img alt="支持的格式" src="https://img.shields.io/badge/%E6%A0%BC%E5%BC%8F-%E6%9F%A5%E7%9C%8B%E6%94%AF%E6%8C%81%E6%83%85%E5%86%B5-59616D?style=for-the-badge"></a>

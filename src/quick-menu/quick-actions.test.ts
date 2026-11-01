@@ -1,6 +1,15 @@
 import { test } from 'node:test'
 import { strict as assert } from 'node:assert'
-import { canRunFileAction, canRunSelectedTool, canRunWheelTool, canUseNativeImagePath } from './quick-actions.ts'
+import { canRunFileAction, canRunSelectedTool, canRunWheelTool, canUseNativeImagePath, commonFormats } from './quick-actions.ts'
+
+test('format lookup is shared for files of the same type', async () => {
+  const calls: string[] = []
+  const files = [{ path: 'a.png', extension: 'png', isDirectory: false }, { path: 'b.png', extension: 'png', isDirectory: false }, { path: 'c.jpg', extension: 'jpg', isDirectory: false }]
+  const result = await commonFormats(files, async (path) => { calls.push(path); return path.endsWith('png') ? ['png', 'jpg'] : ['jpg', 'webp'] })
+  assert.deepEqual(calls, ['a.png', 'c.jpg'])
+  assert.deepEqual(result, ['jpg'])
+  assert.deepEqual(await commonFormats([{ path: 'folder', extension: '', isDirectory: true }], async () => { throw new Error('unexpected lookup') }), [])
+})
 
 test('routes selected-file tools even when the wheel was opened by shortcut', () => {
   assert.equal(canRunSelectedTool('resize', ['resize', 'rotate'], 1), true)

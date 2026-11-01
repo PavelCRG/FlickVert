@@ -20,3 +20,13 @@ export function canUseNativeImagePath(inputExtension: string, outputExtension: s
   if (!ffmpegAvailable || inputExtension === 'svg') return false
   return outputExtension === 'png' || (outputExtension === 'jpg' && ['jpg', 'jpeg'].includes(inputExtension))
 }
+
+export async function commonFormats(files: { path: string; extension: string; isDirectory: boolean }[], getFormats: (path: string) => Promise<string[]>) {
+  if (!files.length || files.some((file) => file.isDirectory)) return []
+  const requests = new Map<string, Promise<string[]>>()
+  const lists = await Promise.all(files.map((file) => {
+    if (!requests.has(file.extension)) requests.set(file.extension, getFormats(file.path))
+    return requests.get(file.extension)!
+  }))
+  return lists[0].filter((extension) => lists.every((list) => list.includes(extension)))
+}

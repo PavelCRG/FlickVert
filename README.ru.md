@@ -1,7 +1,8 @@
+<table><tr>
+  <td><img src="public/fv-file-orange.png" width="144" alt="Логотип FlickVert" /></td>
+  <td><h1>FlickVert</h1><p>Локальный помощник для конвертации файлов в Windows и macOS.</p></td>
+</tr></table>
 <div align="center">
-  <img src="public/fv-file-orange.png" width="56" height="56" alt="Логотип FlickVert FV" />
-  <h1>FlickVert</h1>
-  <p>Локальный помощник для конвертации файлов в Windows и macOS.</p>
   <p><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a></p>
 </div>
 

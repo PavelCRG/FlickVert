@@ -8,7 +8,7 @@ import { mapConcurrent } from '../conversion/concurrent'
 import { imagesToPdf } from '../conversion/pdf'
 import { loadSettings } from '../settings'
 import { t, type MessageKey } from '../i18n'
-import { canRunFileAction, canRunSelectedTool, canRunWheelTool, canUseNativeImagePath } from './quick-actions'
+import { canRunFileAction, canRunSelectedTool, canRunWheelTool, canUseNativeImagePath, commonFormats } from './quick-actions'
 import { wheelLabelPosition, wheelSectorAt, wheelSlicePath } from './radial-wheel'
 import './quick-menu.css'
 
@@ -152,12 +152,13 @@ export default function QuickMenu() {
         inspectedPaths.current = signature
         return { received, options: [] as Format[] }
       }
-      const lists = await Promise.all(received.map((file): Promise<string[]> => file.isDirectory ? Promise.resolve([]) : invoke<string[]>('quick_formats', { inputPath: file.path })))
-      const common = lists[0].filter((extension) => lists.every((list) => list.includes(extension)))
-      const options = common.map((extension) => ({ extension, label: outputLabel(extension) }))
       filesRef.current = received
-      formatsRef.current = options
+      formatsRef.current = []
       setFiles(received)
+      setFormats([])
+      const common = await commonFormats(received, (inputPath) => invoke<string[]>('quick_formats', { inputPath }))
+      const options = common.map((extension) => ({ extension, label: outputLabel(extension) }))
+      formatsRef.current = options
       setFormats(options)
       setDragVisible(true)
       setStatus('')
