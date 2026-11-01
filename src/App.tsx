@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import { loadSettings, normalizeSettings, saveSettings, type AppSettings } from './settings'
 import { t, type MessageKey } from './i18n'
 import ImageEditor, { type ImageEditTool } from './image-editor/ImageEditor'
@@ -53,6 +54,7 @@ export default function App() {
   const [imageEdit, setImageEdit] = useState<{ inputPath: string; initialTool: ImageEditTool } | null>(null)
   const [engines, setEngines] = useState<Engines>({ ffmpeg: false, pandoc: false, imagemagick: false, libreoffice: false, poppler: false })
   const tr = (key: MessageKey) => t(preferences.language, key)
+  const windowLabels = preferences.language === 'ru' ? ['Свернуть', 'Развернуть или восстановить', 'Закрыть'] : preferences.language === 'zh' ? ['最小化', '最大化或还原', '关闭'] : ['Minimize', 'Maximize or restore', 'Close']
 
   useEffect(() => {
     let disposed = false
@@ -107,6 +109,15 @@ export default function App() {
   }
 
   return <div className={`app ${preferences.appearance}`}>
+    <header className="window-bar">
+      <div className="window-drag" onMouseDown={(event) => { if (event.button === 0 && isTauri()) { if (event.detail === 2) void getCurrentWindow().toggleMaximize(); else void getCurrentWindow().startDragging() } }}><span>FlickVert</span></div>
+      <div className="window-controls">
+        <button type="button" aria-label={windowLabels[0]} title={windowLabels[0]} onClick={() => void getCurrentWindow().minimize()}><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10"/></svg></button>
+        <button type="button" aria-label={windowLabels[1]} title={windowLabels[1]} onClick={() => void getCurrentWindow().toggleMaximize()}><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.5" y="3.5" width="9" height="9"/></svg></button>
+        <button className="window-close" type="button" aria-label={windowLabels[2]} title={windowLabels[2]} onClick={() => void getCurrentWindow().close()}><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8"/></svg></button>
+      </div>
+    </header>
+    {(['North', 'South', 'East', 'West', 'NorthEast', 'NorthWest', 'SouthEast', 'SouthWest'] as const).map((direction) => <div key={direction} className={`window-resize resize-${direction}`} aria-hidden="true" onMouseDown={(event) => { if (event.button === 0 && isTauri()) void getCurrentWindow().startResizeDragging(direction) }}/>) }
     <aside className="sidebar">
       <div className="brand"><img className="brand-mark" src="/fv-file-orange.png" alt=""/><span>FlickVert</span></div>
       <div className="side-label">{tr('Workspace')}</div>
@@ -121,7 +132,7 @@ export default function App() {
       </div>
     </aside>
 
-    <main className="main">
+    <main className="main" tabIndex={0}>
       {section === 'history' ? <div className="page simple-page">
         <h1>{tr('History')}</h1>
         <p className="subtitle">{tr('Recent conversions are stored on this device.')}</p>

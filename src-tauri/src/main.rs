@@ -1161,6 +1161,7 @@ fn main() {
                         .inner_size(900.0, 720.0)
                         .min_inner_size(760.0, 600.0)
                         .resizable(true)
+                        .decorations(false)
                         .center();
                     #[cfg(all(windows, debug_assertions))]
                     let window = window.data_directory(dev_webview_data_directory("main"));
