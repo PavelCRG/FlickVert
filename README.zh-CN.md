@@ -66,12 +66,12 @@ curl -fL -o ~/Downloads/FlickVert.dmg https://github.com/PavelCRG/FlickVert/rele
 
 默认快捷键为 **Ctrl+Alt+Space**，用于为资源管理器或 Finder 中选中的文件打开快捷操作菜单。可在 **Settings** 中更改，也可以把文件拖到转盘上。按 **1/2/3** 切换模式，用方向键选择目标，再按 **Enter** 执行。按 **Esc** 关闭转盘。
 
-拖动文件时，按下 **Ctrl**（Windows）或 **Command**（macOS）可打开工具菜单；按下 **Alt/Option** 可打开文件操作菜单。图像工具支持缩放、旋转、翻转、灰度、正方形裁剪、压缩，并可将最多 100 张图像合并为 PDF。安装 FFmpeg 后，还可压缩视频、静音、提取音频、生成缩略图、压缩音频和标准化响度。还可创建 ZIP 压缩包，或将其安全解压到新文件夹。操作菜单也可将所选文件和文件夹复制或移动到 `Downloads/FlickVert`、在资源管理器/Finder 中定位项目、复制路径或在终端中打开所在文件夹。
+拖动文件时，按下 **Ctrl**（Windows）或 **Command**（macOS）可打开工具菜单；按下 **Alt**（Windows）或 **Control**（macOS）可打开文件操作菜单。图像工具支持缩放、旋转、翻转、灰度、正方形裁剪、压缩，并可将最多 100 张图像合并为 PDF。安装 FFmpeg 后，还可压缩视频、静音、提取音频、生成缩略图、压缩音频和标准化响度。还可创建 ZIP 压缩包，或将其安全解压到新文件夹。操作菜单也可将所选文件和文件夹复制或移动到 `Downloads/FlickVert`、在资源管理器/Finder 中定位项目、复制路径或在终端中打开所在文件夹。
 
 ## 拖放转盘
 
 1. 按住鼠标左键，从文件资源管理器或 Finder 开始拖动文件。
-2. 拖动时按 **Shift** 打开转盘。打开后按 **Ctrl**（Windows）或 **Command**（macOS）切换到工具，按 **Alt/Option** 切换到文件操作。
+2. 拖动时按 **Shift** 打开格式转盘，按 **Ctrl**（Windows）或 **Command**（macOS）打开工具，按 **Alt**（Windows）或 **Control**（macOS）打开文件操作。松开按键后转盘保持打开。
 3. 将指针移到目标上并松开鼠标按钮即可执行。按 **Esc** 可取消。
 
 此手势需要从文件资源管理器或 Finder 开始拖动文件。也可以使用全局快捷键打开转盘，然后把文件拖到转盘上。

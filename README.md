@@ -65,14 +65,14 @@ Closing the main window keeps FlickVert in the tray. Choose **Show FlickVert** f
 
 The default shortcut, **Ctrl+Alt+Space**, opens quick actions for files selected in Explorer or Finder. You can also drop a file onto the wheel. Use **1/2/3** to switch modes, arrow keys to select a target, and **Enter** to run it. **Esc** closes the wheel. Change the shortcut in **Settings**.
 
-While dragging, press **Ctrl** (Windows) or **Command** (macOS) for tools, or **Alt/Option** for file actions. The tools wheel can resize, rotate, flip, grayscale, square-crop, compress, remove image metadata, or combine up to 100 images into a PDF. HEIC, AVIF, TIFF, and SVG tools require ImageMagick; these save PNG or JPEG output. With FFmpeg installed, the wheel also offers video compression, mute, audio extraction, thumbnails, audio compression, and loudness normalization. Actions can create or safely extract ZIP archives, copy or move selected files and folders to `Downloads/FlickVert`, reveal one item in Explorer/Finder, copy its path, or open its folder in a terminal.
+While dragging, press **Ctrl** (Windows) or **Command** (macOS) for tools, or **Alt** (Windows) / **Control** (macOS) for file actions. The tools wheel can resize, rotate, flip, grayscale, square-crop, compress, remove image metadata, or combine up to 100 images into a PDF. HEIC, AVIF, TIFF, and SVG tools require ImageMagick; these save PNG or JPEG output. With FFmpeg installed, the wheel also offers video compression, mute, audio extraction, thumbnails, audio compression, and loudness normalization. Actions can create or safely extract ZIP archives, copy or move selected files and folders to `Downloads/FlickVert`, reveal one item in Explorer/Finder, copy its path, or open its folder in a terminal.
 
 For detailed image work, choose **Edit image** in Tools. The editor can crop or redact a selected area, add a text annotation or background fill, and adjust brightness and contrast. It saves a new PNG beside the source and leaves the original unchanged.
 
 ## How the drag wheel works
 
 1. Start dragging a selected file from File Explorer or Finder with either mouse button.
-2. Press **Shift** to open the format wheel. Once it is open, press **Ctrl** (Windows) or **Command** (macOS) for tools, or **Alt/Option** for file actions.
+2. Tap **Shift** for formats, **Ctrl** (Windows) or **Command** (macOS) for tools, or **Alt** (Windows) / **Control** (macOS) for file actions. The wheel stays open after releasing the key.
 3. Move over a choice and release the mouse button to run it. Press **Esc** to cancel.
 
 The wheel needs a file drag that starts in Explorer or Finder. You can also open the wheel with the global shortcut and then drag a file onto it.

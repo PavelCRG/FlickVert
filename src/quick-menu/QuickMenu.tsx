@@ -365,8 +365,9 @@ export default function QuickMenu() {
     }).then(addStop)
     void listen('flickvert://drag-wheel-open', async () => {
       if (hideTimer.current !== undefined) window.clearTimeout(hideTimer.current)
+      setActiveWheelMode('convert')
       const opened = await invoke<boolean>('take_drag_trigger').catch(() => false)
-      if (opened) { setDragVisible(true); setActiveWheelMode('convert'); setStatus(''); dropHandled.current = false }
+      if (opened) { setDragVisible(true); setStatus(''); dropHandled.current = false }
     }).then(addStop)
     void listen<string>('flickvert://drag-wheel-mode', ({ payload }) => {
       if (payload === 'tools' || payload === 'actions' || payload === 'convert') setActiveWheelMode(payload)

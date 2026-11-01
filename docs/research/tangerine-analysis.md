@@ -18,4 +18,8 @@ The product advertises a much broader catalog than FlickVert currently supports:
 
 ## Current scope and platform note
 
-The wheel currently covers supported image formats and conversions offered by installed FFmpeg, Pandoc, LibreOffice, and ImageMagick tools. Tangerine-style editing tools, archives, subtitles, AirDrop, and file-management actions are outside this implementation. macOS needs Accessibility/Input Monitoring permission for the global Shift-drag observer; without it, use the keyboard shortcut and the regular app window.
+FlickVert supports image conversion and editing, ZIP creation and extraction, subtitles, and selected file actions. Additional formats and media operations depend on locally installed FFmpeg, Pandoc, LibreOffice, ImageMagick, or Poppler. The quick menu opens each mode directly with its modifier key and remains open when the key is released.
+
+Tangerine also advertises operations that FlickVert does not yet provide, including a floating shelf, AirDrop, target-size compression, collage, media trimming and merging, and visual PDF page organization. Its exact conversion and tool counts should not be presented as FlickVert capabilities. See the [Tangerine tools page](https://www.tangerineformac.com/tools) and [product page](https://www.tangerineformac.com/) for the reference scope.
+
+macOS needs Accessibility/Input Monitoring permission for the global drag observer; without it, use the keyboard shortcut and the regular app window. Speed and drag behavior still need measurement on real Windows and macOS systems.
