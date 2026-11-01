@@ -1,30 +1,19 @@
-<img align="left" src="public/fv-file-orange.png" width="120" alt="FlickVert logo" />
-
-# FlickVert
-
-A small, local file converter for Windows and macOS.
-
-<br clear="left" />
 <div align="center">
-  <p>
-    <a href="#quick-start"><img alt="Quick start" src="https://img.shields.io/badge/Quick%20start-Drag%20%26%20convert-285FE8?style=for-the-badge"></a>
-    <a href="#supported-formats"><img alt="Supported formats" src="https://img.shields.io/badge/Formats-What%20works-59616D?style=for-the-badge"></a>
-    <a href="#build-from-source"><img alt="Build from source" src="https://img.shields.io/badge/Build-From%20source-59616D?style=for-the-badge"></a>
-  </p>
+  <img src="public/fv-file-orange.png" width="190" alt="FlickVert logo" />
+  <h1>FlickVert</h1>
+  <p><strong>File conversion, right where you need it.</strong></p>
+  <p>A fast, local-first file toolkit for Windows and macOS.</p>
   <p><a href="README.ru.md">Русский</a> · <a href="README.zh-CN.md">简体中文</a></p>
 </div>
 
-FlickVert sits beside File Explorer and Finder. Drag a file and press Shift to open the circular action wheel beside the pointer. Drop the file on a format or action to run it. The main window has history and settings.
+<p align="center">Drag a file, tap <kbd>Shift</kbd>, and drop it on a format. Convert, edit, and organize files without leaving Explorer or Finder.</p>
 
 <p align="center">
-  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.msi"><strong>Windows installer (MSI)</strong></a> ·
-  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.exe">Windows installer (EXE)</a> ·
-  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Portable.zip">Windows portable (ZIP)</a> ·
-  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-macOS-Apple-Silicon.dmg">macOS Apple Silicon</a> ·
-  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-macOS-Intel.dmg">macOS Intel</a>
+  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.exe"><strong>Download for Windows</strong></a> ·
+  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-macOS-Apple-Silicon.dmg"><strong>Download for macOS</strong></a> ·
+  <a href="https://github.com/PavelCRG/FlickVert/releases/latest">All downloads</a>
 </p>
-<p align="center">macOS images are currently unsigned and may show a first-open security warning.</p>
-
+<p align="center"><sub>Windows 10/11 · macOS 13+ · Free · Files stay on your device</sub></p>
 ## Install from the terminal
 
 On **Windows 10/11 x64**, open PowerShell. This downloads the latest MSI and opens its installer:
