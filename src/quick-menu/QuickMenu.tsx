@@ -363,11 +363,13 @@ export default function QuickMenu() {
         window.clearTimeout(hideTimer.current)
       }
     }).then(addStop)
-    void listen('flickvert://drag-wheel-open', async () => {
+    void listen('flickvert://drag-wheel-open', () => {
       if (hideTimer.current !== undefined) window.clearTimeout(hideTimer.current)
       setActiveWheelMode('convert')
-      const opened = await invoke<boolean>('take_drag_trigger').catch(() => false)
-      if (opened) { setDragVisible(true); setStatus(''); dropHandled.current = false }
+      setDragVisible(true)
+      setStatus('')
+      dropHandled.current = false
+      void invoke<boolean>('take_drag_trigger').catch(() => false)
     }).then(addStop)
     void listen<string>('flickvert://drag-wheel-mode', ({ payload }) => {
       if (payload === 'tools' || payload === 'actions' || payload === 'convert') setActiveWheelMode(payload)
@@ -378,7 +380,7 @@ export default function QuickMenu() {
     }).then(addStop)
     void listen('flickvert://cancel-drag-wheel', hide).then(addStop)
     void listen<string[]>('flickvert://shortcut-files', ({ payload }) => {
-      setActiveWheelMode('convert')
+      if (!dragModeRef.current) setActiveWheelMode('convert')
       if (payload.length) void refreshFiles(payload).catch((error) => setStatus(String(error)))
       else if (dragModeRef.current) { filesRef.current = []; formatsRef.current = []; setFiles([]); setFormats([]); setStatus(tr('No selected files found')) }
       else { filesRef.current = []; formatsRef.current = []; setFiles([]); setFormats([]); setDragVisible(false) }

@@ -346,6 +346,7 @@ mod macos {
                     | (1_u64 << 3)
                     | (1_u64 << 4)
                     | (1_u64 << 6)
+                    | (1_u64 << 7)
                     | (1_u64 << 10)
                     | (1_u64 << 12);
                 let tap = CGEventTapCreate(0, 0, 1, mask, event_proc, std::ptr::null_mut());
@@ -372,7 +373,7 @@ mod macos {
             2 => handle(InputEvent::LeftUp),
             3 => handle(InputEvent::LeftDown(point.x, point.y)),
             4 => handle(InputEvent::LeftUp),
-            6 => handle(InputEvent::Move(point.x, point.y)),
+            6 | 7 => handle(InputEvent::Move(point.x, point.y)),
             12 => {
                 let flags = CGEventGetFlags(event);
                 for (mode, bit) in [
@@ -455,5 +456,16 @@ mod tests {
         gesture.transition(InputEvent::ModifierDown(WheelMode::Tools));
         gesture.transition(InputEvent::LeftDown(10.0, 10.0));
         assert!(matches!(gesture.transition(InputEvent::Move(20.0, 10.0)), Some(Action::Open(WheelMode::Tools))));
+    }
+
+    #[test]
+    fn wheel_stays_open_after_key_release_and_cancels_on_escape() {
+        let mut gesture = Gesture::default();
+        gesture.transition(InputEvent::LeftDown(10.0, 10.0));
+        gesture.transition(InputEvent::Move(20.0, 10.0));
+        assert!(matches!(gesture.transition(InputEvent::ModifierDown(WheelMode::Convert)), Some(Action::Open(WheelMode::Convert))));
+        assert!(gesture.transition(InputEvent::ModifierUp(WheelMode::Convert)).is_none());
+        assert!(matches!(gesture.transition(InputEvent::Escape), Some(Action::Cancel)));
+        assert!(gesture.transition(InputEvent::LeftUp).is_none());
     }
 }
