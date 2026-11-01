@@ -28,6 +28,7 @@ static MEDIA_TEMP_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU6
 
 #[cfg(all(windows, debug_assertions))]
 fn dev_webview_data_directory() -> PathBuf {
+    // WebView2 must set child-process ACLs on its profile directory.
     std::env::temp_dir().join("FlickVert-WebView2-dev")
 }
 

@@ -116,8 +116,8 @@ export default function App() {
         </button>)}
       </nav>
       <div className="sidebar-bottom">
-        <div className="privacy"><span className="privacy-icon">●</span><div><strong>{tr('Your files stay here')}</strong><small>{tr('Processed on this device')}</small></div></div>
-        <div className="version">FlickVert <span>0.2.0</span></div>
+        <div className="privacy"><svg className="privacy-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5 16 5v4.4c0 3.8-2.6 6.4-6 8.1-3.4-1.7-6-4.3-6-8.1V5l6-2.5Z"/><path d="m7.2 9.8 1.8 1.8 3.8-4"/></svg><div><strong>{tr('Your files stay here')}</strong><small>{tr('Processed on this device')}</small></div></div>
+        <div className="version">FlickVert <span>0.2.1</span></div>
       </div>
     </aside>
 
@@ -135,7 +135,7 @@ export default function App() {
       </div> : <div className="page settings-page">
         <header className="settings-header">
           <div><h1>{tr('Settings')}</h1><p className="subtitle">{tr('Control how FlickVert looks, opens, and saves files.')}</p></div>
-          <button className="secondary-button choose-files-button" onClick={() => void chooseFiles()}>{tr('Choose files')}</button>
+          <button className="primary-button choose-files-button" onClick={() => void chooseFiles()}><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg>{tr('Choose files')}</button>
         </header>
         {pickError && <p className="shortcut-error">{tr('Could not open files')}</p>}
 

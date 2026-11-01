@@ -244,3 +244,83 @@ button:disabled { opacity: .55; cursor: default; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
 }
+
+/* Main window: quiet Fluent surfaces with FlickVert blue reserved for actions. */
+.app {
+  --bg: #f4f6f9;
+  --surface: #fff;
+  --surface-2: #f5f7fa;
+  --sidebar: #eef1f6;
+  --text: #202733;
+  --muted: #687384;
+  --faint: #8994a4;
+  --line: #e1e6ed;
+  --accent: #315fce;
+  --accent-soft: #e6edfc;
+  --good: #27845f;
+  --bad: #bd3e4d;
+  font-size: 13px;
+}
+.app.dark {
+  --bg: #1a1e24; --surface: #222831; --surface-2: #282f39;
+  --sidebar: #1e242c; --text: #eff3f8; --muted: #abb5c3;
+  --faint: #828e9e; --line: #343d49; --accent: #8eafff;
+  --accent-soft: #2b3b58; --good: #68c89b; --bad: #ff9299;
+}
+@media (prefers-color-scheme: dark) {
+  .app.system {
+    --bg: #1a1e24; --surface: #222831; --surface-2: #282f39;
+    --sidebar: #1e242c; --text: #eff3f8; --muted: #abb5c3;
+    --faint: #828e9e; --line: #343d49; --accent: #8eafff;
+    --accent-soft: #2b3b58; --good: #68c89b; --bad: #ff9299;
+  }
+}
+.sidebar { width: 224px; padding: 24px 14px 16px; }
+.brand { gap: 11px; margin-bottom: 42px; font-size: 15px; letter-spacing: -.3px; }
+.brand-mark { width: 23px; height: 23px; }
+.side-label { margin-bottom: 9px; padding-inline: 11px; font-size: 11px; font-weight: 550; }
+.nav-item { min-height: 40px; gap: 11px; border-radius: 7px; padding-inline: 11px; font-size: 12px; }
+.nav-item.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.nav-item.active svg { color: var(--accent); }
+.privacy { gap: 10px; padding: 14px 10px; border: 1px solid var(--line); border-radius: 9px; background: color-mix(in srgb, var(--surface) 68%, transparent); }
+.privacy-icon { width: 17px; height: 17px; flex: none; fill: none; stroke: var(--good); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.privacy strong { font-size: 11px; }
+.privacy small { font-size: 10px; line-height: 1.4; }
+.version { padding: 10px 9px 0; }
+.main { scrollbar-color: var(--line) transparent; }
+.page { max-width: 1000px; padding: 42px 54px 42px; }
+.settings-page { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 14px; }
+.settings-header { align-items: center; margin-bottom: 6px; }
+.settings-header h1, .simple-page h1 { font-size: 27px; font-weight: 650; line-height: 1.2; letter-spacing: -.75px; }
+.subtitle { margin-top: 7px; font-size: 12px; }
+.choose-files-button { display: inline-flex; min-height: 36px; align-items: center; gap: 8px; padding-inline: 13px; font-size: 12px; }
+.choose-files-button svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.settings-group { min-width: 0; padding: 17px 19px 15px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); box-shadow: 0 2px 7px color-mix(in srgb, var(--text) 4%, transparent); }
+.settings-group > h2 { margin-bottom: 9px; font-size: 12px; font-weight: 650; letter-spacing: -.05px; }
+.setting-row { min-height: 44px; font-size: 12px; }
+.segmented-control { gap: 2px; border-radius: 7px; }
+.segmented-control button { min-height: 29px; }
+.field { font-size: 11px; }
+.secondary-button, .primary-button { min-height: 34px; border-radius: 7px; font-size: 11px; }
+.primary-button { border-color: var(--accent); background: var(--accent); box-shadow: 0 1px 2px color-mix(in srgb, var(--accent) 20%, transparent); }
+.primary-button:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 88%, black); }
+.engine-status > div:first-child { border-top: 0; }
+.settings-note { margin: 1px 2px 0; font-size: 11px; }
+.history-list { margin-top: 26px; }
+.file-row { min-height: 60px; }
+.file-icon { width: 32px; height: 32px; }
+@media (min-width: 1040px) {
+  .settings-page { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+  .settings-header, .settings-page > [aria-labelledby="output-title"], .settings-note { grid-column: 1 / -1; }
+}
+@media (max-width: 900px) {
+  .page { padding-inline: 32px; }
+  .settings-group { padding-inline: 16px; }
+}
+@media (max-width: 760px) {
+  .page { padding: 26px 20px 32px; }
+  .settings-header { align-items: flex-start; }
+  .setting-fields { flex-wrap: wrap; }
+  .output-folder-setting { flex-wrap: wrap; }
+}
+.settings-page > .shortcut-error { grid-column: 1 / -1; margin: 0 2px; }
