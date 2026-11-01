@@ -65,6 +65,9 @@ impl Gesture {
                 if self.left_down && !self.dragging
                     && ((x - self.start.0).abs() >= 8.0 || (y - self.start.1).abs() >= 8.0) {
                     self.dragging = true;
+                    if !self.modifiers[WheelMode::Convert as usize] {
+                        return None;
+                    }
                     let mode = [WheelMode::Actions, WheelMode::Tools, WheelMode::Convert]
                         .into_iter()
                         .find(|mode| self.modifiers[*mode as usize])
@@ -100,9 +103,11 @@ impl Gesture {
                 }
                 if self.wheel_open {
                     Some(Action::Switch(mode))
-                } else {
+                } else if matches!(mode, WheelMode::Convert) {
                     self.wheel_open = true;
                     Some(Action::Open(mode))
+                } else {
+                    None
                 }
             }
             InputEvent::ModifierUp(mode) => {
@@ -399,18 +404,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn switches_wheel_mode_when_modifier_is_pressed_during_drag() {
+    fn shift_opens_wheel_during_drag() {
         let mut gesture = Gesture::default();
         assert!(gesture
             .transition(InputEvent::LeftDown(10.0, 10.0))
             .is_none());
-        assert!(matches!(
-            gesture.transition(InputEvent::Move(20.0, 10.0)),
-            Some(Action::Open(WheelMode::Convert))
-        ));
+        assert!(gesture.transition(InputEvent::Move(20.0, 10.0)).is_none());
         assert!(matches!(
             gesture.transition(InputEvent::ModifierDown(WheelMode::Convert)),
-            Some(Action::Switch(WheelMode::Convert))
+            Some(Action::Open(WheelMode::Convert))
         ));
         assert!(gesture
             .transition(InputEvent::ModifierUp(WheelMode::Convert))
@@ -439,5 +441,14 @@ mod tests {
             gesture.transition(InputEvent::ModifierDown(WheelMode::Tools)),
             Some(Action::Switch(WheelMode::Tools))
         ));
+    }
+
+    #[test]
+    fn other_modifiers_do_not_open_wheel_before_shift() {
+        let mut gesture = Gesture::default();
+        gesture.transition(InputEvent::LeftDown(10.0, 10.0));
+        assert!(gesture.transition(InputEvent::Move(20.0, 10.0)).is_none());
+        assert!(gesture.transition(InputEvent::ModifierDown(WheelMode::Tools)).is_none());
+        assert!(matches!(gesture.transition(InputEvent::ModifierDown(WheelMode::Convert)), Some(Action::Open(WheelMode::Convert))));
     }
 }

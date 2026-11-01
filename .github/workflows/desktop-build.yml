@@ -41,7 +41,7 @@ jobs:
           Copy-Item 'src-tauri/target/x86_64-pc-windows-msvc/release/flickvert.exe' (Join-Path $package 'FlickVert.exe')
           Copy-Item 'README.md','README.ru.md','README.zh-CN.md' $package
           @'
-          Run FlickVert.exe. Drag a file to open the conversion wheel, hold Ctrl for tools, or Alt for file actions. Image tools can combine up to 100 images into a PDF; the actions wheel can create/extract ZIP archives, copy/move selected files and folders to Downloads/FlickVert, or open the selected folder in Windows Terminal (PowerShell is the fallback).
+          Run FlickVert.exe. Drag a file and press Shift to open the conversion wheel, then press Ctrl for tools or Alt for file actions. Image tools can combine up to 100 images into a PDF; the actions wheel can create/extract ZIP archives, copy/move selected files and folders to Downloads/FlickVert, or open the selected folder in Windows Terminal (PowerShell is the fallback).
 
           With FFmpeg installed, the tools wheel also supports video compression, mute, audio extraction, thumbnails, audio compression and loudness normalization.
 
@@ -49,7 +49,7 @@ jobs:
 
           Files are processed locally. FFmpeg, Pandoc, ImageMagick and LibreOffice are optional and must be installed separately for their formats. Windows 10/11 requires Microsoft Edge WebView2 Runtime.
 
-          FlickVert opens its start window on launch and stays in the tray when the window is closed. The wheel opens beside the pointer while dragging a file. Use the tray menu to reopen settings or quit FlickVert.
+          FlickVert opens its start window on launch and stays in the tray when the window is closed. Press Shift while dragging a file to open the wheel beside the pointer. Use the tray menu to reopen settings or quit FlickVert.
           '@ | Set-Content (Join-Path $package 'INSTALL.txt') -Encoding utf8
           Compress-Archive -Path (Join-Path $package '*') -DestinationPath (Join-Path $env:RUNNER_TEMP 'FlickVert-Windows-x64-portable.zip') -CompressionLevel Optimal
       - uses: actions/upload-artifact@v4

@@ -10,7 +10,7 @@
   <p><a href="README.ru.md">Русский</a> · <a href="README.zh-CN.md">简体中文</a></p>
 </div>
 
-FlickVert sits beside File Explorer and Finder. Start dragging a file and the circular action wheel appears beside the pointer. Drop the file on a format or action to run it. The main window has history and settings.
+FlickVert sits beside File Explorer and Finder. Drag a file and press Shift to open the circular action wheel beside the pointer. Drop the file on a format or action to run it. The main window has history and settings.
 
 <p align="center">
   <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.msi"><strong>Windows installer (MSI)</strong></a> ·
@@ -56,7 +56,7 @@ The commands require a published release containing these installers. Windows re
 ## Quick start
 
 1. Start FlickVert. Its compact settings window opens; closing it leaves FlickVert in the tray while you work in File Explorer or Finder.
-2. Drag a file and drop it onto a format in the wheel beside the pointer.
+2. Drag a file, press **Shift**, and drop it onto a format in the wheel beside the pointer.
 3. Find the converted file beside the original. Open the main window from the tray to view history or change settings.
 
 ## Closing the app
@@ -72,7 +72,7 @@ For detailed image work, choose **Edit image** in Tools. The editor can crop or 
 ## How the drag wheel works
 
 1. Start dragging a selected file from File Explorer or Finder with either mouse button.
-2. The format wheel opens as soon as the drag starts. Hold **Ctrl** (Windows) or **Command** (macOS) for tools, or **Alt/Option** for file actions.
+2. Press **Shift** to open the format wheel. Once it is open, press **Ctrl** (Windows) or **Command** (macOS) for tools, or **Alt/Option** for file actions.
 3. Move over a choice and release the mouse button to run it. Press **Esc** to cancel.
 
 The wheel needs a file drag that starts in Explorer or Finder. You can also open the wheel with the global shortcut and then drag a file onto it.

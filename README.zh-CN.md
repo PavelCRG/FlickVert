@@ -11,7 +11,7 @@
 </div>
 <p>在 <strong>Tools → Edit image</strong> 中可以裁剪图片、涂黑区域、添加注释或背景，并调整亮度和对比度。结果以 PNG 格式保存在原图旁边。</p>
 
-FlickVert 可与文件资源管理器和 Finder 配合使用。开始拖动文件后，指针旁会立即出现圆形菜单。将文件放到格式或操作上即可执行。主窗口包含历史记录和设置。
+FlickVert 可与文件资源管理器和 Finder 配合使用。拖动文件并按 Shift，指针旁会出现圆形菜单。将文件放到格式或操作上即可执行。主窗口包含历史记录和设置。
 
 <p align="center">
   <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.msi"><strong>Windows 安装包 (MSI)</strong></a> ·
@@ -57,7 +57,7 @@ curl -fL -o ~/Downloads/FlickVert.dmg https://github.com/PavelCRG/FlickVert/rele
 ## 快速开始
 
 1. 启动 FlickVert。紧凑的设置窗口会打开；关闭窗口后，FlickVert 留在系统托盘中，你可以继续在资源管理器或 Finder 中工作。
-2. 拖动文件并将其放到指针旁转盘中的目标格式上。
+2. 拖动文件并按 **Shift**，然后将其放到转盘中的目标格式上。
 3. 转换后的文件保存在原文件旁边。从托盘打开主窗口即可查看历史记录或更改设置。
 
 ## 重新打开应用
@@ -71,7 +71,7 @@ curl -fL -o ~/Downloads/FlickVert.dmg https://github.com/PavelCRG/FlickVert/rele
 ## 拖放转盘
 
 1. 按住鼠标左键，从文件资源管理器或 Finder 开始拖动文件。
-2. 开始拖动时转盘会立即打开。按住 **Ctrl**（Windows）或 **Command**（macOS）切换到工具，按住 **Alt/Option** 切换到文件操作。
+2. 拖动时按 **Shift** 打开转盘。打开后按 **Ctrl**（Windows）或 **Command**（macOS）切换到工具，按 **Alt/Option** 切换到文件操作。
 3. 将指针移到目标上并松开鼠标按钮即可执行。按 **Esc** 可取消。
 
 此手势需要从文件资源管理器或 Finder 开始拖动文件。也可以使用全局快捷键打开转盘，然后把文件拖到转盘上。
