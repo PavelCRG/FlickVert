@@ -27,9 +27,9 @@ const QUICK_HEIGHT: u32 = 288;
 static MEDIA_TEMP_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 #[cfg(all(windows, debug_assertions))]
-fn dev_webview_data_directory() -> PathBuf {
+fn dev_webview_data_directory(window: &str) -> PathBuf {
     // WebView2 must set child-process ACLs on its profile directory.
-    std::env::temp_dir().join("FlickVert-WebView2-dev")
+    std::env::temp_dir().join(format!("FlickVert-WebView2-dev-{window}"))
 }
 
 #[derive(Default)]
@@ -628,14 +628,15 @@ fn show_main(app: &AppHandle) {
         eprintln!("Main webview is missing; registered windows: {:?}", app.webview_windows().keys());
         return;
     };
-    eprintln!("Main webview registered; show result={:?}", window.show());
+    if let Err(error) = window.show() {
+        eprintln!("Could not show the main window: {error}");
+    }
     if let Err(error) = window.unminimize() {
         eprintln!("Could not restore the main window: {error}");
     }
     if let Err(error) = window.set_focus() {
         eprintln!("Could not focus the main window: {error}");
     }
-    eprintln!("Main webview visible={:?}", window.is_visible());
 }
 
 fn show_quick(app: &AppHandle, activate: bool) {
@@ -1072,15 +1073,6 @@ fn main() {
             extract_zip_archive
         ])
         .setup(|app| {
-            let main_window = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
-                .title("FlickVert")
-                .inner_size(900.0, 720.0)
-                .min_inner_size(760.0, 600.0)
-                .resizable(true)
-                .center();
-            #[cfg(all(windows, debug_assertions))]
-            let main_window = main_window.data_directory(dev_webview_data_directory());
-            main_window.visible(true).focused(true).build()?;
             if let Err(error) = register_shortcut(app.handle().clone(), "CTRL+ALT+SPACE".into()) {
                 eprintln!("Could not register the default shortcut: {error}");
             }
@@ -1092,7 +1084,7 @@ fn main() {
             }).collect())));
             let quick_window = WebviewWindowBuilder::new(app, "quick", WebviewUrl::App("index.html".into()));
             #[cfg(all(windows, debug_assertions))]
-            let quick_window = quick_window.data_directory(dev_webview_data_directory());
+            let quick_window = quick_window.data_directory(dev_webview_data_directory("quick"));
             match quick_window
                 .title("FlickVert Quick Actions")
                 .inner_size(QUICK_WIDTH as f64, QUICK_HEIGHT as f64)
@@ -1161,10 +1153,22 @@ fn main() {
         .build(tauri::generate_context!())
         .expect("FlickVert failed to start")
         .run(|app, event| {
-            if matches!(event, tauri::RunEvent::Ready) {
+            if matches!(event, tauri::RunEvent::Ready) && app.get_webview_window("main").is_none() {
                 let handle = app.clone();
-                if let Err(error) = app.run_on_main_thread(move || show_main(&handle)) {
-                    eprintln!("Could not show the main window: {error}");
+                if let Err(error) = app.run_on_main_thread(move || {
+                    let window = WebviewWindowBuilder::new(&handle, "main", WebviewUrl::App("index.html".into()))
+                        .title("FlickVert")
+                        .inner_size(900.0, 720.0)
+                        .min_inner_size(760.0, 600.0)
+                        .resizable(true)
+                        .center();
+                    #[cfg(all(windows, debug_assertions))]
+                    let window = window.data_directory(dev_webview_data_directory("main"));
+                    if let Err(error) = window.visible(true).focused(true).build() {
+                        eprintln!("Could not create the main window: {error}");
+                    }
+                }) {
+                    eprintln!("Could not schedule main window creation: {error}");
                 }
             }
         });
