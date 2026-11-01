@@ -628,15 +628,14 @@ fn show_main(app: &AppHandle) {
         eprintln!("Main webview is missing; registered windows: {:?}", app.webview_windows().keys());
         return;
     };
+    eprintln!("Main webview registered; show result={:?}", window.show());
     if let Err(error) = window.unminimize() {
         eprintln!("Could not restore the main window: {error}");
-    }
-    if let Err(error) = window.show() {
-        eprintln!("Could not show the main window: {error}");
     }
     if let Err(error) = window.set_focus() {
         eprintln!("Could not focus the main window: {error}");
     }
+    eprintln!("Main webview visible={:?}", window.is_visible());
 }
 
 fn show_quick(app: &AppHandle, activate: bool) {
@@ -1073,6 +1072,15 @@ fn main() {
             extract_zip_archive
         ])
         .setup(|app| {
+            let main_window = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
+                .title("FlickVert")
+                .inner_size(900.0, 720.0)
+                .min_inner_size(760.0, 600.0)
+                .resizable(true)
+                .center();
+            #[cfg(all(windows, debug_assertions))]
+            let main_window = main_window.data_directory(dev_webview_data_directory());
+            main_window.visible(true).focused(true).build()?;
             if let Err(error) = register_shortcut(app.handle().clone(), "CTRL+ALT+SPACE".into()) {
                 eprintln!("Could not register the default shortcut: {error}");
             }
@@ -1154,7 +1162,10 @@ fn main() {
         .expect("FlickVert failed to start")
         .run(|app, event| {
             if matches!(event, tauri::RunEvent::Ready) {
-                show_main(app);
+                let handle = app.clone();
+                if let Err(error) = app.run_on_main_thread(move || show_main(&handle)) {
+                    eprintln!("Could not show the main window: {error}");
+                }
             }
         });
 }
