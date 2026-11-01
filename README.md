@@ -65,13 +65,13 @@ After installing a release that includes the updater, FlickVert checks for signe
 
 ## Quick start
 
-1. Start FlickVert. Its compact settings window opens; closing it leaves FlickVert in the tray while you work in File Explorer or Finder.
+1. Start FlickVert. Its settings window opens and the drag wheel is available while the app is running.
 2. Drag a file, press **Shift**, and drop it onto a format in the wheel beside the pointer.
-3. Find the converted file beside the original. Open the main window from the tray to view history or change settings.
+3. Find the converted file beside the original. Use the main window to view history or change settings.
 
 ## Closing the app
 
-Closing the main window keeps FlickVert in the tray. Choose **Show FlickVert** from the tray menu to reopen it, or **Quit** to stop the background helper.
+Closing the main window quits FlickVert. The drag wheel and global shortcut are available while the application is running.
 
 The default shortcut, **Ctrl+Alt+Space**, opens quick actions for files selected in Explorer or Finder. You can also drop a file onto the wheel. Use **1/2/3** to switch modes, arrow keys to select a target, and **Enter** to run it. **Esc** closes the wheel. Change the shortcut in **Settings**.
 
@@ -120,6 +120,12 @@ Install Node.js 24, stable Rust, and the [Tauri system prerequisites](https://v2
 npm ci
 npm run dev
 ```
+
+Run `npm test` and `cargo test --locked --manifest-path src-tauri/Cargo.toml` to check the frontend and native code. Run `npm run tauri -- build` to create a local desktop build.
+
+### Publishing an update
+
+Set the repository's `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` GitHub Actions secrets to the signing key corresponding to the public key in `src-tauri/tauri.conf.json`. Keep the private key outside the repository. Update the app version, then push a matching tag such as `v0.2.1`: the release workflow builds the installers, signs update artifacts, and publishes `latest.json`. An existing installation can only install updates signed by its configured key.
 
 FlickVert supports Windows 10/11 and macOS 13 or later. On macOS, allow Accessibility and Input Monitoring access for the drag wheel. The configured keyboard shortcut is an alternative for opening quick actions.
 
