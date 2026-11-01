@@ -28,8 +28,7 @@ static MEDIA_TEMP_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU6
 
 #[cfg(all(windows, debug_assertions))]
 fn dev_webview_data_directory() -> PathBuf {
-    // Keep debug data writable and separate from the installed app profile.
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("target/debug/flickvert-webview-data")
+    std::env::temp_dir().join("FlickVert-WebView2-dev")
 }
 
 #[derive(Default)]
