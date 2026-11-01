@@ -147,9 +147,18 @@ export default function App() {
 
         <section className="settings-group" aria-labelledby="shortcut-title">
           <h2 id="shortcut-title">{tr('Keyboard')}</h2>
-          <div className="setting-row"><span>{tr('Quick shortcut')}</span><label className="field shortcut-field"><select aria-label={tr('Quick shortcut')} value={preferences.shortcut} onChange={(event) => void updateShortcut(event.target.value)}>
-            <option value="CTRL+ALT+SPACE">Ctrl + Alt + Space</option><option value="CTRL+SHIFT+SPACE">Ctrl + Shift + Space</option><option value="ALT+SHIFT+SPACE">Alt + Shift + Space</option>
-          </select></label></div>
+          <div className="setting-row"><span>{tr('Quick shortcut')}</span><details className="shortcut-dropdown" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) event.currentTarget.open = false }} onKeyDown={(event) => {
+            if (event.key === 'Escape') { event.preventDefault(); event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus() }
+            if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key) && event.currentTarget.open) {
+              const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('.shortcut-options button'))
+              const current = buttons.indexOf(document.activeElement as HTMLButtonElement)
+              const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 : event.key === 'ArrowDown' ? (current + 1) % buttons.length : (current <= 0 ? buttons.length - 1 : current - 1)
+              event.preventDefault(); buttons[next]?.focus()
+            }
+          }}>
+            <summary aria-label={`${tr('Quick shortcut')}: ${preferences.shortcut.replaceAll('+', ' + ')}`}><span>{preferences.shortcut.split('+').map((key) => key === 'CTRL' ? 'Ctrl' : key === 'ALT' ? 'Alt' : key === 'SHIFT' ? 'Shift' : 'Space').join(' + ')}</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></summary>
+            <div className="shortcut-options">{[['CTRL+ALT+SPACE', 'Ctrl + Alt + Space'], ['CTRL+SHIFT+SPACE', 'Ctrl + Shift + Space'], ['ALT+SHIFT+SPACE', 'Alt + Shift + Space']].map(([value, label]) => <button type="button" key={value} aria-pressed={preferences.shortcut === value} onClick={(event) => { const dropdown = event.currentTarget.closest('details'); dropdown?.removeAttribute('open'); dropdown?.querySelector('summary')?.focus(); void updateShortcut(value) }}><span>{label}</span>{preferences.shortcut === value && <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3 8 3 3 7-7"/></svg>}</button>)}</div>
+          </details></div>
           {shortcutError && <p className="shortcut-error">{tr('Shortcut unavailable. Use the tray menu.')}</p>}
         </section>
 
