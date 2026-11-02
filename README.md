@@ -31,17 +31,6 @@ Windows requires the Microsoft Edge WebView2 Runtime. Optional conversion engine
 
 After installing a release that includes the updater, FlickVert checks for signed updates at startup and every six hours while running. Use **Updates** in the sidebar to check again and install an available update. On Windows, the app selects the matching EXE or MSI update automatically. The portable build must be updated manually from GitHub Releases.
 
-## Contents
-
-- [Download and install](#download-and-install)
-- [Quick start](#quick-start)
-- [Close and reopen](#close-and-reopen)
-- [How the drag wheel works](#how-the-drag-wheel-works)
-- [Supported formats](#supported-formats)
-- [Where files are saved](#where-files-are-saved)
-- [Build from source](#build-from-source)
-- [Privacy](#privacy)
-
 ## Quick start
 
 1. Start FlickVert. The Quick start guide appears on first launch; the settings window opens on later launches.
@@ -81,8 +70,6 @@ The wheel needs a file drag that starts in Explorer or Finder. You can also open
 | Camera RAW | Depends on ImageMagick | Install ImageMagick separately. |
 | Archives | ZIP create and extract | Saved beside the selected file; unsafe paths and links are rejected. |
 
-**Still missing:** OCR for scanned PDFs; PDF to PAGES/PPTX/XLSX; TAR/GZIP/RAR; interactive audio/video trim, split and merge.
-
 ## Where files are saved
 
 - By default, converted files are saved beside their originals. Choose another folder in **Settings → Output settings** to use it for conversions, image and media tools, PDF exports, and ZIP archives.
@@ -101,12 +88,6 @@ npm run dev
 ```
 
 Run `npm test` and `cargo test --locked --manifest-path src-tauri/Cargo.toml` to check the frontend and native code. Run `npm run tauri -- build` to create a local desktop build.
-
-### Publishing an update
-
-Current release: `v0.1.1`. Push a version tag such as `v0.1.1` to run the GitHub Actions release workflow. It builds Windows and macOS downloads, signs updater packages, and publishes `latest.json`. Installed copies check for updates at launch and every six hours. Portable Windows builds update manually. `scripts/publish-v0.1.0.ps1` was the one-time first-release procedure.
-
-The repository must have `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` Actions secrets matching the public key in `src-tauri/tauri.conf.json`. Keep the private key outside the repository. An existing installation only accepts updates signed with its configured key.
 
 FlickVert supports Windows 10/11 and macOS 13 or later. On macOS, allow Accessibility and Input Monitoring access for the drag wheel. The configured keyboard shortcut is an alternative for opening quick actions.
 
