@@ -63,7 +63,7 @@ jobs:
 
           Files are processed locally. FFmpeg, Pandoc, ImageMagick and LibreOffice are optional and must be installed separately for their formats. Windows 10/11 requires Microsoft Edge WebView2 Runtime.
 
-          FlickVert opens its start window on launch. Closing the main window quits FlickVert, including the drag wheel and shortcut. Press Shift while dragging a file to open the wheel beside the pointer.
+          FlickVert shows Quick start on first launch and opens Settings on later launches. Closing the window keeps FlickVert running in the system tray, so the drag wheel and shortcut remain available. Choose Quit from the tray menu to stop FlickVert. Press Shift while dragging a file to open the conversion wheel; Ctrl opens tools and Alt opens file actions.
           '@ | Set-Content (Join-Path $package 'INSTALL.txt') -Encoding utf8
           Compress-Archive -Path (Join-Path $package '*') -DestinationPath (Join-Path $env:RUNNER_TEMP 'FlickVert-Windows-x64-portable.zip') -CompressionLevel Optimal
       - uses: actions/upload-artifact@v4
@@ -127,7 +127,7 @@ jobs:
             - **Windows 10/11 x64:** [Setup](https://github.com/PavelCRG/FlickVert/releases/download/${{ github.ref_name }}/FlickVert-Windows-x64-Setup.exe) · [MSI](https://github.com/PavelCRG/FlickVert/releases/download/${{ github.ref_name }}/FlickVert-Windows-x64-Setup.msi) · [Portable ZIP](https://github.com/PavelCRG/FlickVert/releases/download/${{ github.ref_name }}/FlickVert-Windows-x64-Portable.zip)
             - **macOS 13+:** [Apple Silicon](https://github.com/PavelCRG/FlickVert/releases/download/${{ github.ref_name }}/FlickVert-macOS-Apple-Silicon.dmg) · [Intel](https://github.com/PavelCRG/FlickVert/releases/download/${{ github.ref_name }}/FlickVert-macOS-Intel.dmg)
 
-            Setup builds check for signed updates at launch and every six hours. Portable builds update manually. Windows may show a SmartScreen warning; macOS builds are not notarized and may show a first-open security warning. Uninstall any older local `0.2.1` build before installing this first `0.1.0` release; the updater will then install later versions normally.
+            Setup builds check for signed updates at launch and every six hours. Portable builds update manually. Windows may show a SmartScreen warning; macOS builds are not notarized and may show a first-open security warning. If updating from an older development build, uninstall it before installing this release.
 
             Files are processed locally. Optional engines (FFmpeg, Pandoc, ImageMagick, LibreOffice, Poppler) are installed separately. Verify downloads with `SHA256SUMS.txt`.
           files: release-assets/*

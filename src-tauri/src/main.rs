@@ -945,6 +945,23 @@ fn copy_dropped_file_path(
 }
 
 #[tauri::command]
+fn copy_powershell_path(
+    input_path: String,
+    dropped: tauri::State<'_, DroppedFiles>,
+) -> Result<(), String> {
+    let path = selected_dropped_path(&input_path, &dropped)?;
+    #[cfg(windows)]
+    {
+        copy_path_to_clipboard(&format!("'{}'", path.to_string_lossy().replace('\'', "''")))
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = path;
+        Err("PowerShell paths are available only on Windows".into())
+    }
+}
+
+#[tauri::command]
 fn open_terminal(
     input_path: String,
     dropped: tauri::State<'_, DroppedFiles>,
@@ -961,10 +978,12 @@ fn open_terminal(
 
     #[cfg(target_os = "windows")]
     {
-        match Command::new("wt.exe")
+        let terminal = Command::new("wt.exe")
+            .args(["-w", "0", "new-tab"])
             .args(operations::windows_terminal_args(directory))
-            .spawn()
-        {
+            .args(["powershell.exe", "-NoExit"])
+            .spawn();
+        match terminal {
             Ok(_) => Ok(()),
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
                 Command::new("powershell.exe")
@@ -1109,10 +1128,19 @@ fn copy_path_to_clipboard(_: &str) -> Result<(), String> {
 
 #[tauri::command]
 fn register_shortcut(app: AppHandle, shortcut: String) -> Result<(), String> {
-    let shortcut = match shortcut.as_str() {
-        "CTRL+ALT+SPACE" | "CTRL+SHIFT+SPACE" | "ALT+SHIFT+SPACE" => shortcut,
-        _ => return Err("Unsupported shortcut".into()),
-    };
+    let mut parts: Vec<_> = shortcut.split('+').collect();
+    let key = parts.pop().ok_or("Shortcut has no key")?;
+    let valid_key = key == "SPACE"
+        || (key.len() == 1 && key.as_bytes()[0].is_ascii_alphanumeric())
+        || (key.strip_prefix('F').and_then(|n| n.parse::<u8>().ok()).is_some_and(|n| (1..=12).contains(&n)));
+    if !valid_key
+        || parts.is_empty()
+        || parts.iter().enumerate().any(|(index, modifier)| {
+            !["CTRL", "ALT", "SHIFT"].contains(modifier) || parts[..index].contains(modifier)
+        })
+    {
+        return Err("Unsupported shortcut".into());
+    }
     let shortcut = shortcut
         .parse::<tauri_plugin_global_shortcut::Shortcut>()
         .map_err(|error| error.to_string())?;
@@ -1133,6 +1161,11 @@ fn register_shortcut(app: AppHandle, shortcut: String) -> Result<(), String> {
             }
         })
         .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn configure_drag_modifiers(convert: String, tools: String, actions: String) -> Result<(), String> {
+    input::configure_modifiers(&convert, &tools, &actions)
 }
 
 #[tauri::command]
@@ -1196,10 +1229,12 @@ fn main() {
             open_image_editor,
             reveal_dropped_file,
             copy_dropped_file_path,
+            copy_powershell_path,
             open_terminal,
             copy_to_flickvert_folder,
             move_to_flickvert_folder,
             register_shortcut,
+            configure_drag_modifiers,
             choose_files,
             choose_output_folder,
             take_drag_trigger,
@@ -1301,10 +1336,6 @@ fn main() {
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                if window.label() == "main" {
-                    window.app_handle().exit(0);
-                    return;
-                }
                 api.prevent_close();
                 let _ = window.hide();
             }

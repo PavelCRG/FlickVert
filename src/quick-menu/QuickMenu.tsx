@@ -2,13 +2,13 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 import { invoke } from '@tauri-apps/api/core'
-import { emit, listen } from '@tauri-apps/api/event'
+import { listen } from '@tauri-apps/api/event'
 import { convertImage, fitWithin } from '../conversion/images'
 import { mapConcurrent } from '../conversion/concurrent'
 import { imagesToPdf } from '../conversion/pdf'
-import { accentColors, loadSettings, normalizeSettings, saveSettings } from '../settings'
+import { accentColor, loadSettings, normalizeSettings, saveSettings } from '../settings'
 import { t, type MessageKey } from '../i18n'
-import { canRunFileAction, canRunSelectedTool, canRunWheelTool, canUseNativeImagePath, commonFormats } from './quick-actions'
+import { allToolActions, canRunFileAction, canRunSelectedTool, canRunWheelTool, canUseNativeImagePath, commonFormats, fileActionsForPlatform, imageToolActions, toolActionsFor } from './quick-actions'
 import { wheelLabelPosition, wheelSectorAt, wheelSlicePath } from './radial-wheel'
 import './quick-menu.css'
 
@@ -17,49 +17,7 @@ type Format = { extension: string; label: string }
 type Position = { x: number; y: number }
 type WheelChoice = { key: string; label: string; glyph?: string; disabled: boolean; onChoose: () => void }
 const imageExtensions = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'svg']
-const extendedImageExtensions = [...imageExtensions, 'heic', 'heif', 'avif', 'tif', 'tiff', 'svg']
-const toolActions = [
-  { id: 'image-editor', label: 'Edit image' as const, glyph: '✦' },
-  { id: 'images-to-pdf', label: 'Images to PDF' as const, glyph: 'PDF' },
-  { id: 'resize', label: 'Resize' as const, glyph: '↔' },
-  { id: 'rotate', label: 'Rotate' as const, glyph: '↻' },
-  { id: 'flip', label: 'Flip' as const, glyph: '⇋' },
-  { id: 'grayscale', label: 'Grayscale' as const, glyph: '◐' },
-  { id: 'square', label: 'Square crop' as const, glyph: '□' },
-  { id: 'compress', label: 'Compress' as const, glyph: '◒' },
-  { id: 'metadata', label: 'Remove metadata' as const, glyph: '◇' },
-]
-const videoToolActions = [
-  { id: 'compress-video', label: 'Compress' as const, glyph: '◒' },
-  { id: 'mute-video', label: 'Mute video' as const, glyph: '◖' },
-  { id: 'extract-audio', label: 'Extract audio' as const, glyph: '♫' },
-  { id: 'video-thumbnail', label: 'Create thumbnail' as const, glyph: '▣' },
-]
-const audioToolActions = [
-  { id: 'compress-audio', label: 'Compress' as const, glyph: '◒' },
-  { id: 'normalize-audio', label: 'Normalize audio' as const, glyph: '▂' },
-]
-const archiveToolActions = [{ id: 'extract-zip', label: 'Extract ZIP' as const, glyph: 'ZIP' }]
-const allToolActions = [...toolActions, ...videoToolActions, ...audioToolActions]
 const quickWindowSize = { width: 288, height: 288 }
-const fileActions = [
-  { id: 'create-zip', label: 'Create ZIP' as const, glyph: '▱' },
-  { id: 'extract-zip', label: 'Extract ZIP' as const, glyph: '▣' },
-  { id: 'copy-to-folder', label: 'Copy to FlickVert' as const, glyph: '⧉' },
-  { id: 'move-to-folder', label: 'Move to FlickVert' as const, glyph: '⇥' },
-  { id: 'reveal', label: 'Show in folder' as const, glyph: '↗' },
-  { id: 'copy-path', label: 'Copy path' as const, glyph: '⎘' },
-  { id: 'open-terminal', label: 'Open Terminal' as const, glyph: '>_' },
-]
-
-function toolActionsFor(files: NativeFile[], ffmpegAvailable: boolean, imagemagickAvailable: boolean) {
-  if (files.length === 1 && files[0].extension === 'zip') return archiveToolActions
-  if (files.length && files.every((file) => imageExtensions.includes(file.extension))) return files.some((file) => file.extension === 'svg') ? toolActions.filter((action) => action.id !== 'image-editor') : toolActions
-  if (imagemagickAvailable && files.length && files.every((file) => extendedImageExtensions.includes(file.extension))) return toolActions.filter((action) => !['image-editor', 'images-to-pdf', 'square'].includes(action.id))
-  if (ffmpegAvailable && files.length && files.every((file) => file.mime.startsWith('video/'))) return videoToolActions
-  if (ffmpegAvailable && files.length && files.every((file) => file.mime.startsWith('audio/'))) return audioToolActions
-  return []
-}
 
 function outputLabel(extension: string) {
   return extension === 'jpg' ? 'JPEG' : extension.toUpperCase()
@@ -94,6 +52,7 @@ function WheelChoices({ items, active, onActive }: { items: WheelChoice[]; activ
 export default function QuickMenu() {
   const [settings, setSettings] = useState(loadSettings)
   const tr = (key: MessageKey) => t(settings.language, key)
+  const visibleFileActions = fileActionsForPlatform(navigator.userAgent.includes('Windows'))
   const [dragMode, setDragMode] = useState(false)
   const [wheelMode, setWheelMode] = useState<'convert' | 'tools' | 'actions'>('convert')
   const [files, setFiles] = useState<NativeFile[]>([])
@@ -119,10 +78,25 @@ export default function QuickMenu() {
     setDragMode(value)
   }
 
+  function modeHasChoices(value: 'convert' | 'tools' | 'actions', files: NativeFile[], formats: Format[]) {
+    if (!files.length) return true
+    if (value === 'convert') return formats.length > 0
+    if (value === 'tools') {
+      const totalBytes = files.reduce((sum, file) => sum + file.size, 0)
+      return toolActionsFor(files, ffmpegAvailableRef.current, imagemagickAvailableRef.current).some((action) => canRunWheelTool(action.id, files.length, totalBytes))
+    }
+    return visibleFileActions.some((action) => canRunFileAction(action.id, files))
+  }
+
   function setActiveWheelMode(value: 'convert' | 'tools' | 'actions') {
+    if (!modeHasChoices(value, filesRef.current, formatsRef.current)) {
+      setStatus(tr(value === 'convert' ? 'No formats available' : value === 'tools' ? 'No tools available for these files.' : 'No file actions available for these files.'))
+      return
+    }
     wheelModeRef.current = value
     setWheelMode(value)
     setActive(-1)
+    setStatus('')
   }
 
   function hide() {
@@ -160,6 +134,10 @@ export default function QuickMenu() {
       const options = common.map((extension) => ({ extension, label: outputLabel(extension) }))
       formatsRef.current = options
       setFormats(options)
+      if (!modeHasChoices(wheelModeRef.current, received, options)) {
+        const fallback = (['convert', 'tools', 'actions'] as const).find((mode) => modeHasChoices(mode, received, options))
+        if (fallback) setActiveWheelMode(fallback)
+      }
       setDragVisible(true)
       setStatus('')
       dropHandled.current = false
@@ -218,7 +196,6 @@ export default function QuickMenu() {
         : 1
       const outputs = await mapConcurrent(items, concurrency, async (file) => {
         const output = await convertTo(file, format)
-        await emit('flickvert://job-completed', { fileName: file.name, size: file.size, output })
         return output
       }, (completed) => setStatus(`${tr('Converting...')} · ${completed}/${items.length}`))
       setStatus(`${tr('Saved')} · ${outputs.length}`)
@@ -249,8 +226,7 @@ export default function QuickMenu() {
         }
         const bytes = await imagesToPdf(inputs, loadSettings().quality)
         const name = items.length === 1 ? items[0].name.replace(/\.[^.]+$/, '') : 'images'
-        const output = await invoke<string>('save_output', { fileName: `${name}.pdf`, inputPath: items[0].path, destinationFolder: loadSettings().outputFolder, bytes: Array.from(bytes) })
-        await emit('flickvert://job-completed', { fileName: `${name}.pdf`, size: bytes.length, output })
+        await invoke<string>('save_output', { fileName: `${name}.pdf`, inputPath: items[0].path, destinationFolder: loadSettings().outputFolder, bytes: Array.from(bytes) })
         setStatus(tr('PDF created'))
         window.setTimeout(hide, 650)
         return
@@ -258,8 +234,7 @@ export default function QuickMenu() {
       for (const file of items) {
         if (!imageExtensions.includes(file.extension)) {
           const preferences = loadSettings()
-          const output = await invoke<string>('process_image_tool', { inputPath: file.path, actionId, quality: preferences.quality, width: preferences.width, height: preferences.height, destinationFolder: preferences.outputFolder })
-          await emit('flickvert://job-completed', { fileName: file.name, size: file.size, output })
+          await invoke<string>('process_image_tool', { inputPath: file.path, actionId, quality: preferences.quality, width: preferences.width, height: preferences.height, destinationFolder: preferences.outputFolder })
           continue
         }
         const bytes = await invoke<number[]>('read_dropped_file', { inputPath: file.path })
@@ -285,13 +260,12 @@ export default function QuickMenu() {
         const quality = preferences.quality / 100
         const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((result) => result ? resolve(result) : reject(new Error('Image processing failed')), format, quality))
         const suffix = actionId === 'resize' ? '-resized' : actionId === 'rotate' ? '-rotated' : actionId === 'flip' ? '-flipped' : actionId === 'grayscale' ? '-grayscale' : actionId === 'square' ? '-square' : actionId === 'metadata' ? '-clean' : '-compressed'
-        const output = await invoke<string>('save_output', {
+        await invoke<string>('save_output', {
           fileName: `${file.name.replace(/\.[^.]+$/, '')}${suffix}.${extension === 'jpeg' ? 'jpg' : extension}`,
           inputPath: file.path,
           destinationFolder: loadSettings().outputFolder,
           bytes: Array.from(new Uint8Array(await blob.arrayBuffer())),
         })
-        await emit('flickvert://job-completed', { fileName: file.name, size: file.size, output })
       }
       setStatus(tr('Saved'))
       window.setTimeout(hide, 650)
@@ -306,7 +280,7 @@ export default function QuickMenu() {
       await choose(actionId)
       return
     }
-    if (toolActions.some((action) => action.id === actionId)) {
+    if (imageToolActions.some((action) => action.id === actionId)) {
       await processImages(items, actionId)
       return
     }
@@ -314,8 +288,7 @@ export default function QuickMenu() {
     setStatus(tr('Processing...'))
     try {
       for (const file of items) {
-        const output = await invoke<string>('process_media_tool', { inputPath: file.path, actionId, destinationFolder: loadSettings().outputFolder })
-        await emit('flickvert://job-completed', { fileName: file.name, size: file.size, output })
+        await invoke<string>('process_media_tool', { inputPath: file.path, actionId, destinationFolder: loadSettings().outputFolder })
       }
       setStatus(tr('Saved'))
       window.setTimeout(hide, 650)
@@ -329,8 +302,8 @@ export default function QuickMenu() {
     try {
       const { received, options } = await refreshFiles(paths)
       if (wheelModeRef.current === 'actions') {
-        const index = wheelSectorAt(point, wheelSize.current, fileActions.length)
-        const id = fileActions[index]?.id
+        const index = wheelSectorAt(point, wheelSize.current, visibleFileActions.length)
+        const id = visibleFileActions[index]?.id
         if (id && canRunFileAction(id, received)) await choose(id)
         else hide()
         return
@@ -407,10 +380,10 @@ export default function QuickMenu() {
         void refreshFiles(payload.paths).catch((error) => setStatus(String(error)))
       } else if (payload.type === 'over') {
         const actions = wheelModeRef.current === 'tools' ? toolActionsFor(filesRef.current, ffmpegAvailableRef.current, imagemagickAvailableRef.current) : []
-        const count = wheelModeRef.current === 'tools' ? actions.length : wheelModeRef.current === 'actions' ? fileActions.length : formatsRef.current.length
+        const count = wheelModeRef.current === 'tools' ? actions.length : wheelModeRef.current === 'actions' ? visibleFileActions.length : formatsRef.current.length
         const index = wheelSectorAt(payload.position, wheelSize.current, count)
         const action = actions[index]
-        const fileAction = fileActions[index]
+        const fileAction = visibleFileActions[index]
         const disabledTool = action && !canRunWheelTool(action.id, filesRef.current.length, filesRef.current.reduce((sum, file) => sum + file.size, 0))
         const disabledFileAction = wheelModeRef.current === 'actions' && (!fileAction || !canRunFileAction(fileAction.id, filesRef.current))
         setActive(disabledTool || disabledFileAction ? -1 : index)
@@ -438,24 +411,24 @@ export default function QuickMenu() {
       } else if (actionId === 'create-zip') {
         const items = filesRef.current
         const output = await invoke<string>('create_zip_archive', { inputPaths: items.map((file) => file.path), destinationFolder: loadSettings().outputFolder })
-        await emit('flickvert://job-completed', { fileName: `${items.length} files`, size: items.reduce((sum, file) => sum + file.size, 0), output })
         setStatus(`${tr('Archive created')}: ${output.split(/[\\/]/).pop()}`)
       } else if (actionId === 'extract-zip') {
         const file = filesRef.current[0]
         if (!file) return
         const output = await invoke<string>('extract_zip_archive', { inputPath: file.path, destinationFolder: loadSettings().outputFolder })
-        await emit('flickvert://job-completed', { fileName: file.name, size: file.size, output })
         setStatus(`${tr('Archive extracted')}: ${output.split(/[\\/]/).pop()}`)
       } else if (actionId === 'copy-to-folder' || actionId === 'move-to-folder') {
         const items = filesRef.current
         if (!items.length) return
         for (const file of items) await invoke<string>(actionId === 'copy-to-folder' ? 'copy_to_flickvert_folder' : 'move_to_flickvert_folder', { inputPath: file.path })
         setStatus(`${tr(actionId === 'copy-to-folder' ? 'Copied files' : 'Moved files')}: ${items.length}`)
-      } else if (actionId === 'reveal' || actionId === 'copy-path') {
+      } else if (actionId === 'reveal' || actionId === 'copy-path' || actionId === 'copy-powershell-path') {
         const path = filesRef.current[0]?.path
         if (!path) return
-        await invoke(actionId === 'reveal' ? 'reveal_dropped_file' : 'copy_dropped_file_path', { inputPath: path })
-        setStatus(tr(actionId === 'reveal' ? 'Show in folder' : 'Path copied'))
+        if (actionId === 'reveal') await invoke('reveal_dropped_file', { inputPath: path })
+        else if (actionId === 'copy-path') await invoke('copy_dropped_file_path', { inputPath: path })
+        else await invoke('copy_powershell_path', { inputPath: path })
+        setStatus(tr(actionId === 'reveal' ? 'Show in folder' : actionId === 'copy-path' ? 'Path copied' : 'PowerShell path copied'))
       } else if (actionId === 'open-terminal') {
         const path = filesRef.current[0]?.path
         if (!path) return
@@ -464,14 +437,14 @@ export default function QuickMenu() {
       } else {
         await invoke('quick_action', { actionId })
       }
-      if (['create-zip', 'extract-zip', 'copy-to-folder', 'move-to-folder', 'reveal', 'copy-path', 'open-terminal'].includes(actionId)) window.setTimeout(hide, 650)
+      if (['create-zip', 'extract-zip', 'copy-to-folder', 'move-to-folder', 'reveal', 'copy-path', 'copy-powershell-path', 'open-terminal'].includes(actionId)) window.setTimeout(hide, 650)
       else await getCurrentWindow().hide()
     } catch (error) {
       setStatus(String(error).slice(0, 120))
     }
   }
 
-  const actions = files.length ? wheelMode === 'actions' ? fileActions : wheelMode === 'tools' ? toolActionsFor(files, ffmpegAvailable, imagemagickAvailable) : [] : []
+  const actions = files.length ? wheelMode === 'actions' ? visibleFileActions : wheelMode === 'tools' ? toolActionsFor(files, ffmpegAvailable, imagemagickAvailable) : [] : []
   const choices: WheelChoice[] = wheelMode === 'convert'
     ? formats.map((format) => ({ key: format.extension, label: format.label, disabled: false, onChoose: () => void convertFiles(filesRef.current, format) }))
     : actions.map((action) => {
@@ -479,7 +452,7 @@ export default function QuickMenu() {
       const unavailableTool = imageTool && dragMode && !toolActionsFor(files, ffmpegAvailable, imagemagickAvailable).some((tool) => tool.id === action.id)
       const totalBytes = files.reduce((sum, file) => sum + file.size, 0)
       const disabledBySelection = imageTool ? !canRunWheelTool(action.id, files.length, totalBytes) : !canRunFileAction(action.id, files)
-      return { key: action.id, label: tr(action.label), glyph: action.glyph, disabled: unavailableTool || disabledBySelection, onChoose: () => void choose(action.id) }
+      return { key: action.id, label: tr(action.id === 'open-terminal' && navigator.userAgent.includes('Windows') ? 'Open PowerShell' : action.label), glyph: action.glyph, disabled: unavailableTool || disabledBySelection, onChoose: () => void choose(action.id) }
     })
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -502,7 +475,7 @@ export default function QuickMenu() {
   const activeChoice = choices[active]
   const centerTitle = status || activeChoice?.label || (files.length === 1 ? files[0].name : files.length ? `${files.length} ${tr('files')}` : tr('Drag a file here'))
   const centerDetail = status ? (files.length === 1 ? files[0].name : '') : activeChoice ? wheelMode === 'convert' ? `${tr('Convert to')} ${activeChoice.label}` : (files.length === 1 ? files[0].name : '') : files.length ? wheelMode === 'convert' ? tr('Select output format') : '' : ''
-  return <main className={`quick-shell${dragMode ? ' drag-mode' : ''}${emptyWheel ? ' quick-empty' : ''}`} data-appearance={settings.appearance} style={{ '--wheel-accent-base': accentColors[settings.accent] } as CSSProperties} aria-label="FlickVert quick actions">
+  return <main className={`quick-shell${dragMode ? ' drag-mode' : ''}${emptyWheel ? ' quick-empty' : ''}`} data-appearance={settings.appearance} style={{ '--wheel-accent-base': accentColor(settings) } as CSSProperties} aria-label="FlickVert quick actions">
     <div className={`quick-orbit${emptyWheel ? ' no-choices' : ''}`} aria-label={tr(wheelMode === 'convert' ? 'Select output format' : wheelMode === 'tools' ? 'Tools' : 'Actions')}>
       <WheelChoices items={choices} active={active} onActive={setActive}/>
       <div className="quick-center" aria-live="polite"><strong>{centerTitle}</strong>{centerDetail && <small>{centerDetail}</small>}</div>

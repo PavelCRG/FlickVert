@@ -46,15 +46,44 @@ enum Action {
 
 static APP: OnceLock<AppHandle> = OnceLock::new();
 static GESTURE: OnceLock<Mutex<Gesture>> = OnceLock::new();
+static MODIFIER_MODES: OnceLock<Mutex<[WheelMode; 3]>> = OnceLock::new();
+
+#[derive(Clone, Copy)]
+enum ModifierKey { Shift, Control, Alt }
 
 pub fn start(app: AppHandle) {
     let _ = APP.set(app);
     let _ = GESTURE.set(Mutex::new(Gesture::default()));
+    MODIFIER_MODES.get_or_init(|| Mutex::new([WheelMode::Convert, WheelMode::Tools, WheelMode::Actions]));
 
     #[cfg(windows)]
     windows::start();
     #[cfg(target_os = "macos")]
     macos::start();
+}
+
+pub fn configure_modifiers(convert: &str, tools: &str, actions: &str) -> Result<(), String> {
+    let parse = |key| match key {
+        "SHIFT" => Some(0), "CTRL" => Some(1), "ALT" => Some(2), _ => None,
+    };
+    let convert = parse(convert).ok_or("Unsupported format modifier")?;
+    let tools = parse(tools).ok_or("Unsupported tools modifier")?;
+    let actions = parse(actions).ok_or("Unsupported file action modifier")?;
+    if convert == tools || convert == actions || tools == actions {
+        return Err("Modifier keys must be unique Shift, Ctrl, or Alt keys".into());
+    }
+    let mut modes = [WheelMode::Convert; 3];
+    modes[convert] = WheelMode::Convert;
+    modes[tools] = WheelMode::Tools;
+    modes[actions] = WheelMode::Actions;
+    let lock = MODIFIER_MODES.get_or_init(|| Mutex::new([WheelMode::Convert, WheelMode::Tools, WheelMode::Actions]));
+    *lock.lock().map_err(|_| "Modifier settings are unavailable")? = modes;
+    Ok(())
+}
+
+fn mode_for_modifier(key: ModifierKey) -> WheelMode {
+    let index = match key { ModifierKey::Shift => 0, ModifierKey::Control => 1, ModifierKey::Alt => 2 };
+    MODIFIER_MODES.get().and_then(|modes| modes.lock().ok().map(|modes| modes[index])).unwrap_or([WheelMode::Convert, WheelMode::Tools, WheelMode::Actions][index])
 }
 
 impl Gesture {
@@ -154,7 +183,7 @@ fn handle(event: InputEvent) {
 
 #[cfg(windows)]
 mod windows {
-    use super::{handle, InputEvent, WheelMode};
+    use super::{handle, mode_for_modifier, InputEvent, ModifierKey};
     use std::{ffi::c_void, mem, ptr, thread};
 
     type Hook = *mut c_void;
@@ -203,8 +232,6 @@ mod windows {
     const WM_SYSKEYUP: u32 = 0x0105;
     const WM_LBUTTONDOWN: u32 = 0x0201;
     const WM_LBUTTONUP: u32 = 0x0202;
-    const WM_RBUTTONDOWN: u32 = 0x0204;
-    const WM_RBUTTONUP: u32 = 0x0205;
     const WM_MOUSEMOVE: u32 = 0x0200;
     const VK_SHIFT: u32 = 0x10;
     const VK_LSHIFT: u32 = 0xa0;
@@ -254,14 +281,14 @@ mod windows {
         if code >= 0 {
             let input = &*(data as *const MouseData);
             match message as u32 {
-                WM_LBUTTONDOWN | WM_RBUTTONDOWN => handle(InputEvent::LeftDown(
+                WM_LBUTTONDOWN => handle(InputEvent::LeftDown(
                     input.point.x as f64,
                     input.point.y as f64,
                 )),
                 WM_MOUSEMOVE => {
                     handle(InputEvent::Move(input.point.x as f64, input.point.y as f64));
                 }
-                WM_LBUTTONUP | WM_RBUTTONUP => handle(InputEvent::LeftUp),
+                WM_LBUTTONUP => handle(InputEvent::LeftUp),
                 _ => {}
             }
         }
@@ -273,22 +300,22 @@ mod windows {
             let input = &*(data as *const KeyData);
             match (message as u32, input.key) {
                 (WM_KEYDOWN | WM_SYSKEYDOWN, VK_SHIFT | VK_LSHIFT | VK_RSHIFT) => {
-                    handle(InputEvent::ModifierDown(WheelMode::Convert))
+                    handle(InputEvent::ModifierDown(mode_for_modifier(ModifierKey::Shift)))
                 }
                 (WM_KEYUP | WM_SYSKEYUP, VK_SHIFT | VK_LSHIFT | VK_RSHIFT) => {
-                    handle(InputEvent::ModifierUp(WheelMode::Convert))
+                    handle(InputEvent::ModifierUp(mode_for_modifier(ModifierKey::Shift)))
                 }
                 (WM_KEYDOWN | WM_SYSKEYDOWN, VK_CONTROL | VK_LCONTROL | VK_RCONTROL) => {
-                    handle(InputEvent::ModifierDown(WheelMode::Tools))
+                    handle(InputEvent::ModifierDown(mode_for_modifier(ModifierKey::Control)))
                 }
                 (WM_KEYUP | WM_SYSKEYUP, VK_CONTROL | VK_LCONTROL | VK_RCONTROL) => {
-                    handle(InputEvent::ModifierUp(WheelMode::Tools))
+                    handle(InputEvent::ModifierUp(mode_for_modifier(ModifierKey::Control)))
                 }
                 (WM_KEYDOWN | WM_SYSKEYDOWN, VK_MENU | VK_LMENU | VK_RMENU) => {
-                    handle(InputEvent::ModifierDown(WheelMode::Actions))
+                    handle(InputEvent::ModifierDown(mode_for_modifier(ModifierKey::Alt)))
                 }
                 (WM_KEYUP | WM_SYSKEYUP, VK_MENU | VK_LMENU | VK_RMENU) => {
-                    handle(InputEvent::ModifierUp(WheelMode::Actions))
+                    handle(InputEvent::ModifierUp(mode_for_modifier(ModifierKey::Alt)))
                 }
                 (WM_KEYDOWN | WM_SYSKEYDOWN, VK_ESCAPE) => handle(InputEvent::Escape),
                 _ => {}
@@ -300,7 +327,7 @@ mod windows {
 
 #[cfg(target_os = "macos")]
 mod macos {
-    use super::{handle, InputEvent, WheelMode};
+    use super::{handle, mode_for_modifier, InputEvent, ModifierKey};
     use std::{ffi::c_void, thread};
 
     #[repr(C)]
@@ -378,11 +405,12 @@ mod macos {
             6 | 7 => handle(InputEvent::Move(point.x, point.y)),
             12 => {
                 let flags = CGEventGetFlags(event);
-                for (mode, bit) in [
-                    (WheelMode::Convert, 1 << 17),
-                    (WheelMode::Tools, 1 << 20),
-                    (WheelMode::Actions, 1 << 18),
+                for (key, bit) in [
+                    (ModifierKey::Shift, 1 << 17),
+                    (ModifierKey::Control, 1 << 20),
+                    (ModifierKey::Alt, 1 << 18),
                 ] {
+                    let mode = mode_for_modifier(key);
                     handle(if flags & bit != 0 {
                         InputEvent::ModifierDown(mode)
                     } else {

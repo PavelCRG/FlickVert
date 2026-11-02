@@ -44,13 +44,13 @@ After installing a release that includes the updater, FlickVert checks for signe
 
 ## Quick start
 
-1. Start FlickVert. Its settings window opens and the drag wheel is available while the app is running.
+1. Start FlickVert. The Quick start guide appears on first launch; the settings window opens on later launches.
 2. Drag a file, press **Shift**, and drop it onto a format in the wheel beside the pointer.
-3. Find the converted file beside the original. Use the main window to view history or change settings.
+3. Find the converted file beside the original. Use Home to browse supported formats and Settings to customize the app.
 
 ## Closing the app
 
-Closing the main window quits FlickVert. The drag wheel and global shortcut are available while the application is running.
+Closing the main window hides FlickVert to the system tray. The drag wheel and global shortcut keep working in the background. Choose **Quit** from the tray menu to exit FlickVert completely.
 
 The default shortcut, **Ctrl+Alt+Space**, opens quick actions for files selected in Explorer or Finder. You can also drop a file onto the wheel. Use **1/2/3** to switch modes, arrow keys to select a target, and **Enter** to run it. **Esc** closes the wheel. Change the shortcut in **Settings**.
 
@@ -60,7 +60,7 @@ For detailed image work, choose **Edit image** in Tools. The editor can crop or 
 
 ## How the drag wheel works
 
-1. Start dragging a selected file from File Explorer or Finder with either mouse button.
+1. Start dragging a selected file from File Explorer or Finder with the left mouse button.
 2. Tap **Shift** for formats, **Ctrl** (Windows) or **Command** (macOS) for tools, or **Alt** (Windows) / **Control** (macOS) for file actions. The wheel stays open after releasing the key.
 3. Move over a choice and release the mouse button to run it. Press **Esc** to cancel.
 
@@ -104,7 +104,7 @@ Run `npm test` and `cargo test --locked --manifest-path src-tauri/Cargo.toml` to
 
 ### Publishing an update
 
-The first release is `v0.1.0`. Run `scripts/publish-v0.1.0.ps1` to check and publish it. For each patch after that, tag the committed changes and push the tag, for example `git tag v0.1.1; git push origin v0.1.1`. GitHub Actions syncs the app version to the tag, builds the Windows and macOS downloads, signs updater packages, and publishes `latest.json`. Installed copies check for updates at launch and every six hours. Portable Windows builds update manually.
+Current release: `v0.1.1`. Push a version tag such as `v0.1.1` to run the GitHub Actions release workflow. It builds Windows and macOS downloads, signs updater packages, and publishes `latest.json`. Installed copies check for updates at launch and every six hours. Portable Windows builds update manually. `scripts/publish-v0.1.0.ps1` was the one-time first-release procedure.
 
 The repository must have `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` Actions secrets matching the public key in `src-tauri/tauri.conf.json`. Keep the private key outside the repository. An existing installation only accepts updates signed with its configured key.
 

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { emit } from '@tauri-apps/api/event'
 import { loadSettings } from '../settings'
 import { selectionToPixels, normalizeSelection, type Selection } from './image-editor'
 import { t, type MessageKey } from '../i18n'
@@ -111,8 +110,7 @@ export default function ImageEditor({ inputPath, initialTool, outputFolder, onCl
       if (blob.size > 128 * 1024 * 1024) throw new Error('Edited image exceeds the 128 MB limit')
       const stem = inputPath.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '') || 'image'
       const suffix: Record<ImageEditTool, string> = { crop: 'cropped', redact: 'redacted', annotate: 'annotated', background: 'background', adjust: 'edited' }
-      const output = await invoke<string>('save_output', { fileName: `${stem}-${suffix[tool]}.png`, inputPath, destinationFolder: outputFolder, bytes: Array.from(new Uint8Array(await blob.arrayBuffer())) })
-      await emit('flickvert://job-completed', { fileName: `${stem}.png`, size: blob.size, output })
+      await invoke<string>('save_output', { fileName: `${stem}-${suffix[tool]}.png`, inputPath, destinationFolder: outputFolder, bytes: Array.from(new Uint8Array(await blob.arrayBuffer())) })
       onClose()
     } catch (reason) {
       setError(`${tr('Could not edit image')}: ${String(reason).slice(0, 120)}`)

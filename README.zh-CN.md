@@ -15,7 +15,7 @@
 </div>
 <p>在 <strong>Tools → Edit image</strong> 中可以裁剪图片、涂黑区域、添加注释或背景，并调整亮度和对比度。结果以 PNG 格式保存在原图旁边。</p>
 
-FlickVert 可与文件资源管理器和 Finder 配合使用。拖动文件并按 Shift，指针旁会出现圆形菜单。将文件放到格式或操作上即可执行。主窗口包含历史记录和设置。
+FlickVert 可与文件资源管理器和 Finder 配合使用。拖动文件并按 Shift，指针旁会出现圆形菜单。将文件放到格式或操作上即可执行。主页概览支持的功能，设置按类别分开。
 
 <p align="center">
   <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.msi"><strong>Windows 安装包 (MSI)</strong></a> ·
@@ -34,7 +34,7 @@ FlickVert 可与文件资源管理器和 Finder 配合使用。拖动文件并�
 
 Windows 需要 Microsoft Edge WebView2 Runtime。其他转换引擎需单独安装。
 
-首个正式版本为 `0.1.0`。安装版会在启动时及每六小时检查一次签名更新；Windows 安装版使用匹配的 EXE 或 MSI 更新。便携版需手动更新。旧的本地 `0.2.1` 版本不能自动降级到首个 `0.1.0`，请先卸载旧版。
+当前版本为 `0.1.1`。安装版会在启动时及每六小时检查一次签名更新；Windows 安装版使用匹配的 EXE 或 MSI 更新。便携版需手动更新。发布下一个版本时推送版本标签（例如 `v0.1.2`），GitHub Actions 将构建 Windows 和 macOS 安装包并发布版本。
 
 ## 目录
 
@@ -49,13 +49,13 @@ Windows 需要 Microsoft Edge WebView2 Runtime。其他转换引擎需单独安�
 
 ## 快速开始
 
-1. 启动 FlickVert。应用窗口会打开；只要 FlickVert 保持运行，拖放转盘和全局快捷键即可使用。
+1. 启动 FlickVert。首次启动会显示快速入门指南，之后会打开设置窗口。
 2. 拖动文件并按 **Shift**，然后将其放到转盘中的目标格式上。
-3. 转换后的文件保存在原文件旁边。在主窗口中查看历史记录或更改设置。
+3. 转换后的文件保存在原文件旁边。在主窗口查看支持的格式并调整设置。
 
 ## 退出应用
 
-关闭主窗口会退出 FlickVert。若要使用拖放转盘和全局快捷键，请保持应用运行。
+关闭主窗口后，FlickVert 会隐藏到系统托盘。拖放转盘和全局快捷键仍可在后台使用。要完全退出 FlickVert，请在托盘菜单中选择 **Quit**。
 
 默认快捷键为 **Ctrl+Alt+Space**，用于为资源管理器或 Finder 中选中的文件打开快捷操作菜单。可在 **Settings** 中更改，也可以把文件拖到转盘上。按 **1/2/3** 切换模式，用方向键选择目标，再按 **Enter** 执行。按 **Esc** 关闭转盘。
 
