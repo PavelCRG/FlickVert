@@ -37,15 +37,79 @@ jobs:
       - run: npm run test
       - run: npm run build
       - run: cargo test --locked --manifest-path src-tauri/Cargo.toml
+      - name: Test safe macOS DMG retry behavior
+        if: runner.os == 'macOS'
+        run: bash scripts/test-build-macos.sh
+      - name: Require macOS signing and notarization credentials
+        if: ${{ runner.os == 'macOS' && startsWith(github.ref, 'refs/tags/v') }}
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          missing=()
+          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            if [[ -z "${!name:-}" ]]; then missing+=("$name"); fi
+          done
+          if [[ ${#missing[@]} -gt 0 ]]; then
+            printf 'Missing required macOS release secrets: %s\n' "${missing[*]}" >&2
+            exit 1
+          fi
       - name: Build desktop application
-        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        if: ${{ runner.os != 'macOS' && !startsWith(github.ref, 'refs/tags/v') }}
         run: npm run tauri -- build --target ${{ matrix.target }}
+      - name: Build macOS application with safe DMG retry
+        if: ${{ runner.os == 'macOS' && !startsWith(github.ref, 'refs/tags/v') }}
+        run: bash scripts/build-macos.sh "${{ matrix.target }}"
       - name: Build signed update artifacts
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: ${{ runner.os != 'macOS' && startsWith(github.ref, 'refs/tags/v') }}
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run tauri -- build --target ${{ matrix.target }} --config src-tauri/tauri.updater.conf.json
+      - name: Build signed macOS artifacts with safe DMG retry
+        if: ${{ runner.os == 'macOS' && startsWith(github.ref, 'refs/tags/v') }}
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: bash scripts/build-macos.sh "${{ matrix.target }}" src-tauri/tauri.updater.conf.json
+      - name: Verify macOS signatures, Gatekeeper, and notarization ticket
+        if: ${{ runner.os == 'macOS' && startsWith(github.ref, 'refs/tags/v') }}
+        shell: bash
+        run: |
+          bundle="src-tauri/target/${{ matrix.target }}/release/bundle"
+          app=$(find "$bundle/macos" -maxdepth 1 -type d -name '*.app' -print -quit)
+          dmg=$(find "$bundle/dmg" -maxdepth 1 -type f -name '*.dmg' -print -quit)
+          test -n "$app" && test -n "$dmg"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          spctl --assess --type execute --verbose=2 "$app"
+          xcrun stapler validate "$app"
+          xcrun stapler validate "$dmg"
+      - name: Verify Windows install, reinstall, and uninstall
+        if: ${{ runner.os == 'Windows' && !startsWith(github.ref, 'refs/tags/v') }}
+        shell: pwsh
+        run: |
+          $installers = @(Get-ChildItem "src-tauri/target/${{ matrix.target }}/release/bundle/nsis" -Filter '*-setup.exe')
+          if ($installers.Count -ne 1) { throw "Expected one NSIS installer, found $($installers.Count)." }
+          ./scripts/test-windows-installer.ps1 -Installer $installers[0].FullName
+      - name: Verify Windows upgrade from previous release, then uninstall
+        if: ${{ runner.os == 'Windows' && startsWith(github.ref, 'refs/tags/v') }}
+        shell: pwsh
+        run: |
+          $installers = @(Get-ChildItem "src-tauri/target/${{ matrix.target }}/release/bundle/nsis" -Filter '*-setup.exe')
+          if ($installers.Count -ne 1) { throw "Expected one NSIS installer, found $($installers.Count)." }
+          $previous = Join-Path $env:RUNNER_TEMP 'FlickVert-previous-release-Setup.exe'
+          Invoke-WebRequest 'https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.exe' -OutFile $previous
+          ./scripts/test-windows-installer.ps1 -Installer $installers[0].FullName -PreviousInstaller $previous
       - name: Package portable Windows app
         if: runner.os == 'Windows'
         shell: pwsh
@@ -127,7 +191,7 @@ jobs:
             - **Windows 10/11 x64:** [Setup](https://github.com/PavelCRG/FlickVert/releases/download/${{ github.ref_name }}/FlickVert-Windows-x64-Setup.exe) · [MSI](https://github.com/PavelCRG/FlickVert/releases/download/${{ github.ref_name }}/FlickVert-Windows-x64-Setup.msi) · [Portable ZIP](https://github.com/PavelCRG/FlickVert/releases/download/${{ github.ref_name }}/FlickVert-Windows-x64-Portable.zip)
             - **macOS 13+:** [Apple Silicon](https://github.com/PavelCRG/FlickVert/releases/download/${{ github.ref_name }}/FlickVert-macOS-Apple-Silicon.dmg) · [Intel](https://github.com/PavelCRG/FlickVert/releases/download/${{ github.ref_name }}/FlickVert-macOS-Intel.dmg)
 
-            Setup builds check for signed updates at launch and every six hours. Portable builds update manually. Windows may show a SmartScreen warning; macOS builds are not notarized and may show a first-open security warning. If updating from an older development build, uninstall it before installing this release.
+            Setup builds check for signed updates at launch and every six hours. Portable builds update manually. Windows may show a SmartScreen warning because the installer is not Authenticode-signed. macOS builds are signed and notarized. If updating from an older development build, uninstall it before installing this release.
 
             Files are processed locally. Optional engines (FFmpeg, Pandoc, ImageMagick, LibreOffice, Poppler) are installed separately. Verify downloads with `SHA256SUMS.txt`.
           files: release-assets/*

@@ -5,15 +5,41 @@ use std::{
     path::{Component, Path, PathBuf},
 };
 use zip::{write::SimpleFileOptions, CompressionMethod, ZipArchive, ZipWriter};
+use unicode_normalization::UnicodeNormalization;
 
 const MAX_ENTRIES: usize = 20_000;
 const MAX_FILE_SIZE: u64 = 512 * 1024 * 1024;
 const MAX_TOTAL_SIZE: u64 = 2 * 1024 * 1024 * 1024;
 
-pub fn create_zip(inputs: &[PathBuf], output: &Path) -> Result<(), String> {
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PreviewEntry {
+    pub path: String,
+    pub size: u64,
+    pub directory: bool,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ZipPreview {
+    pub entries: Vec<PreviewEntry>,
+    pub file_count: usize,
+    pub total_size: u64,
+    pub conflicts: Vec<String>,
+}
+
+fn compression_level(level: u32) -> i64 {
+    level.clamp(1, 9) as i64
+}
+
+fn duplicate_path(path: &str, seen: &mut HashSet<String>) -> bool {
+    !seen.insert(path_key(path))
+}
+
+pub fn create_zip(inputs: &[PathBuf], output: &Path, level: u32) -> Result<(), String> {
     let file = File::create(output).map_err(|error| error.to_string())?;
     let mut archive = ZipWriter::new(file);
-    let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
+    let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated).compression_level(Some(compression_level(level)));
     let mut names = HashSet::new();
     let mut entries = 0;
     let mut total_size = 0;
@@ -100,7 +126,7 @@ fn add_to_zip(
     Ok(())
 }
 
-pub fn extract_zip(input: &Path, downloads: &Path, output_name: &str) -> Result<PathBuf, String> {
+pub fn extract_zip(input: &Path, downloads: &Path, output_name: &str, selected_paths: Option<&[String]>, skip_existing: bool) -> Result<Option<PathBuf>, String> {
     let file = File::open(input).map_err(|error| error.to_string())?;
     let mut archive = ZipArchive::new(file).map_err(|error| error.to_string())?;
     if archive.len() == 0 || archive.len() > MAX_ENTRIES {
@@ -113,8 +139,7 @@ pub fn extract_zip(input: &Path, downloads: &Path, output_name: &str) -> Result<
     for index in 0..archive.len() {
         let entry = archive.by_index(index).map_err(|error| error.to_string())?;
         let relative = safe_entry_path(entry.name())?;
-        let key = path_key(&relative.to_string_lossy());
-        if !names.insert(key) {
+        if duplicate_path(&relative.to_string_lossy(), &mut names) {
             return Err("ZIP archive contains duplicate paths".into());
         }
         if let Some(mode) = entry.unix_mode() {
@@ -138,13 +163,43 @@ pub fn extract_zip(input: &Path, downloads: &Path, output_name: &str) -> Result<
             .checked_add(entry.size())
             .filter(|size| *size <= MAX_TOTAL_SIZE)
             .ok_or("ZIP archive exceeds the 2 GB extraction limit")?;
-        entries.push((relative, entry.is_dir()));
+        entries.push((index, relative, entry.is_dir()));
+    }
+
+    if let Some(selected_paths) = selected_paths {
+        if selected_paths.is_empty() {
+            return Err("Select at least one archive item".into());
+        }
+        let selected = selected_paths.iter().map(|name| safe_entry_path(name).map(|path| path.to_string_lossy().replace('\\', "/"))).collect::<Result<Vec<_>, _>>()?;
+        for name in &selected {
+            let key = path_key(name);
+            if !entries.iter().any(|(_, path, _)| {
+                let candidate = path.to_string_lossy().replace('\\', "/");
+                let candidate = path_key(&candidate);
+                candidate == key || candidate.starts_with(&format!("{key}/"))
+            }) {
+                return Err("Selected item was not found in the archive".into());
+            }
+        }
+        entries.retain(|(_, path, _)| {
+            let candidate = path_key(&path.to_string_lossy().replace('\\', "/"));
+            selected.iter().any(|name| {
+                let key = path_key(name);
+                candidate == key || candidate.starts_with(&format!("{key}/"))
+            })
+        });
+    }
+    if entries.is_empty() {
+        return Err("No archive items were selected".into());
     }
 
     fs::create_dir_all(downloads).map_err(|error| error.to_string())?;
+    if skip_existing && downloads.join(output_name).exists() {
+        return Ok(None);
+    }
     let destination = unique_directory(downloads, output_name)?;
     let result = (|| {
-        for (index, (relative, is_dir)) in entries.iter().enumerate() {
+        for (index, relative, is_dir) in &entries {
             let path = destination.join(relative);
             if !path.starts_with(&destination) {
                 return Err("ZIP path escapes its destination".into());
@@ -155,7 +210,7 @@ pub fn extract_zip(input: &Path, downloads: &Path, output_name: &str) -> Result<
             }
             let parent = path.parent().ok_or("Invalid ZIP entry path")?;
             fs::create_dir_all(parent).map_err(|error| error.to_string())?;
-            let mut entry = archive.by_index(index).map_err(|error| error.to_string())?;
+            let mut entry = archive.by_index(*index).map_err(|error| error.to_string())?;
             let mut output = OpenOptions::new()
                 .write(true)
                 .create_new(true)
@@ -169,7 +224,52 @@ pub fn extract_zip(input: &Path, downloads: &Path, output_name: &str) -> Result<
     if result.is_err() {
         let _ = fs::remove_dir_all(&destination);
     }
-    result
+    result.map(Some)
+}
+
+pub fn preview_zip(input: &Path) -> Result<ZipPreview, String> {
+    let file = File::open(input).map_err(|error| error.to_string())?;
+    let mut archive = ZipArchive::new(file).map_err(|error| error.to_string())?;
+    if archive.len() == 0 || archive.len() > MAX_ENTRIES {
+        return Err("ZIP archive has an unsupported number of entries".into());
+    }
+    let mut entries = Vec::with_capacity(archive.len());
+    let mut seen = HashSet::new();
+    let mut conflicts = Vec::new();
+    let mut listed = HashSet::new();
+    let mut file_count = 0;
+    let mut total_size = 0u64;
+    for index in 0..archive.len() {
+        let entry = archive.by_index(index).map_err(|error| error.to_string())?;
+        let path = safe_entry_path(entry.name())?;
+        let path_string = path.to_string_lossy().replace('\\', "/");
+        if duplicate_path(&path_string, &mut seen) && !conflicts.contains(&path_string) {
+            conflicts.push(path_string.clone());
+        }
+        if entry.unix_mode().is_some_and(|mode| {
+            let kind = mode & 0o170000;
+            kind != 0 && kind != 0o040000 && kind != 0o100000
+        }) {
+            return Err("ZIP archive contains a link or special file".into());
+        }
+        if entry.size() > MAX_FILE_SIZE || entry.size() > entry.compressed_size().saturating_mul(1000).max(1024 * 1024) {
+            return Err("ZIP entry exceeds a safe extraction limit".into());
+        }
+        total_size = total_size.checked_add(entry.size()).filter(|size| *size <= MAX_TOTAL_SIZE).ok_or("ZIP archive exceeds the 2 GB limit")?;
+        let parts = path_string.split('/').collect::<Vec<_>>();
+        for index in 1..parts.len() {
+            let parent = parts[..index].join("/");
+            if listed.insert(path_key(&parent)) {
+                entries.push(PreviewEntry { path: parent, size: 0, directory: true });
+            }
+        }
+        let directory = entry.is_dir();
+        if !directory { file_count += 1; }
+        if listed.insert(path_key(&path_string)) {
+            entries.push(PreviewEntry { path: path_string, size: entry.size(), directory });
+        }
+    }
+    Ok(ZipPreview { entries, file_count, total_size, conflicts })
 }
 
 fn safe_entry_path(name: &str) -> Result<PathBuf, String> {
@@ -258,16 +358,145 @@ fn unique_directory(parent: &Path, name: &str) -> Result<PathBuf, String> {
 }
 
 fn path_key(path: &str) -> String {
+    let normalized = path.nfc().collect::<String>();
     #[cfg(any(windows, target_os = "macos"))]
-    return path.to_lowercase();
+    return normalized.to_lowercase();
     #[cfg(not(any(windows, target_os = "macos")))]
-    path.to_owned()
+    normalized
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn compression_level_is_bounded() {
+        assert_eq!(compression_level(0), 1);
+        assert_eq!(compression_level(5), 5);
+        assert_eq!(compression_level(20), 9);
+    }
+
+    #[test]
+    fn archive_path_keys_normalize_unicode_composition() {
+        assert_eq!(path_key("caf\u{00e9}.txt"), path_key("cafe\u{0301}.txt"));
+    }
+
+    #[test]
+    fn rejects_zip_slip_and_absolute_paths() {
+        for path in ["../outside.txt", "/outside.txt", "C:\\outside.txt", "\\\\server\\share\\file"] {
+            assert!(safe_entry_path(path).is_err(), "{path}");
+        }
+    }
+
+    #[test]
+    fn rejects_duplicate_archive_paths() {
+        let mut seen = HashSet::new();
+        assert!(!duplicate_path("same.txt", &mut seen));
+        assert!(duplicate_path("same.txt", &mut seen));
+    }
+
+    #[test]
+    fn rejects_symlink_entries() {
+        let root = std::env::temp_dir().join(format!("flickvert-symlink-zip-{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+        let archive_path = root.join("sample.zip");
+        let mut zip = ZipWriter::new(File::create(&archive_path).unwrap());
+        zip.add_symlink("link", "target", SimpleFileOptions::default()).unwrap();
+        zip.finish().unwrap();
+        assert!(preview_zip(&archive_path).is_err());
+        assert!(extract_zip(&archive_path, &root, "out", None, false).is_err());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn rejects_unicode_equivalent_duplicate_paths() {
+        let root = std::env::temp_dir().join(format!("flickvert-unicode-zip-{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+        let archive_path = root.join("sample.zip");
+        let mut zip = ZipWriter::new(File::create(&archive_path).unwrap());
+        for path in ["caf\u{00e9}.txt", "cafe\u{0301}.txt"] {
+            zip.start_file(path, SimpleFileOptions::default()).unwrap();
+            io::Write::write_all(&mut zip, b"x").unwrap();
+        }
+        zip.finish().unwrap();
+        assert!(extract_zip(&archive_path, &root, "out", None, false).is_err());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn previews_archive_entries_and_uncompressed_size() {
+        let root = std::env::temp_dir().join(format!("flickvert-zip-preview-{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+        let archive_path = root.join("sample.zip");
+        let mut zip = ZipWriter::new(File::create(&archive_path).unwrap());
+        zip.start_file("folder/photo.jpg", SimpleFileOptions::default()).unwrap();
+        io::Write::write_all(&mut zip, b"photo").unwrap();
+        zip.finish().unwrap();
+        let preview = preview_zip(&archive_path).unwrap();
+        assert_eq!(preview.total_size, 5);
+        assert_eq!(preview.file_count, 1);
+        assert!(preview.entries.iter().any(|entry| entry.path == "folder/photo.jpg"));
+        assert!(preview.entries.iter().any(|entry| entry.path == "folder" && entry.directory));
+        assert!(preview.conflicts.is_empty());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn extracts_only_the_selected_file_or_folder() {
+        let root = std::env::temp_dir().join(format!("flickvert-selective-zip-{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+        let archive_path = root.join("sample.zip");
+        let mut zip = ZipWriter::new(File::create(&archive_path).unwrap());
+        zip.start_file("keep.txt", SimpleFileOptions::default()).unwrap();
+        io::Write::write_all(&mut zip, b"keep").unwrap();
+        zip.start_file("folder/item.txt", SimpleFileOptions::default()).unwrap();
+        io::Write::write_all(&mut zip, b"item").unwrap();
+        zip.finish().unwrap();
+        let selected = ["folder".to_owned()];
+        let output = extract_zip(&archive_path, &root, "out", Some(&selected), false).unwrap().unwrap();
+        assert!(output.join("folder/item.txt").is_file());
+        assert!(!output.join("keep.txt").exists());
+        let selected = ["keep.txt".to_owned()];
+        let output = extract_zip(&archive_path, &root, "out", Some(&selected), false).unwrap().unwrap();
+        assert!(output.join("keep.txt").is_file());
+        assert!(!output.join("folder/item.txt").exists());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn extraction_uses_a_new_name_without_overwriting_existing_files() {
+        let root = std::env::temp_dir().join(format!("flickvert-existing-zip-{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+        let existing = root.join("out");
+        fs::create_dir_all(&existing).unwrap();
+        fs::write(existing.join("keep.txt"), b"keep").unwrap();
+        let archive_path = root.join("sample.zip");
+        let mut zip = ZipWriter::new(File::create(&archive_path).unwrap());
+        zip.start_file("keep.txt", SimpleFileOptions::default()).unwrap();
+        io::Write::write_all(&mut zip, b"archive").unwrap();
+        zip.finish().unwrap();
+
+        let extracted = extract_zip(&archive_path, &root, "out", None, false).unwrap().unwrap();
+        assert_ne!(extracted, existing);
+        assert_eq!(fs::read(existing.join("keep.txt")).unwrap(), b"keep");
+        assert_eq!(fs::read(extracted.join("keep.txt")).unwrap(), b"archive");
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn extraction_can_skip_an_existing_archive_folder() {
+        let root = std::env::temp_dir().join(format!("flickvert-skip-existing-zip-{}", std::process::id()));
+        fs::create_dir_all(root.join("out")).unwrap();
+        let archive_path = root.join("sample.zip");
+        let mut zip = ZipWriter::new(File::create(&archive_path).unwrap());
+        zip.start_file("file.txt", SimpleFileOptions::default()).unwrap();
+        io::Write::write_all(&mut zip, b"archive").unwrap();
+        zip.finish().unwrap();
+        assert!(extract_zip(&archive_path, &root, "out", None, true).unwrap().is_none());
+        assert!(!root.join("out/file.txt").exists());
+        fs::remove_dir_all(root).unwrap();
+    }
 
     #[test]
     fn zips_folder_contents_with_the_folder_name() {
@@ -283,7 +512,7 @@ mod tests {
         fs::write(folder.join("nested/photo.jpg"), b"photo").unwrap();
         let output = root.join("photos.zip");
 
-        create_zip(&[folder], &output).unwrap();
+        create_zip(&[folder], &output, 6).unwrap();
 
         let mut zip = ZipArchive::new(File::open(&output).unwrap()).unwrap();
         let mut photo = zip.by_name("photos/nested/photo.jpg").unwrap();

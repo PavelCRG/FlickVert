@@ -21,11 +21,15 @@ import type { Engines, ConversionCatalogItem, OperationQueueItem } from './app/t
 
 export default function App() {
   const [section, setSection] = useState<Section>('home')
+  const mainRef = useRef<HTMLElement>(null)
+  const previousSection = useRef(section)
   const [settingsPage, setSettingsPage] = useState<SettingsPage>('general')
   const [toolSearch, setToolSearch] = useState('')
   const toolSearchInput = useRef<HTMLInputElement>(null)
   const [toolCategory, setToolCategory] = useState<string | null>(null)
   const [recordingShortcut, setRecordingShortcut] = useState(false)
+  const [recordingOperationShortcut, setRecordingOperationShortcut] = useState<string | null>(null)
+  const [operationShortcutError, setOperationShortcutError] = useState(false)
   const [preferences, setPreferences] = useState<AppSettings>(loadSettings)
   const [presetName, setPresetName] = useState('')
   const [selectedDimensionPreset, setSelectedDimensionPreset] = useState('')
@@ -54,10 +58,17 @@ export default function App() {
   const favoriteIds = preferences.favoriteActions ?? []
   const toggleFavorite = (id: string) => updatePreferences({ favoriteActions: favoriteIds.includes(id) ? favoriteIds.filter((favorite) => favorite !== id) : [...favoriteIds, id] })
   useEffect(() => {
+    if (previousSection.current === section) return
+    previousSection.current = section
+    if (document.activeElement === document.body) mainRef.current?.focus()
+  }, [section])
+  useEffect(() => {
     if (section !== 'tools' || !toolCategory) return
-    document.getElementById(toolCategory)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    const target = document.getElementById(toolCategory)
+    if (!target) return
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' })
     setToolCategory(null)
-  }, [section, toolCategory])
+  }, [section, toolCategory, conversionCatalog])
   useEffect(() => {
     const focusSearch = (event: KeyboardEvent) => {
       if (section === 'tools' && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
@@ -114,20 +125,42 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (!recordingShortcut) return
+    if (!recordingShortcut && !recordingOperationShortcut) return
     const capture = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') { event.preventDefault(); setRecordingShortcut(false); return }
+      if (event.key === 'Escape') { event.preventDefault(); setRecordingShortcut(false); setRecordingOperationShortcut(null); return }
       if (['Control', 'Alt', 'Shift', 'Meta'].includes(event.key)) return
       event.preventDefault()
       const key = event.key === ' ' ? 'SPACE' : event.key.toUpperCase()
       const shortcut = [event.ctrlKey && 'CTRL', event.altKey && 'ALT', event.shiftKey && 'SHIFT', key].filter(Boolean).join('+')
       setRecordingShortcut(false)
-      if (validShortcut(shortcut)) void updateShortcut(shortcut)
+      if (recordingOperationShortcut) {
+        setRecordingOperationShortcut(null)
+        if (validShortcut(shortcut)) void updateOperationShortcut(recordingOperationShortcut, shortcut)
+        else setOperationShortcutError(true)
+      } else if (validShortcut(shortcut)) void updateShortcut(shortcut)
       else setShortcutError(true)
     }
     window.addEventListener('keydown', capture, true)
     return () => window.removeEventListener('keydown', capture, true)
-  }, [recordingShortcut])
+  }, [recordingShortcut, recordingOperationShortcut])
+
+  useEffect(() => {
+    if (isTauri()) void invoke('configure_operation_shortcuts', { shortcuts: preferences.operationShortcuts }).then(() => setOperationShortcutError(false)).catch(() => setOperationShortcutError(true))
+  }, [JSON.stringify(preferences.operationShortcuts)])
+
+  useEffect(() => {
+    if (isTauri()) void invoke('set_confirm_quit_on_close', { enabled: preferences.confirmQuitOnClose })
+  }, [preferences.confirmQuitOnClose])
+
+  useEffect(() => {
+    if (!isTauri()) return
+    let disposed = false
+    let stop: (() => void) | undefined
+    void listen('flickvert://confirm-quit', () => {
+      if (window.confirm(tr('Quit FlickVert? You can cancel to keep it running in the tray.'))) void invoke('quit_application')
+    }).then((unlisten) => { if (disposed) unlisten(); else stop = unlisten })
+    return () => { disposed = true; stop?.() }
+  }, [preferences.language])
 
   useEffect(() => {
     if (isTauri()) {
@@ -151,14 +184,14 @@ export default function App() {
     setPresetSaved(false)
     const preset = sizePresets.find((item) => item.id === value)
       ?? (value.startsWith('custom-') ? preferences.dimensionPresets?.[Number(value.slice(7))] : undefined)
-    if (preset) updatePreferences({ width: preset.width, height: preset.height })
+    if (preset) updatePreferences({ width: preset.width, height: preset.height, ...('quality' in preset && preset.quality ? { quality: preset.quality } : {}), ...('format' in preset && preset.format ? { format: preset.format } : {}) })
   }
 
   function saveDimensionPreset() {
     const name = presetName.trim()
     if (!name || !preferences.width || !preferences.height) return
     const presets = (preferences.dimensionPresets ?? []).filter((preset) => preset.name.toLocaleLowerCase() !== name.toLocaleLowerCase()).slice(-19)
-    const next = [...presets, { name, width: preferences.width, height: preferences.height }]
+    const next = [...presets, { name, width: preferences.width, height: preferences.height, quality: preferences.quality, format: preferences.format }]
     updatePreferences({ dimensionPresets: next })
     setSelectedDimensionPreset(`custom-${next.length - 1}`)
     setPresetName('')
@@ -189,7 +222,20 @@ export default function App() {
     try {
       if (file.size > 128 * 1024) throw new Error('Backup is too large')
       const backup: unknown = JSON.parse(await file.text())
-      updatePreferences(restoreSettingsBackup(backup, preferences.outputFolder))
+      const restored = restoreSettingsBackup(backup, preferences.outputFolder)
+      if (isTauri() && JSON.stringify(restored.operationShortcuts) !== JSON.stringify(preferences.operationShortcuts)) {
+        await invoke('configure_operation_shortcuts', { shortcuts: restored.operationShortcuts })
+      }
+      if (isTauri() && restored.launchAtStartup !== preferences.launchAtStartup) {
+        await invoke('set_startup_enabled', { enabled: restored.launchAtStartup })
+      }
+      if (isTauri() && restored.contextMenuEnabled !== preferences.contextMenuEnabled) {
+        await invoke('set_context_menu_enabled', { enabled: restored.contextMenuEnabled })
+      }
+      if (isTauri() && restored.confirmQuitOnClose !== preferences.confirmQuitOnClose) {
+        await invoke('set_confirm_quit_on_close', { enabled: restored.confirmQuitOnClose })
+      }
+      updatePreferences(restored)
       setSettingsImportError(false)
     } catch { setSettingsImportError(true) }
     event.target.value = ''
@@ -216,6 +262,22 @@ export default function App() {
     }
   }
 
+  async function updateOperationShortcut(actionId: string, shortcut?: string) {
+    const next = { ...preferences.operationShortcuts }
+    if (shortcut) {
+      if (shortcut === preferences.shortcut || Object.entries(next).some(([id, value]) => id !== actionId && value === shortcut)) {
+        setOperationShortcutError(true)
+        return
+      }
+      next[actionId] = shortcut
+    } else delete next[actionId]
+    try {
+      await invoke('configure_operation_shortcuts', { shortcuts: next })
+      setOperationShortcutError(false)
+      updatePreferences({ operationShortcuts: next })
+    } catch { setOperationShortcutError(true) }
+  }
+
   async function chooseFiles() {
     try { await invoke('choose_files'); setPickError(false) }
     catch { setPickError(true) }
@@ -237,7 +299,7 @@ export default function App() {
       tr={tr}
     />
 
-    <main className="main" tabIndex={0}>
+    <main ref={mainRef} className="main" tabIndex={0}>
       {section === 'home' ? <HomePage
         preferences={preferences}
         engines={engines}
@@ -274,12 +336,17 @@ export default function App() {
         tr={tr}
         pickError={pickError}
         shortcutError={shortcutError}
+        operationShortcutError={operationShortcutError}
+        setOperationShortcutError={setOperationShortcutError}
         modifierError={modifierError}
         recordingShortcut={recordingShortcut}
+        recordingOperationShortcut={recordingOperationShortcut}
         setRecordingShortcut={setRecordingShortcut}
+        setRecordingOperationShortcut={setRecordingOperationShortcut}
         setShortcutError={setShortcutError}
         updatePreferences={updatePreferences}
         updateShortcut={updateShortcut}
+        updateOperationShortcut={updateOperationShortcut}
         updateDragModifier={updateDragModifier}
         setSection={setSection}
         chooseOutputFolder={chooseOutputFolder}

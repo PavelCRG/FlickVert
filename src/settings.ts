@@ -5,8 +5,11 @@ export type VideoPreset = 'small' | 'balanced' | 'high'
 export type VideoCodec = 'h264' | 'hevc'
 export type VideoHeight = 480 | 720 | 1080
 export type AudioExtractionFormat = 'mp3' | 'm4a' | 'opus' | 'flac' | 'wav'
+export type PdfPageSize = 'source' | 'a4' | 'letter'
+export type PdfPageOrientation = 'auto' | 'portrait' | 'landscape'
+export type TerminalPreference = 'windows-terminal' | 'powershell'
 export type DragModifiers = { convert: 'SHIFT' | 'CTRL' | 'ALT'; tools: 'SHIFT' | 'CTRL' | 'ALT'; actions: 'SHIFT' | 'CTRL' | 'ALT' }
-export type DimensionPreset = { name: string; width: number; height: number }
+export type DimensionPreset = { name: string; width: number; height: number; quality?: number; format?: AppSettings['format'] }
 export type AppSettings = {
   language: Language
   appearance: Appearance
@@ -14,6 +17,10 @@ export type AppSettings = {
   customAccent?: string
   favoriteActions?: string[]
   quality: number
+  pdfDpi: number
+  pdfPageSize: PdfPageSize
+  pdfPageOrientation: PdfPageOrientation
+  zipCompressionLevel: number
   width?: number
   height?: number
   dimensionPresets?: DimensionPreset[]
@@ -26,11 +33,16 @@ export type AppSettings = {
   audioTruePeakDb: number
   audioExtractionFormat: AudioExtractionFormat
   shortcut: string
+  terminalPreference: TerminalPreference
+  launchAtStartup: boolean
+  contextMenuEnabled: boolean
+  confirmQuitOnClose: boolean
+  operationShortcuts: Record<string, string>
   dragModifiers: DragModifiers
 }
 
 export const defaultSettings: AppSettings = {
-  language: 'en', appearance: 'system', accent: 'blue', quality: 88, format: 'image/webp', videoPreset: 'balanced', videoCodec: 'h264', audioTargetLufs: -16, audioTruePeakDb: -1, audioExtractionFormat: 'mp3', shortcut: 'CTRL+ALT+SPACE', dragModifiers: { convert: 'SHIFT', tools: 'CTRL', actions: 'ALT' },
+  language: 'en', appearance: 'system', accent: 'blue', quality: 88, pdfDpi: 300, pdfPageSize: 'source', pdfPageOrientation: 'auto', zipCompressionLevel: 6, format: 'image/webp', videoPreset: 'balanced', videoCodec: 'h264', audioTargetLufs: -16, audioTruePeakDb: -1, audioExtractionFormat: 'mp3', shortcut: 'CTRL+ALT+SPACE', terminalPreference: 'windows-terminal', launchAtStartup: false, contextMenuEnabled: false, confirmQuitOnClose: false, operationShortcuts: {}, dragModifiers: { convert: 'SHIFT', tools: 'CTRL', actions: 'ALT' },
 }
 
 export const accentColors: Record<AccentColor, string> = {
@@ -41,12 +53,28 @@ export function accentColor(settings: AppSettings): string {
   return settings.customAccent && /^#[0-9a-fA-F]{6}$/.test(settings.customAccent) ? settings.customAccent : accentColors[settings.accent]
 }
 
+export function resetSettingsSection(section: 'appearance' | 'keyboard' | 'paths'): Partial<AppSettings> {
+  if (section === 'appearance') return { appearance: 'system', accent: 'blue', customAccent: undefined }
+  if (section === 'keyboard') return { shortcut: defaultSettings.shortcut, operationShortcuts: {}, dragModifiers: defaultSettings.dragModifiers }
+  return { outputFolder: undefined }
+}
+
 export function validShortcut(value: unknown): value is string {
   if (typeof value !== 'string') return false
   const parts = value.split('+')
   const key = parts.pop()
   const modifiers = parts
   return Boolean(key && modifiers.length && new Set(modifiers).size === modifiers.length && modifiers.every((part) => ['CTRL', 'ALT', 'SHIFT'].includes(part)) && /^(SPACE|[A-Z0-9]|F(?:[1-9]|1[0-2]))$/.test(key))
+}
+
+export function normalizeOperationShortcuts(value: unknown, primaryShortcut: string): Record<string, string> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  const used = new Set([primaryShortcut])
+  return Object.fromEntries(Object.entries(value).slice(0, 64).filter(([id, shortcut]) => {
+    if (!/^[a-z0-9-]{1,64}$/.test(id) || !validShortcut(shortcut) || used.has(shortcut)) return false
+    used.add(shortcut)
+    return true
+  }))
 }
 
 export function normalizeSettings(value: unknown): AppSettings {
@@ -56,6 +84,7 @@ export function normalizeSettings(value: unknown): AppSettings {
   const modifierKeys = [rawModifiers.convert, rawModifiers.tools, rawModifiers.actions]
   const validModifiers = modifierKeys.every((key) => key === 'SHIFT' || key === 'CTRL' || key === 'ALT') && new Set(modifierKeys).size === 3
   const validDimension = (v: unknown) => Number.isInteger(v) && Number(v) > 0 && Number(v) <= 32768 ? Number(v) : undefined
+  const shortcut = validShortcut(raw.shortcut) ? raw.shortcut : 'CTRL+ALT+SPACE'
   const presetNames = new Set<string>()
   const dimensionPresets = Array.isArray(raw.dimensionPresets) ? raw.dimensionPresets.flatMap((preset) => {
     if (!preset || typeof preset !== 'object') return []
@@ -66,7 +95,9 @@ export function normalizeSettings(value: unknown): AppSettings {
     const key = name.toLocaleLowerCase()
     if (!name || !width || !height || presetNames.has(key)) return []
     presetNames.add(key)
-    return [{ name, width, height }]
+    const quality = Number.isInteger(item.quality) && Number(item.quality) >= 40 && Number(item.quality) <= 100 ? Number(item.quality) : undefined
+    const format: AppSettings['format'] | undefined = item.format === 'image/png' || item.format === 'image/jpeg' || item.format === 'image/webp' ? item.format : undefined
+    return [{ name, width, height, ...(quality ? { quality } : {}), ...(format ? { format } : {}) }]
   }).slice(0, 20) : []
   return {
     language: raw.language === 'ru' || raw.language === 'zh' ? raw.language : 'en',
@@ -75,6 +106,10 @@ export function normalizeSettings(value: unknown): AppSettings {
     ...(typeof raw.customAccent === 'string' && /^#[0-9a-fA-F]{6}$/.test(raw.customAccent) ? { customAccent: raw.customAccent } : {}),
     ...(Array.isArray(raw.favoriteActions) ? { favoriteActions: [...new Set(raw.favoriteActions.filter((id): id is string => typeof id === 'string' && /^[a-z0-9-]+$/.test(id)))].slice(0, 100) } : {}),
     quality: Number.isInteger(raw.quality) && Number(raw.quality) >= 40 && Number(raw.quality) <= 100 ? Number(raw.quality) : 88,
+    pdfDpi: Number.isInteger(raw.pdfDpi) && Number(raw.pdfDpi) >= 72 && Number(raw.pdfDpi) <= 600 ? Number(raw.pdfDpi) : 300,
+    pdfPageSize: raw.pdfPageSize === 'a4' || raw.pdfPageSize === 'letter' ? raw.pdfPageSize : 'source',
+    pdfPageOrientation: raw.pdfPageOrientation === 'portrait' || raw.pdfPageOrientation === 'landscape' ? raw.pdfPageOrientation : 'auto',
+    zipCompressionLevel: Number.isInteger(raw.zipCompressionLevel) && Number(raw.zipCompressionLevel) >= 1 && Number(raw.zipCompressionLevel) <= 9 ? Number(raw.zipCompressionLevel) : 6,
     format: raw.format === 'image/png' || raw.format === 'image/jpeg' ? raw.format : 'image/webp',
     videoPreset: raw.videoPreset === 'small' || raw.videoPreset === 'high' ? raw.videoPreset : 'balanced',
     videoCodec: raw.videoCodec === 'hevc' ? 'hevc' : 'h264',
@@ -82,7 +117,12 @@ export function normalizeSettings(value: unknown): AppSettings {
     audioTargetLufs: Number.isInteger(raw.audioTargetLufs) && Number(raw.audioTargetLufs) >= -24 && Number(raw.audioTargetLufs) <= -14 ? Number(raw.audioTargetLufs) : -16,
     audioTruePeakDb: Number.isInteger(raw.audioTruePeakDb) && Number(raw.audioTruePeakDb) >= -9 && Number(raw.audioTruePeakDb) <= -1 ? Number(raw.audioTruePeakDb) : -1,
     audioExtractionFormat: ['mp3', 'm4a', 'opus', 'flac', 'wav'].includes(String(raw.audioExtractionFormat)) ? raw.audioExtractionFormat as AudioExtractionFormat : 'mp3',
-    shortcut: validShortcut(raw.shortcut) ? raw.shortcut : 'CTRL+ALT+SPACE',
+    shortcut,
+    operationShortcuts: normalizeOperationShortcuts(raw.operationShortcuts, shortcut),
+    terminalPreference: raw.terminalPreference === 'powershell' ? 'powershell' : 'windows-terminal',
+    launchAtStartup: raw.launchAtStartup === true,
+    contextMenuEnabled: raw.contextMenuEnabled === true,
+    confirmQuitOnClose: raw.confirmQuitOnClose === true,
     dragModifiers: validModifiers ? rawModifiers as DragModifiers : defaultSettings.dragModifiers,
     ...(validDimension(raw.width) ? { width: validDimension(raw.width) } : {}),
     ...(validDimension(raw.height) ? { height: validDimension(raw.height) } : {}),

@@ -3,6 +3,7 @@ import { AppIcon } from '../icons/AppIcon'
 import { operationErrorMessages } from '../quick-menu/operation-errors'
 import type { MessageKey } from '../i18n'
 import type { AppSettings } from '../settings'
+import { EngineInstallLinks } from './EngineInstallLinks'
 import type { Engines, OperationQueueItem } from './types'
 
 export function HomePage({ preferences, engines, queue, setQueue, pickError, resultOpenError, setResultOpenError, tr, onChooseFiles, onExploreTools, onOpenCategory, onOpenKeyboard, onRevealOutput }: {
@@ -20,6 +21,12 @@ export function HomePage({ preferences, engines, queue, setQueue, pickError, res
   onOpenKeyboard: () => void
   onRevealOutput: (path: string) => void
 }) {
+  const engineRows = [
+    ['FFmpeg', 'FFmpeg', engines.ffmpeg], ['Pandoc', 'Pandoc', engines.pandoc], ['ImageMagick', 'ImageMagick', engines.imagemagick],
+    ['LibreOffice', 'LibreOffice', engines.libreoffice], ['Poppler', 'Poppler', engines.poppler],
+    [tr('PDF merge (pdfunite)'), 'Poppler', engines.pdfunite], [tr('PDF split (Poppler)'), 'Poppler', engines.pdfsplit],
+    [tr('PDF page editor (qpdf)'), 'qpdf', engines.qpdf],
+  ] as const
   return <div className="page dashboard-page">
     <header className="settings-header"><div><h1>{tr('Home')}</h1><p className="subtitle">{tr('The file tools you need, right where you work.')}</p></div><button className="primary-button choose-files-button" onClick={onChooseFiles}><AppIcon name="file-plus"/>{tr('Choose files')}</button></header>
     {pickError && <p className="shortcut-error">{tr('Could not open files')}</p>}
@@ -40,7 +47,7 @@ export function HomePage({ preferences, engines, queue, setQueue, pickError, res
         {item.outputPath && <button className="queue-open-button" type="button" aria-label={`${tr('Show in folder')}: ${item.name}`} title={tr('Show in folder')} onClick={() => { setResultOpenError(false); onRevealOutput(item.outputPath!) }}><AppIcon name="folder"/></button>}
       </div>)}</div>
     </section>}
-    <section className="settings-group dashboard-engines"><h2>{tr('Conversion engines')}</h2><div className="engine-status">{([['FFmpeg', engines.ffmpeg], ['Pandoc', engines.pandoc], ['ImageMagick', engines.imagemagick], ['LibreOffice', engines.libreoffice], ['Poppler', engines.poppler], [tr('PDF merge (pdfunite)'), engines.pdfunite], [tr('PDF split (Poppler)'), engines.pdfsplit], [tr('PDF page editor (qpdf)'), engines.qpdf]] as const).map(([name, available]) => <div key={name}><span>{name}</span><span className={available ? 'engine-found' : ''}>{tr(available ? 'Detected' : 'Not detected on PATH')}</span></div>)}</div></section>
+    <section className="settings-group dashboard-engines"><h2>{tr('Conversion engines')}</h2><div className="engine-status">{engineRows.map(([name, guide, available]) => <div key={name}><span>{name}</span><span className={available ? 'engine-found' : ''}>{tr(available ? 'Detected' : 'Not detected on PATH')}{!available && <EngineInstallLinks engine={guide} tr={tr}/>}</span></div>)}</div></section>
     <button className="dashboard-shortcut" onClick={onOpenKeyboard}><span>{tr('Quick shortcut')}</span><kbd>{preferences.shortcut.split('+').map((key) => key === 'CTRL' ? 'Ctrl' : key === 'ALT' ? 'Alt' : key === 'SHIFT' ? 'Shift' : key === 'SPACE' ? 'Space' : key).join(' + ')}</kbd><span>{tr('Change shortcut')} →</span></button>
   </div>
 }

@@ -10,7 +10,6 @@ export function QuickStartPage({ preferences, tr, onHome, onChooseFiles }: {
   onChooseFiles: () => void
 }) {
   return <div className="page welcome-page">
-    <div className="welcome-mark" aria-hidden="true" style={{ maskImage: "url('/fv-file-orange.png')", WebkitMaskImage: "url('/fv-file-orange.png')" }}/>
     <p className="welcome-eyebrow">{tr('Quick start')}</p>
     <h1>{tr('Welcome to FlickVert')}</h1>
     <p className="welcome-intro">{tr('The file tools you need, right where you work.')}</p>

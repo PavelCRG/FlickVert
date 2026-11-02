@@ -50,6 +50,8 @@ export function fileActionsForPlatform(isWindows: boolean): QuickAction[] {
   return isWindows ? [...fileActions] : fileActions.filter((action) => action.id !== 'copy-powershell-path')
 }
 
+export const operationShortcutActions: QuickAction[] = [...allToolActions, ...archiveToolActions, ...pdfMergeActions, ...pdfSplitActions, ...pdfPageActions, ...fileActions].filter((action, index, actions) => actions.findIndex((candidate) => candidate.id === action.id) === index)
+
 const imageExtensions = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'svg']
 const extendedImageExtensions = [...imageExtensions, 'heic', 'heif', 'avif', 'tif', 'tiff']
 

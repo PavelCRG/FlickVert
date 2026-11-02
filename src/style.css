@@ -180,6 +180,7 @@ button:active:not(:disabled) { filter: brightness(.96); }
 button:disabled { opacity: .55; cursor: default; }
 .engine-status { margin-top: 1px; }
 .engine-status > div { min-height: 31px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent); color: var(--muted); font-size: 11px; }
+.engine-status > div span:last-child { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
 .engine-status > div span:first-child { color: var(--text); }
 .engine-status > div span:last-child::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 7px; border-radius: 50%; background: var(--faint); vertical-align: 1px; }
 .engine-status .engine-found::before { background: var(--good); }

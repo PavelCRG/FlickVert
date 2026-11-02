@@ -33,7 +33,7 @@ After installing a release that includes the updater, FlickVert checks for signe
 
 ## Quick start
 
-1. Start FlickVert. The Quick start guide appears on first launch; the settings window opens on later launches.
+1. Start FlickVert. Home opens on every launch. Open **Quick start** from the sidebar or **Show quick start** in Settings for the guide.
 2. Drag a file, press **Shift**, and drop it onto a format in the wheel beside the pointer.
 3. Find the converted file beside the original. Use Home to browse supported formats and Settings to customize the app.
 

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { normalizeSettings, defaultSettings, createSettingsBackup, restoreSettingsBackup } from './settings.ts'
+import { normalizeSettings, normalizeOperationShortcuts, defaultSettings, createSettingsBackup, restoreSettingsBackup, resetSettingsSection } from './settings.ts'
 
 test('invalid or absent saved settings resolve to safe defaults', () => {
   assert.deepEqual(normalizeSettings(undefined), defaultSettings)
@@ -36,10 +36,66 @@ test('audio extraction format defaults safely and is retained in settings backup
   assert.equal(restoreSettingsBackup(JSON.parse(createSettingsBackup(settings))).audioExtractionFormat, 'opus')
 })
 
+test('PDF export DPI stays within safe bounds and is backed up', () => {
+  assert.equal(normalizeSettings({ pdfDpi: 20 }).pdfDpi, 300)
+  assert.equal(normalizeSettings({ pdfDpi: 900 }).pdfDpi, 300)
+  const settings = normalizeSettings({ pdfDpi: 450 })
+  assert.equal(settings.pdfDpi, 450)
+  assert.equal(restoreSettingsBackup(JSON.parse(createSettingsBackup(settings))).pdfDpi, 450)
+})
+
+test('PDF page size and orientation are validated and backed up', () => {
+  assert.deepEqual(normalizeSettings({ pdfPageSize: 'invalid', pdfPageOrientation: 'sideways' }), defaultSettings)
+  const settings = normalizeSettings({ pdfPageSize: 'letter', pdfPageOrientation: 'landscape' })
+  assert.equal(settings.pdfPageSize, 'letter')
+  assert.equal(settings.pdfPageOrientation, 'landscape')
+  const restored = restoreSettingsBackup(JSON.parse(createSettingsBackup(settings)))
+  assert.equal(restored.pdfPageSize, 'letter')
+  assert.equal(restored.pdfPageOrientation, 'landscape')
+})
+
+test('ZIP compression level is bounded and retained in settings backups', () => {
+  assert.equal(normalizeSettings({ zipCompressionLevel: 12 }).zipCompressionLevel, 6)
+  const settings = normalizeSettings({ zipCompressionLevel: 2 })
+  assert.equal(settings.zipCompressionLevel, 2)
+  assert.equal(restoreSettingsBackup(JSON.parse(createSettingsBackup(settings))).zipCompressionLevel, 2)
+})
+
 test('valid settings retain supported preferences', () => {
   assert.deepEqual(normalizeSettings({ language: 'ru', appearance: 'dark', quality: 75, width: 1200, height: 900, format: 'image/jpeg', shortcut: 'CTRL+SHIFT+SPACE', outputFolder: 'D:/Photos' }), {
-    language: 'ru', appearance: 'dark', accent: 'blue', quality: 75, width: 1200, height: 900, format: 'image/jpeg', videoPreset: 'balanced', videoCodec: 'h264', audioTargetLufs: -16, audioTruePeakDb: -1, audioExtractionFormat: 'mp3', shortcut: 'CTRL+SHIFT+SPACE', dragModifiers: { convert: 'SHIFT', tools: 'CTRL', actions: 'ALT' }, outputFolder: 'D:/Photos',
+    language: 'ru', appearance: 'dark', accent: 'blue', quality: 75, pdfDpi: 300, pdfPageSize: 'source', pdfPageOrientation: 'auto', zipCompressionLevel: 6, width: 1200, height: 900, format: 'image/jpeg', videoPreset: 'balanced', videoCodec: 'h264', audioTargetLufs: -16, audioTruePeakDb: -1, audioExtractionFormat: 'mp3', shortcut: 'CTRL+SHIFT+SPACE', operationShortcuts: {}, terminalPreference: 'windows-terminal', launchAtStartup: false, contextMenuEnabled: false, confirmQuitOnClose: false, dragModifiers: { convert: 'SHIFT', tools: 'CTRL', actions: 'ALT' }, outputFolder: 'D:/Photos',
   })
+})
+
+test('preferred terminal is validated and included in settings backups', () => {
+  assert.equal(normalizeSettings({ terminalPreference: 'unknown' }).terminalPreference, 'windows-terminal')
+  const settings = normalizeSettings({ terminalPreference: 'powershell' })
+  assert.equal(restoreSettingsBackup(JSON.parse(createSettingsBackup(settings))).terminalPreference, 'powershell')
+})
+
+test('startup preference defaults off and is retained in settings backups', () => {
+  assert.equal(normalizeSettings({ launchAtStartup: 'true' }).launchAtStartup, false)
+  const settings = normalizeSettings({ launchAtStartup: true })
+  assert.equal(restoreSettingsBackup(JSON.parse(createSettingsBackup(settings))).launchAtStartup, true)
+})
+
+test('context menu integration defaults off and is retained in settings backups', () => {
+  assert.equal(normalizeSettings({ contextMenuEnabled: 'true' }).contextMenuEnabled, false)
+  const settings = normalizeSettings({ contextMenuEnabled: true })
+  assert.equal(restoreSettingsBackup(JSON.parse(createSettingsBackup(settings))).contextMenuEnabled, true)
+})
+
+test('confirmed quit on close defaults off and is retained in settings backups', () => {
+  assert.equal(defaultSettings.confirmQuitOnClose, false)
+  const settings = normalizeSettings({ confirmQuitOnClose: true })
+  assert.equal(restoreSettingsBackup(JSON.parse(createSettingsBackup(settings))).confirmQuitOnClose, true)
+})
+
+test('operation shortcut assignments reject malformed keys and collisions', () => {
+  assert.deepEqual(normalizeOperationShortcuts({ resize: 'CTRL+ALT+R', rotate: 'CTRL+ALT+R', grayscale: 'CTRL+ALT+G', bad: 'CTRL+CTRL+R', 'not valid': 'CTRL+ALT+B' }, 'CTRL+ALT+SPACE'), {
+    resize: 'CTRL+ALT+R', grayscale: 'CTRL+ALT+G',
+  })
+  assert.deepEqual(normalizeOperationShortcuts({ square: 'CTRL+ALT+SPACE' }, 'CTRL+ALT+SPACE'), {})
 })
 
 test('missing or invalid accent preferences default to blue', () => {
@@ -67,6 +123,13 @@ test('custom dimension presets are validated, deduplicated, and bounded', () => 
   assert.equal(normalizeSettings({ dimensionPresets: Array.from({ length: 25 }, (_, index) => ({ name: `Preset ${index}`, width: 100 + index, height: 200 + index })) }).dimensionPresets?.length, 20)
 })
 
+test('custom presets retain bounded quality and supported output format', () => {
+  const preset = normalizeSettings({ dimensionPresets: [{ name: 'Web', width: 1600, height: 900, quality: 76, format: 'image/jpeg' }] }).dimensionPresets?.[0]
+  assert.deepEqual(preset, { name: 'Web', width: 1600, height: 900, quality: 76, format: 'image/jpeg' })
+  const invalid = normalizeSettings({ dimensionPresets: [{ name: 'Bad', width: 1600, height: 900, quality: 120, format: 'exe' }] }).dimensionPresets?.[0]
+  assert.deepEqual(invalid, { name: 'Bad', width: 1600, height: 900 })
+})
+
 test('settings backups exclude local paths and restore valid preferences', () => {
   const settings = { ...defaultSettings, outputFolder: 'C:/Users/Pavel/Private' }
   const backup = JSON.parse(createSettingsBackup(settings))
@@ -84,4 +147,15 @@ test('settings backups retain custom dimension presets but exclude output paths'
 test('settings backup import rejects unrelated and incomplete JSON', () => {
   assert.throws(() => restoreSettingsBackup({ settings: {} }))
   assert.throws(() => restoreSettingsBackup({ app: 'FlickVert', version: 1, settings: { language: 'en' } }))
+})
+
+test('section resets change only their own preferences', () => {
+  const current = normalizeSettings({ appearance: 'dark', accent: 'teal', customAccent: '#112233', shortcut: 'CTRL+SHIFT+SPACE', outputFolder: 'D:/Files' })
+  const appearance = normalizeSettings({ ...current, ...resetSettingsSection('appearance') })
+  assert.equal(appearance.appearance, 'system')
+  assert.equal(appearance.accent, 'blue')
+  assert.equal(appearance.customAccent, undefined)
+  assert.equal(appearance.outputFolder, current.outputFolder)
+  assert.deepEqual(normalizeSettings({ ...current, ...resetSettingsSection('keyboard') }), { ...current, shortcut: defaultSettings.shortcut, operationShortcuts: {}, dragModifiers: defaultSettings.dragModifiers })
+  assert.equal(normalizeSettings({ ...current, ...resetSettingsSection('paths') }).outputFolder, undefined)
 })

@@ -28,9 +28,15 @@ impl std::fmt::Display for FileError {
 static TEMP_ID: AtomicU64 = AtomicU64::new(0);
 
 fn valid_name(name: &str) -> bool {
+    let stem = name.split('.').next().unwrap_or("").trim_end_matches(' ');
     !name.is_empty()
+        && name.len() <= 240
+        && !name.ends_with(' ')
+        && !name.ends_with('.')
+        && !name.chars().any(|character| character.is_control() || "<>:\"/\\|?*".contains(character))
         && name != "."
         && name != ".."
+        && !matches!(stem.to_ascii_uppercase().as_str(), "CON" | "PRN" | "AUX" | "NUL" | "COM1" | "COM2" | "COM3" | "COM4" | "COM5" | "COM6" | "COM7" | "COM8" | "COM9" | "LPT1" | "LPT2" | "LPT3" | "LPT4" | "LPT5" | "LPT6" | "LPT7" | "LPT8" | "LPT9")
         && Path::new(name).file_name().is_some_and(|part| part == name)
 }
 
@@ -280,6 +286,17 @@ mod tests {
             unique_output_path(&root, "photo.webp").unwrap(),
             root.join("photo (3).webp")
         );
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn rejects_unsafe_and_overlong_output_names_but_keeps_unicode() {
+        let root = dir();
+        let too_long = "x".repeat(241);
+        for name in ["../escape.txt", "bad:name.txt", "CON.txt", "trailing. ", too_long.as_str()] {
+            assert!(unique_output_path(&root, name).is_err(), "{name}");
+        }
+        assert_eq!(unique_output_path(&root, "Отчёт café.txt").unwrap(), root.join("Отчёт café.txt"));
         let _ = fs::remove_dir_all(root);
     }
 

@@ -9,7 +9,7 @@ use std::{
         OnceLock,
     },
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 #[derive(Clone, Debug)]
@@ -834,6 +834,17 @@ pub fn run_cancellable_with_progress(
     args: &[OsString],
     cancelled: &AtomicBool,
     duration_us: Option<u64>,
+    on_progress: impl FnMut(u8),
+) -> io::Result<Output> {
+    run_cancellable_with_timeout(executable, args, cancelled, duration_us, Duration::from_secs(6 * 60 * 60), on_progress)
+}
+
+fn run_cancellable_with_timeout(
+    executable: &Path,
+    args: &[OsString],
+    cancelled: &AtomicBool,
+    duration_us: Option<u64>,
+    timeout: Duration,
     mut on_progress: impl FnMut(u8),
 ) -> io::Result<Output> {
     let mut child = Command::new(executable)
@@ -850,6 +861,7 @@ pub fn run_cancellable_with_progress(
         None => read_bounded(stdout),
     });
     let stderr_reader = thread::spawn(move || read_bounded(stderr));
+    let started = Instant::now();
     let status = loop {
         while let Ok(progress) = progress_rx.try_recv() {
             on_progress(progress);
@@ -863,6 +875,13 @@ pub fn run_cancellable_with_progress(
                 io::ErrorKind::Interrupted,
                 "Operation cancelled",
             ));
+        }
+        if started.elapsed() >= timeout {
+            let _ = child.kill();
+            let _ = child.wait();
+            let _ = stdout_reader.join();
+            let _ = stderr_reader.join();
+            return Err(io::Error::new(io::ErrorKind::TimedOut, "Operation timed out"));
         }
         match child.try_wait() {
             Ok(Some(status)) => break status,
@@ -1377,6 +1396,24 @@ mod tests {
     }
 
     #[test]
+    fn cancellable_child_stops_when_the_timeout_expires() {
+        use std::{sync::atomic::AtomicBool, time::Instant};
+
+        #[cfg(windows)]
+        let (executable, args) = (
+            PathBuf::from("powershell.exe"),
+            vec![OsString::from("-NoProfile"), OsString::from("-Command"), OsString::from("Start-Sleep -Seconds 30")],
+        );
+        #[cfg(not(windows))]
+        let (executable, args) = (PathBuf::from("sh"), vec![OsString::from("-c"), OsString::from("sleep 30")]);
+
+        let started = Instant::now();
+        let result = run_cancellable_with_timeout(&executable, &args, &AtomicBool::new(false), None, Duration::from_millis(100), |_| {});
+        assert!(matches!(result, Err(error) if error.kind() == io::ErrorKind::TimedOut));
+        assert!(started.elapsed() < Duration::from_secs(5));
+    }
+
+    #[test]
     fn exposes_only_operations_with_their_required_engine() {
         let engines = Engines {
             pandoc: true,
@@ -1430,6 +1467,9 @@ mod tests {
         assert_eq!(operation.engine, Engine::LibreOffice);
         assert_eq!(operation.output_extensions, ["pdf"]);
         assert!(operation_for("xlsx", "pdf", Engines::default()).is_none());
+        for extension in ["doc", "docx", "xls", "xlsx", "ods", "ppt", "pptx", "odp"] {
+            assert_eq!(operation_for(extension, "pdf", engines).unwrap().engine, Engine::LibreOffice, "{extension}");
+        }
     }
 
     #[test]

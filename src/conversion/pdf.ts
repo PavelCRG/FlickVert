@@ -1,3 +1,5 @@
+import { pdfPageLayout, type PdfPageOrientation, type PdfPageSize } from './pdf-page-layout'
+
 const encoder = new TextEncoder()
 
 function text(value: string) {
@@ -29,7 +31,7 @@ function join(parts: Uint8Array[]) {
   return output
 }
 
-export async function imagesToPdf(files: File[], quality: number): Promise<Uint8Array> {
+export async function imagesToPdf(files: File[], quality: number, pageSize: PdfPageSize = 'source', orientation: PdfPageOrientation = 'auto'): Promise<Uint8Array> {
   if (!files.length || files.length > 100) throw new Error('Select between 1 and 100 images')
   const pages = await Promise.all(files.map((file) => jpegPage(file, quality)))
   if (pages.reduce((size, page) => size + page.bytes.length, 0) > 32 * 1024 * 1024) throw new Error('PDF images exceed the 32 MB limit')
@@ -42,8 +44,9 @@ export async function imagesToPdf(files: File[], quality: number): Promise<Uint8
     const pageId = 3 + index * 3
     const contentId = pageId + 1
     const imageId = pageId + 2
-    const content = text(`q ${page.width} 0 0 ${page.height} 0 0 cm /Im0 Do Q`)
-    objects[pageId] = text(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${page.width} ${page.height}] /Resources << /XObject << /Im0 ${imageId} 0 R >> >> /Contents ${contentId} 0 R >>`)
+    const layout = pdfPageLayout(page.width, page.height, pageSize, orientation)
+    const content = text(`q ${layout.imageWidth} 0 0 ${layout.imageHeight} ${layout.x} ${layout.y} cm /Im0 Do Q`)
+    objects[pageId] = text(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${layout.pageWidth} ${layout.pageHeight}] /Resources << /XObject << /Im0 ${imageId} 0 R >> >> /Contents ${contentId} 0 R >>`)
     objects[contentId] = join([text(`<< /Length ${content.length} >>\nstream\n`), content, text('\nendstream')])
     objects[imageId] = join([text(`<< /Type /XObject /Subtype /Image /Width ${page.width} /Height ${page.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${page.bytes.length} >>\nstream\n`), page.bytes, text('\nendstream')])
   })

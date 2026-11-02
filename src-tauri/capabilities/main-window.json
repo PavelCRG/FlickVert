@@ -2,5 +2,24 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main-window-controls",
   "windows": ["main"],
-  "permissions": ["core:window:allow-minimize", "core:window:allow-toggle-maximize", "core:window:allow-close", "core:window:allow-start-dragging", "core:window:allow-start-resize-dragging", "updater:default", "process:allow-restart"]
+  "permissions": [
+    "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-close",
+    "core:window:allow-start-dragging",
+    "core:window:allow-start-resize-dragging",
+    "updater:default",
+    "process:allow-restart",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        { "url": "https://ffmpeg.org/download.html" },
+        { "url": "https://pandoc.org/installing.html" },
+        { "url": "https://imagemagick.org/download/" },
+        { "url": "https://www.libreoffice.org/download/" },
+        { "url": "https://poppler.freedesktop.org/" },
+        { "url": "https://github.com/qpdf/qpdf/releases" }
+      ]
+    }
+  ]
 }

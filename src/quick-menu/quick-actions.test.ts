@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import { strict as assert } from 'node:assert'
-import { canRunFileAction, canRunSelectedTool, canRunWheelTool, canUseNativeImagePath, commonFormats, conversionConcurrency, selectedToolUnavailableReason, toolActionsFor } from './quick-actions.ts'
+import { canRunFileAction, canRunSelectedTool, canRunWheelTool, canUseNativeImagePath, commonFormats, conversionConcurrency, operationShortcutActions, selectedToolUnavailableReason, toolActionsFor } from './quick-actions.ts'
 import { operationErrorKind } from './operation-errors.ts'
 import { conversionPreview } from './conversion-preview.ts'
 import { validateVideoFrameTime, validateVideoTrimRange } from '../video-trim.ts'
@@ -28,6 +28,7 @@ test('operation errors map only known native codes to user-facing categories', (
   assert.equal(operationErrorKind(new Error('flickvert-error:write')), 'write')
   assert.equal(operationErrorKind('flickvert-error:unsupported'), 'unsupported')
   assert.equal(operationErrorKind('flickvert-error:cancelled'), 'cancelled')
+  assert.equal(operationErrorKind('flickvert-error:pdf-no-text'), 'pdfNoText')
   assert.equal(operationErrorKind('unrecognized native error with a local path'), 'conversion')
 })
 
@@ -152,4 +153,12 @@ test('video thumbnail time must point inside the source duration', () => {
   assert.equal(validateVideoFrameTime('1.25', 2_000_000), 1_250_000)
   assert.equal(validateVideoFrameTime('0', 2_000_000), 0)
   for (const value of ['', '-0.1', '2', 'Infinity']) assert.equal(validateVideoFrameTime(value, 2_000_000), null)
+})
+
+test('operation shortcut catalog contains unique wheel operations', () => {
+  const ids = operationShortcutActions.map((action) => action.id)
+  assert.equal(new Set(ids).size, ids.length)
+  assert.ok(ids.includes('extract-zip'))
+  assert.ok(ids.includes('edit-pdf-pages'))
+  assert.ok(ids.includes('copy-path'))
 })

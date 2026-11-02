@@ -4,7 +4,7 @@ use std::{
     collections::{HashMap, HashSet},
     ffi::OsString,
     fs,
-    io::Write,
+    io::{Read, Write},
     path::{Path, PathBuf},
     process::{Command, Output, Stdio},
     sync::{
@@ -12,6 +12,7 @@ use std::{
         Arc, Mutex,
     },
 };
+use std::ops::Deref;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
@@ -21,10 +22,12 @@ use tauri::{
 use tauri_plugin_global_shortcut::GlobalShortcutExt;
 mod archive;
 mod files;
+mod file_signatures;
 mod input;
 mod operations;
 mod quick_window;
 mod selection;
+mod shell_integration;
 
 const QUICK_WIDTH: u32 = 288;
 const QUICK_HEIGHT: u32 = 288;
@@ -55,7 +58,47 @@ struct DroppedFiles(Mutex<HashSet<PathBuf>>);
 #[derive(Default)]
 struct DragTrigger(Mutex<bool>);
 
+#[derive(Default)]
+struct RegisteredShortcut(Mutex<Option<String>>);
+
+#[derive(Default)]
+struct OperationShortcuts(Mutex<HashMap<String, String>>);
+
+struct ConfirmQuitOnClose(AtomicBool);
+
 struct StartupFiles(Mutex<Vec<String>>);
+
+struct TemporaryDirectory(PathBuf);
+
+impl Deref for TemporaryDirectory {
+    type Target = Path;
+
+    fn deref(&self) -> &Path {
+        &self.0
+    }
+}
+
+impl Drop for TemporaryDirectory {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.0);
+    }
+}
+
+fn cleanup_stale_workspaces(root: &Path, now: std::time::SystemTime) {
+    let Ok(entries) = fs::read_dir(root) else { return };
+    for entry in entries.flatten() {
+        let Ok(metadata) = entry.metadata() else { continue };
+        if is_stale_workspace(&entry.file_name().to_string_lossy(), metadata.is_dir(), metadata.modified().ok(), now) {
+            let _ = fs::remove_dir_all(entry.path());
+        }
+    }
+}
+
+fn is_stale_workspace(name: &str, is_dir: bool, modified: Option<std::time::SystemTime>, now: std::time::SystemTime) -> bool {
+    let Some((pid, counter)) = name.split_once('-') else { return false };
+    is_dir && pid.bytes().all(|byte| byte.is_ascii_digit()) && counter.bytes().all(|byte| byte.is_ascii_digit())
+        && modified.and_then(|time| now.duration_since(time).ok()).is_some_and(|age| age > std::time::Duration::from_secs(24 * 60 * 60))
+}
 
 #[derive(Default)]
 struct OperationJobs {
@@ -105,6 +148,25 @@ fn operation_error(kind: &str) -> String {
     format!("flickvert-error:{kind}")
 }
 
+fn error_log_line(kind: &str, timestamp: u64) -> Option<String> {
+    matches!(kind, "input" | "unsupported" | "engine" | "access" | "conversion" | "protected" | "pdfNoText" | "write" | "cancelled")
+        .then(|| format!("{timestamp}\t{kind}"))
+}
+
+#[tauri::command]
+fn log_operation_error(app: AppHandle, kind: String) -> Result<(), String> {
+    let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_err(|_| "System clock is unavailable")?.as_secs();
+    let line = error_log_line(&kind, timestamp).ok_or("Unsupported error category")?;
+    let directory = app.path().app_log_dir().map_err(|error| error.to_string())?;
+    fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
+    let path = directory.join("operations.log");
+    if fs::metadata(&path).is_ok_and(|metadata| metadata.len() > 1024 * 1024) {
+        fs::remove_file(&path).map_err(|error| error.to_string())?;
+    }
+    let mut log = fs::OpenOptions::new().create(true).append(true).open(path).map_err(|error| error.to_string())?;
+    writeln!(log, "{line}").map_err(|error| error.to_string())
+}
+
 fn process_error(error: std::io::Error) -> String {
     operation_error(if error.kind() == std::io::ErrorKind::Interrupted {
         "cancelled"
@@ -133,6 +195,12 @@ fn cancel_operation_job(job_id: String, jobs: tauri::State<'_, OperationJobs>) {
 #[tauri::command]
 fn finish_operation_job(job_id: String, jobs: tauri::State<'_, OperationJobs>) {
     jobs.active.lock().unwrap().remove(&job_id);
+}
+
+fn cancel_all_operation_jobs(jobs: &OperationJobs) {
+    for cancelled in jobs.active.lock().unwrap().values() {
+        cancelled.store(true, Ordering::Release);
+    }
 }
 
 #[tauri::command]
@@ -358,6 +426,9 @@ fn quick_formats(
         .and_then(|value| value.to_str())
         .unwrap_or("")
         .to_ascii_lowercase();
+    if !file_signatures::file_matches(&extension, &input).map_err(|_| operation_error("access"))? {
+        return Err(operation_error("unsupported"));
+    }
     if let Some(mut formats) = operations::quick_image_formats(&extension) {
         let engines = operations::all_engine_status();
         for format in operations::output_extensions_for(&extension, engines) {
@@ -401,6 +472,23 @@ fn read_dropped_file(
     fs::read(input).map_err(|error| error.to_string())
 }
 
+fn clamp_pdf_dpi(dpi: Option<u32>) -> u32 {
+    dpi.unwrap_or(300).clamp(72, 600)
+}
+
+fn has_pdf_text<R: Read>(reader: &mut R) -> std::io::Result<bool> {
+    let mut buffer = [0; 4096];
+    loop {
+        let length = reader.read(&mut buffer)?;
+        if length == 0 {
+            return Ok(false);
+        }
+        if buffer[..length].iter().any(|byte| !byte.is_ascii_whitespace()) {
+            return Ok(true);
+        }
+    }
+}
+
 #[tauri::command(async)]
 fn convert_file(
     app: AppHandle,
@@ -409,6 +497,7 @@ fn convert_file(
     quality: Option<u8>,
     width: Option<u32>,
     height: Option<u32>,
+    pdf_dpi: Option<u32>,
     destination_folder: Option<String>,
     dropped: tauri::State<'_, DroppedFiles>,
     job_id: String,
@@ -436,6 +525,9 @@ fn convert_file(
         .and_then(|value| value.to_str())
         .unwrap_or("")
         .to_ascii_lowercase();
+    if !file_signatures::file_matches(&extension, &input).map_err(|_| operation_error("access"))? {
+        return Err(operation_error("unsupported"));
+    }
     let engines = operations::all_engine_status();
     let operation = operations::operation_for(&extension, &output_extension, engines);
     let Some(operation) = operation else {
@@ -475,6 +567,7 @@ fn convert_file(
             Err(_) => return Err(operation_error("access")),
         }
     };
+    let work_dir = TemporaryDirectory(work_dir);
     let result = (|| {
         if cancelled.load(Ordering::Acquire) {
             return Err(operation_error("cancelled"));
@@ -492,6 +585,7 @@ fn convert_file(
                 &destination,
                 stem,
                 &output_extension,
+                clamp_pdf_dpi(pdf_dpi),
                 &cancelled,
             );
         }
@@ -518,6 +612,7 @@ fn convert_file(
                 &destination,
                 stem,
                 &output_extension,
+                clamp_pdf_dpi(pdf_dpi),
                 &cancelled,
             );
         }
@@ -603,6 +698,11 @@ fn convert_file(
         {
             return Err(operation_error("conversion"));
         }
+        if !file_signatures::file_matches(&output_extension, &output_temp)
+            .map_err(|_| operation_error("access"))?
+        {
+            return Err(operation_error("conversion"));
+        }
         if cancelled.load(Ordering::Acquire) {
             return Err(operation_error("cancelled"));
         }
@@ -617,7 +717,7 @@ fn convert_file(
             .map(|path| path.to_string_lossy().into_owned())
             .map_err(|_| operation_error("write"))
     })();
-    let _ = fs::remove_dir_all(work_dir);
+
     result.map_err(|error| {
         if error.starts_with("flickvert-error:") {
             error
@@ -633,6 +733,7 @@ fn convert_pdf(
     destination: &Path,
     stem: &str,
     extension: &str,
+    dpi: u32,
     cancelled: &AtomicBool,
 ) -> Result<String, String> {
     if ["txt", "md", "docx", "epub"].contains(&extension) {
@@ -649,13 +750,13 @@ fn convert_pdf(
         if !output.status.success() {
             return Err(operation_error("conversion"));
         }
-        if !temporary.is_file()
-            || fs::metadata(&temporary)
-                .map_err(|_| operation_error("access"))?
-                .len()
-                == 0
-        {
+        if !temporary.is_file() {
             return Err(operation_error("conversion"));
+        }
+        if !has_pdf_text(&mut fs::File::open(&temporary).map_err(|_| operation_error("access"))?)
+            .map_err(|_| operation_error("access"))?
+        {
+            return Err(operation_error("pdf-no-text"));
         }
         let source = if ["docx", "epub"].contains(&extension) {
             let pandoc =
@@ -687,7 +788,7 @@ fn convert_pdf(
     let prefix = work_dir.join("page");
     let args = [
         std::ffi::OsString::from("-r"),
-        std::ffi::OsString::from("300"),
+        std::ffi::OsString::from(dpi.to_string()),
         std::ffi::OsString::from(if extension == "png" { "-png" } else { "-jpeg" }),
         input.as_os_str().to_owned(),
         prefix.as_os_str().to_owned(),
@@ -757,6 +858,9 @@ fn process_image_tool(
         .and_then(|value| value.to_str())
         .unwrap_or("")
         .to_ascii_lowercase();
+    if !file_signatures::file_matches(&extension, &input).map_err(|_| operation_error("access"))? {
+        return Err(operation_error("unsupported"));
+    }
     if !["heic", "heif", "avif", "tif", "tiff", "svg"].contains(&extension.as_str()) {
         return Err(operation_error("unsupported"));
     }
@@ -799,6 +903,7 @@ fn process_image_tool(
             Err(_) => return Err(operation_error("access")),
         }
     };
+    let work_dir = TemporaryDirectory(work_dir);
     let result = (|| {
         let output_extension = if action_id == "compress" {
             "jpg"
@@ -824,6 +929,11 @@ fn process_image_tool(
         {
             return Err(operation_error("conversion"));
         }
+        if !file_signatures::file_matches(output_extension, &temporary)
+            .map_err(|_| operation_error("access"))?
+        {
+            return Err(operation_error("conversion"));
+        }
         let stem = input
             .file_stem()
             .and_then(|value| value.to_str())
@@ -838,7 +948,7 @@ fn process_image_tool(
         .map(|path| path.to_string_lossy().into_owned())
         .map_err(|_| operation_error("write"))
     })();
-    let _ = fs::remove_dir_all(work_dir);
+
     result.map_err(|error| {
         if error.starts_with("flickvert-error:") {
             error
@@ -875,6 +985,9 @@ fn process_media_tool(
         .and_then(|value| value.to_str())
         .unwrap_or("")
         .to_ascii_lowercase();
+    if !file_signatures::file_matches(&extension, &input).map_err(|_| operation_error("access"))? {
+        return Err(operation_error("unsupported"));
+    }
     let is_video = operations::is_video_input(&extension);
     let is_audio = operations::is_audio_input(&extension);
     let selected_video_codec = video_codec.as_deref().unwrap_or("h264");
@@ -959,6 +1072,7 @@ fn process_media_tool(
             Err(_) => return Err(operation_error("access")),
         }
     };
+    let work_dir = TemporaryDirectory(work_dir);
     let result = (|| {
         let output_temp = work_dir.join(format!("result.{output_extension}"));
         let trim_range = if action_id == "trim-video" {
@@ -1001,6 +1115,11 @@ fn process_media_tool(
         {
             return Err(operation_error("conversion"));
         }
+        if !file_signatures::file_matches(&output_extension, &output_temp)
+            .map_err(|_| operation_error("access"))?
+        {
+            return Err(operation_error("conversion"));
+        }
         let stem = input
             .file_stem()
             .and_then(|value| value.to_str())
@@ -1021,7 +1140,7 @@ fn process_media_tool(
             .map(|path| path.to_string_lossy().into_owned())
             .map_err(|_| operation_error("write"))
     })();
-    let _ = fs::remove_dir_all(work_dir);
+
     result.map_err(|error| {
         if error.starts_with("flickvert-error:") {
             error
@@ -1056,6 +1175,7 @@ fn split_pdf_pages(
             Err(_) => return Err(operation_error("access")),
         }
     };
+    let work_dir = TemporaryDirectory(work_dir);
     let result = (|| {
         let pattern = work_dir.join("page-%d.pdf");
         let mut ranges = Vec::<(u32, u32)>::new();
@@ -1092,7 +1212,7 @@ fn split_pdf_pages(
         }
         Ok(written.into_iter().map(|path| path.to_string_lossy().into_owned()).collect())
     })();
-    let _ = fs::remove_dir_all(work_dir);
+
     result
 }
 
@@ -1122,6 +1242,7 @@ fn edit_pdf_pages(
             Err(_) => return Err(operation_error("access")),
         }
     };
+    let work_dir = TemporaryDirectory(work_dir);
     let result = (|| {
         let rotations = rotations.iter().enumerate().map(|(index, angle)| (index as u32 + 1, *angle)).collect::<Vec<_>>();
         let rotated = work_dir.join("rotated.pdf");
@@ -1139,7 +1260,7 @@ fn edit_pdf_pages(
         let stem = input.file_stem().and_then(|value| value.to_str()).unwrap_or("document");
         files::write_output_file(&destination, &format!("{stem}-edited.pdf"), &ordered).map(|path| path.to_string_lossy().into_owned()).map_err(|_| operation_error("write"))
     })();
-    let _ = fs::remove_dir_all(work_dir);
+
     result
 }
 
@@ -1170,6 +1291,7 @@ fn merge_pdf_files(
             Err(_) => return Err(operation_error("access")),
         }
     };
+    let work_dir = TemporaryDirectory(work_dir);
     let result = (|| {
         let output_temp = work_dir.join("merged.pdf");
         let args = operations::pdf_merge_args(&inputs, &output_temp).ok_or_else(|| operation_error("unsupported"))?;
@@ -1189,7 +1311,7 @@ fn merge_pdf_files(
         files::write_output_file(&destination, &format!("{stem}-merged.pdf"), &output_temp)
             .map(|path| path.to_string_lossy().into_owned()).map_err(|_| operation_error("write"))
     })();
-    let _ = fs::remove_dir_all(work_dir);
+
     result
 }
 
@@ -1198,6 +1320,7 @@ fn create_zip_archive(
     app: AppHandle,
     input_paths: Vec<String>,
     destination_folder: Option<String>,
+    compression_level: Option<u32>,
     dropped: tauri::State<'_, DroppedFiles>,
 ) -> Result<String, String> {
     if input_paths.is_empty() || input_paths.len() > 10_000 {
@@ -1238,15 +1361,16 @@ fn create_zip_archive(
             Err(error) => return Err(error.to_string()),
         }
     };
+    let work_dir = TemporaryDirectory(work_dir);
     let result = (|| {
         let temporary = work_dir.join("archive.zip");
-        archive::create_zip(&inputs, &temporary)?;
+        archive::create_zip(&inputs, &temporary, compression_level.unwrap_or(6))?;
         let destination = destination_for(&inputs[0], destination_folder.as_deref())?;
         files::write_output_file(&destination, &output_name, &temporary)
             .map(|path| path.to_string_lossy().into_owned())
             .map_err(|error| error.to_string())
     })();
-    let _ = fs::remove_dir_all(work_dir);
+
     result
 }
 
@@ -1254,6 +1378,8 @@ fn create_zip_archive(
 fn extract_zip_archive(
     destination_folder: Option<String>,
     input_path: String,
+    selected_paths: Option<Vec<String>>,
+    skip_existing: Option<bool>,
     dropped: tauri::State<'_, DroppedFiles>,
 ) -> Result<String, String> {
     let input = selected_dropped_file(&input_path, &dropped)?;
@@ -1270,7 +1396,17 @@ fn extract_zip_archive(
         .and_then(|value| value.to_str())
         .filter(|name| !name.is_empty())
         .unwrap_or("archive");
-    archive::extract_zip(&input, &destination, name).map(|path| path.to_string_lossy().into_owned())
+    archive::extract_zip(&input, &destination, name, selected_paths.as_deref(), skip_existing.unwrap_or(false))
+        .map(|path| path.map(|path| path.to_string_lossy().into_owned()).unwrap_or_default())
+}
+
+#[tauri::command]
+fn preview_zip_archive(input_path: String, dropped: tauri::State<'_, DroppedFiles>) -> Result<archive::ZipPreview, String> {
+    let input = selected_dropped_file(&input_path, &dropped)?;
+    if !input.extension().and_then(|value| value.to_str()).is_some_and(|extension| extension.eq_ignore_ascii_case("zip")) {
+        return Err("Only ZIP archives can be previewed".into());
+    }
+    archive::preview_zip(&input)
 }
 
 fn show_main(app: &AppHandle) {
@@ -1606,6 +1742,7 @@ fn copy_powershell_path(
 #[tauri::command]
 fn open_terminal(
     input_path: String,
+    terminal_preference: Option<String>,
     dropped: tauri::State<'_, DroppedFiles>,
 ) -> Result<(), String> {
     let path = selected_dropped_path(&input_path, &dropped)?;
@@ -1620,21 +1757,17 @@ fn open_terminal(
 
     #[cfg(target_os = "windows")]
     {
-        let terminal = Command::new("wt.exe")
-            .args(["-w", "0", "new-tab"])
-            .args(operations::windows_terminal_args(directory))
-            .args(["powershell.exe", "-NoExit"])
-            .spawn();
-        match terminal {
-            Ok(_) => Ok(()),
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                Command::new("powershell.exe")
-                    .args(["-NoExit"])
-                    .current_dir(directory)
-                    .spawn()
-                    .map(|_| ())
-                    .map_err(|error| error.to_string())
+        let use_powershell = terminal_preference.as_deref() == Some("powershell");
+        let launch = |powershell: bool| {
+            if powershell {
+                Command::new("powershell.exe").args(["-NoExit"]).current_dir(directory).spawn()
+            } else {
+                Command::new("wt.exe").args(["-w", "0", "new-tab"]).args(operations::windows_terminal_args(directory)).args(["powershell.exe", "-NoExit"]).spawn()
             }
+        };
+        match launch(use_powershell) {
+            Ok(_) => Ok(()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => launch(!use_powershell).map(|_| ()).map_err(|fallback| fallback.to_string()),
             Err(error) => Err(error.to_string()),
         }
     }
@@ -1768,8 +1901,7 @@ fn copy_path_to_clipboard(_: &str) -> Result<(), String> {
     Err("Clipboard access is not supported on this platform".into())
 }
 
-#[tauri::command]
-fn register_shortcut(app: AppHandle, shortcut: String) -> Result<(), String> {
+fn parse_global_shortcut(shortcut: &str) -> Result<tauri_plugin_global_shortcut::Shortcut, String> {
     let mut parts: Vec<_> = shortcut.split('+').collect();
     let key = parts.pop().ok_or("Shortcut has no key")?;
     let valid_key = key == "SPACE"
@@ -1786,14 +1918,86 @@ fn register_shortcut(app: AppHandle, shortcut: String) -> Result<(), String> {
     {
         return Err("Unsupported shortcut".into());
     }
-    let shortcut = shortcut
+    shortcut
         .parse::<tauri_plugin_global_shortcut::Shortcut>()
-        .map_err(|error| error.to_string())?;
+        .map_err(|error| error.to_string())
+}
+
+fn validate_operation_shortcuts(shortcuts: &HashMap<String, String>, primary: Option<&str>) -> Result<(), String> {
+    if shortcuts.len() > 64 { return Err("Too many operation shortcuts".into()); }
+    let mut used = HashSet::new();
+    if let Some(primary) = primary { used.insert(primary); }
+    for (action, shortcut) in shortcuts {
+        if !action.bytes().all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-') || action.is_empty() || action.len() > 64 {
+            return Err("Unsupported operation shortcut".into());
+        }
+        parse_global_shortcut(shortcut).map_err(|_| "Unsupported operation shortcut")?;
+        if !used.insert(shortcut.as_str()) { return Err("Shortcut is already assigned".into()); }
+    }
+    Ok(())
+}
+
+fn register_operation_shortcut_handler(app: &AppHandle, shortcut: &str) -> Result<(), String> {
+    let parsed = parse_global_shortcut(shortcut)?;
+    let shortcut = shortcut.to_owned();
+    app.global_shortcut().on_shortcut(parsed, move |handle, _, event| {
+        if event.state != tauri_plugin_global_shortcut::ShortcutState::Pressed { return; }
+        let Some(action_id) = handle.state::<OperationShortcuts>().0.lock().ok().and_then(|shortcuts| shortcuts.iter().find_map(|(action, value)| (value == &shortcut).then(|| action.clone()))) else { return; };
+        let foreground = selection::foreground_window();
+        show_quick(handle, true);
+        let handle = handle.clone();
+        std::thread::spawn(move || {
+            let paths = selection::selected_paths(foreground);
+            let _ = handle.emit("flickvert://operation-shortcut", serde_json::json!({ "actionId": action_id, "paths": paths }));
+        });
+    }).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn configure_operation_shortcuts(app: AppHandle, shortcuts: HashMap<String, String>) -> Result<(), String> {
+    let registered = app.state::<RegisteredShortcut>();
+    let current = registered.0.lock().map_err(|_| "Shortcut state is unavailable")?;
+    let operation_shortcuts = app.state::<OperationShortcuts>();
+    let mut existing = operation_shortcuts.0.lock().map_err(|_| "Shortcut state is unavailable")?;
+    validate_operation_shortcuts(&shortcuts, current.as_deref())?;
+    if *existing == shortcuts { return Ok(()); }
+    let old_values: HashSet<_> = existing.values().cloned().collect();
+    let new_values: HashSet<_> = shortcuts.values().cloned().collect();
+    let mut registered_new: Vec<String> = Vec::new();
+    for shortcut in new_values.difference(&old_values) {
+        if let Err(error) = register_operation_shortcut_handler(&app, shortcut) {
+            for value in registered_new { if let Ok(parsed) = parse_global_shortcut(&value) { let _ = app.global_shortcut().unregister(parsed); } }
+            return Err(error);
+        }
+        registered_new.push(shortcut.clone());
+    }
+    let mut unregistered_old: Vec<String> = Vec::new();
+    for shortcut in old_values.difference(&new_values) {
+        let parsed = parse_global_shortcut(shortcut)?;
+        if let Err(error) = app.global_shortcut().unregister(parsed) {
+            for value in &unregistered_old { let _ = register_operation_shortcut_handler(&app, value); }
+            for value in registered_new { if let Ok(parsed) = parse_global_shortcut(&value) { let _ = app.global_shortcut().unregister(parsed); } }
+            return Err(error.to_string());
+        }
+        unregistered_old.push(shortcut.clone());
+    }
+    *existing = shortcuts;
+    Ok(())
+}
+
+#[tauri::command]
+fn register_shortcut(app: AppHandle, shortcut: String) -> Result<(), String> {
+    let parsed = parse_global_shortcut(&shortcut)?;
+    let registered = app.state::<RegisteredShortcut>();
+    let mut current = registered.0.lock().map_err(|_| "Shortcut state is unavailable")?;
+    if current.as_deref() == Some(shortcut.as_str()) {
+        return Ok(());
+    }
+    if app.state::<OperationShortcuts>().0.lock().map_err(|_| "Shortcut state is unavailable")?.values().any(|value| value == &shortcut) {
+        return Err("Shortcut is already assigned".into());
+    }
     app.global_shortcut()
-        .unregister_all()
-        .map_err(|error| error.to_string())?;
-    app.global_shortcut()
-        .on_shortcut(shortcut, |handle, _, event| {
+        .on_shortcut(parsed, |handle, _, event| {
             if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
                 let foreground = selection::foreground_window();
                 show_quick(handle, true);
@@ -1805,7 +2009,17 @@ fn register_shortcut(app: AppHandle, shortcut: String) -> Result<(), String> {
                 });
             }
         })
-        .map_err(|error| error.to_string())
+        .map_err(|error| error.to_string())?;
+    if let Some(old) = current.as_deref() {
+        if let Ok(old) = old.parse::<tauri_plugin_global_shortcut::Shortcut>() {
+            if let Err(error) = app.global_shortcut().unregister(old) {
+                let _ = app.global_shortcut().unregister(parsed);
+                return Err(error.to_string());
+            }
+        }
+    }
+    *current = Some(shortcut);
+    Ok(())
 }
 
 #[tauri::command]
@@ -1822,6 +2036,65 @@ fn output_directory(app: tauri::AppHandle) -> Result<String, String> {
     files::output_directory(&downloads)
         .map(|path| path.to_string_lossy().into_owned())
         .map_err(|error| error.to_string())
+}
+
+#[cfg(windows)]
+fn set_system_startup(enabled: bool) -> Result<(), String> {
+    const KEY: &str = "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run";
+    if enabled {
+        let executable = std::env::current_exe().map_err(|_| "Could not locate FlickVert")?;
+        let output = Command::new("reg.exe").args(["add", KEY, "/v", "FlickVert", "/t", "REG_SZ", "/d"]).arg(format!("\"{}\"", executable.to_string_lossy())).arg("/f").output().map_err(|_| "Could not update startup settings")?;
+        output.status.success().then_some(()).ok_or("Could not update startup settings".into())
+    } else {
+        let query = Command::new("reg.exe").args(["query", KEY, "/v", "FlickVert"]).output().map_err(|_| "Could not update startup settings")?;
+        if !query.status.success() { return Ok(()); }
+        let output = Command::new("reg.exe").args(["delete", KEY, "/v", "FlickVert", "/f"]).output().map_err(|_| "Could not update startup settings")?;
+        output.status.success().then_some(()).ok_or("Could not update startup settings".into())
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn set_system_startup(enabled: bool) -> Result<(), String> {
+    let home = std::env::var_os("HOME").map(PathBuf::from).ok_or("Home folder is unavailable")?;
+    let directory = home.join("Library/LaunchAgents");
+    let agent = directory.join("app.flickvert.desktop.v2.plist");
+    if enabled {
+        let executable = std::env::current_exe().map_err(|_| "Could not locate FlickVert")?;
+        fs::create_dir_all(&directory).map_err(|_| "Could not update startup settings")?;
+        let plist = format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?><!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\"><plist version=\"1.0\"><dict><key>Label</key><string>app.flickvert.desktop.v2</string><key>ProgramArguments</key><array><string>{}</string></array><key>RunAtLoad</key><true/></dict></plist>", xml_escape(&executable.to_string_lossy()));
+        fs::write(&agent, plist).map_err(|_| "Could not update startup settings")?;
+        let status = Command::new("launchctl").args(["load", "-w"]).arg(&agent).status().map_err(|_| "Could not update startup settings")?;
+        if !status.success() { let _ = fs::remove_file(&agent); return Err("Could not update startup settings".into()); }
+    } else if agent.exists() {
+        let status = Command::new("launchctl").args(["unload", "-w"]).arg(&agent).status().map_err(|_| "Could not update startup settings")?;
+        if !status.success() { return Err("Could not update startup settings".into()); }
+        fs::remove_file(agent).map_err(|_| "Could not update startup settings")?;
+    }
+    Ok(())
+}
+
+#[cfg(any(target_os = "macos", test))]
+fn xml_escape(value: &str) -> String {
+    value.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;").replace('\'', "&apos;")
+}
+
+#[tauri::command]
+fn set_startup_enabled(enabled: bool) -> Result<(), String> {
+    #[cfg(any(windows, target_os = "macos"))]
+    { return set_system_startup(enabled); }
+    #[cfg(not(any(windows, target_os = "macos")))]
+    { let _ = enabled; Err("Startup settings are not supported on this platform".into()) }
+}
+
+#[tauri::command]
+fn set_confirm_quit_on_close(enabled: bool, state: tauri::State<'_, ConfirmQuitOnClose>) {
+    state.0.store(enabled, Ordering::Release);
+}
+
+#[tauri::command]
+fn quit_application(app: AppHandle) {
+    cancel_all_operation_jobs(&app.state::<OperationJobs>());
+    app.exit(0);
 }
 
 #[tauri::command(async)]
@@ -1867,6 +2140,7 @@ fn main() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             begin_operation_job,
             cancel_operation_job,
@@ -1891,14 +2165,20 @@ fn main() {
             copy_to_flickvert_folder,
             move_to_flickvert_folder,
             register_shortcut,
+            configure_operation_shortcuts,
             configure_drag_modifiers,
             choose_files,
             choose_output_folder,
+            set_startup_enabled,
+            set_confirm_quit_on_close,
+            quit_application,
+            shell_integration::set_context_menu_enabled,
             take_drag_trigger,
             take_startup_files,
             quick_formats,
             read_dropped_file,
             inspect_dropped_files,
+            log_operation_error,
             engine_status,
             video_codecs,
             audio_formats,
@@ -1917,9 +2197,19 @@ fn main() {
             merge_pdf_files,
             split_pdf_pages,
             edit_pdf_pages,
-            extract_zip_archive
+            extract_zip_archive,
+            preview_zip_archive
         ])
         .setup(|app| {
+            if let Ok(cache) = app.path().app_cache_dir() {
+                let now = std::time::SystemTime::now();
+                for workspace in ["media-work", "image-work", "archive-work"] {
+                    cleanup_stale_workspaces(&cache.join(workspace), now);
+                }
+            }
+            app.manage(RegisteredShortcut::default());
+            app.manage(OperationShortcuts::default());
+            app.manage(ConfirmQuitOnClose(AtomicBool::new(false)));
             if let Err(error) = register_shortcut(app.handle().clone(), "CTRL+ALT+SPACE".into()) {
                 eprintln!("Could not register the default shortcut: {error}");
             }
@@ -1988,7 +2278,7 @@ fn main() {
                             show_main(app);
                             let _ = app.emit("flickvert://quick-action", "settings");
                         }
-                        "quit" => app.exit(0),
+                        "quit" => { cancel_all_operation_jobs(&app.state::<OperationJobs>()); app.exit(0) },
                         _ => {}
                     })
                     .build(app)
@@ -2007,7 +2297,11 @@ fn main() {
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
-                let _ = window.hide();
+                if window.state::<ConfirmQuitOnClose>().0.load(Ordering::Acquire) {
+                    let _ = window.emit("flickvert://confirm-quit", ());
+                } else {
+                    let _ = window.hide();
+                }
             }
         })
         .build(tauri::generate_context!())
@@ -2101,5 +2395,95 @@ mod output_path_tests {
         assert!(existing_output_path(directory.join("missing.txt").to_str().unwrap()).is_err());
 
         std::fs::remove_dir_all(directory).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod temporary_directory_tests {
+    use super::{cancel_all_operation_jobs, error_log_line, is_stale_workspace, OperationJobs, TemporaryDirectory};
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::fs;
+
+    #[test]
+    fn temporary_work_directory_is_removed_on_drop() {
+        let path = std::env::temp_dir().join(format!("flickvert-cleanup-test-{}", std::process::id()));
+        fs::create_dir_all(&path).unwrap();
+        fs::write(path.join("partial"), b"partial output").unwrap();
+        drop(TemporaryDirectory(path.clone()));
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn stale_cleanup_only_matches_old_generated_workspace_directories() {
+        let now = std::time::SystemTime::now();
+        let old = now - std::time::Duration::from_secs(2 * 24 * 60 * 60);
+        assert!(is_stale_workspace("123-4", true, Some(old), now));
+        assert!(!is_stale_workspace("user-files", true, Some(old), now));
+        assert!(!is_stale_workspace("123-4", false, Some(old), now));
+        assert!(!is_stale_workspace("123-4", true, Some(now), now));
+    }
+
+    #[test]
+    fn app_exit_cancels_all_active_jobs() {
+        let jobs = OperationJobs::default();
+        let flag = std::sync::Arc::new(AtomicBool::new(false));
+        jobs.active.lock().unwrap().insert("test".into(), flag.clone());
+        cancel_all_operation_jobs(&jobs);
+        assert!(flag.load(Ordering::Acquire));
+    }
+
+    #[test]
+    fn local_error_log_only_accepts_categories_not_user_content() {
+        assert_eq!(error_log_line("conversion", 123), Some("123\tconversion".into()));
+        assert_eq!(error_log_line("C:/Users/Pavel/private.docx", 123), None);
+    }
+
+    #[test]
+    fn launch_agent_xml_escapes_executable_paths() {
+        assert_eq!(super::xml_escape("/Applications/A&B <FlickVert>.app"), "/Applications/A&amp;B &lt;FlickVert&gt;.app");
+    }
+}
+
+#[cfg(test)]
+mod pdf_dpi_tests {
+    use super::clamp_pdf_dpi;
+
+    #[test]
+    fn uses_default_and_clamps_pdf_raster_resolution() {
+        assert_eq!(clamp_pdf_dpi(None), 300);
+        assert_eq!(clamp_pdf_dpi(Some(10)), 72);
+        assert_eq!(clamp_pdf_dpi(Some(450)), 450);
+        assert_eq!(clamp_pdf_dpi(Some(900)), 600);
+    }
+}
+
+#[cfg(test)]
+mod operation_shortcut_tests {
+    use super::validate_operation_shortcuts;
+    use std::collections::HashMap;
+
+    #[test]
+    fn rejects_shortcuts_already_used_by_another_action_or_the_wheel() {
+        assert!(validate_operation_shortcuts(&HashMap::from([("resize".into(), "CTRL+ALT+R".into()), ("rotate".into(), "CTRL+ALT+R".into())]), Some("CTRL+ALT+SPACE")).is_err());
+        assert!(validate_operation_shortcuts(&HashMap::from([("resize".into(), "CTRL+ALT+SPACE".into())]), Some("CTRL+ALT+SPACE")).is_err());
+    }
+
+    #[test]
+    fn accepts_unique_operation_shortcuts_and_rejects_invalid_actions() {
+        assert!(validate_operation_shortcuts(&HashMap::from([("resize".into(), "CTRL+ALT+R".into()), ("rotate".into(), "CTRL+ALT+O".into())]), Some("CTRL+ALT+SPACE")).is_ok());
+        assert!(validate_operation_shortcuts(&HashMap::from([("../resize".into(), "CTRL+ALT+R".into())]), None).is_err());
+        assert!(validate_operation_shortcuts(&HashMap::from([("resize".into(), "CTRL+CTRL+R".into())]), None).is_err());
+    }
+}
+
+#[cfg(test)]
+mod pdf_text_tests {
+    use super::has_pdf_text;
+    use std::io::Cursor;
+
+    #[test]
+    fn detects_selectable_text() {
+        assert!(!has_pdf_text(&mut Cursor::new(b" \n\t\r")).unwrap());
+        assert!(has_pdf_text(&mut Cursor::new(b" \npage text")).unwrap());
     }
 }

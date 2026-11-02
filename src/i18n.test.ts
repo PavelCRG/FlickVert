@@ -19,6 +19,50 @@ test('theme labels are translated in English, Russian, and Simplified Chinese', 
   }
 })
 
+test('startup preference and failure are translated in every language', () => {
+  for (const key of ['Launch FlickVert when I sign in', 'Could not change startup settings.'] as const) {
+    assert.equal(t('en', key), key)
+    assert.notEqual(t('ru', key), key)
+    assert.notEqual(t('zh', key), key)
+  }
+})
+
+test('context menu integration labels and errors are translated in every language', () => {
+  for (const key of ['Add FlickVert to file context menu', 'Could not change context menu settings.'] as const) {
+    assert.equal(t('en', key), key)
+    assert.notEqual(t('ru', key), key)
+    assert.notEqual(t('zh', key), key)
+  }
+})
+
+test('operation shortcut controls are translated in every language', () => {
+  for (const key of ['Operation shortcuts', 'Not assigned', 'Remove shortcut', 'Operation shortcut conflicts or is unavailable.'] as const) {
+    assert.equal(t('en', key), key)
+    assert.notEqual(t('ru', key), key)
+    assert.notEqual(t('zh', key), key)
+  }
+})
+
+test('empty tool search can be cleared in every language', () => {
+  assert.equal(t('en', 'Clear search'), 'Clear search')
+  assert.equal(t('ru', 'Clear search'), 'Очистить поиск')
+  assert.equal(t('zh', 'Clear search'), '清除搜索')
+})
+
+test('manual engine installation links are labeled in every language', () => {
+  assert.equal(t('en', 'Manual installation'), 'Manual installation')
+  assert.equal(t('ru', 'Manual installation'), 'Установка вручную')
+  assert.equal(t('zh', 'Manual installation'), '手动安装')
+})
+
+test('tool family filters are labeled in every language', () => {
+  for (const key of ['All tools', 'Images', 'Filter by family'] as const) {
+    assert.ok(t('en', key))
+    assert.notEqual(t('ru', key), key)
+    assert.notEqual(t('zh', key), key)
+  }
+})
+
 test('JPEG transparency background is translated in all supported languages', () => {
   assert.equal(t('en', 'JPEG background'), 'JPEG background')
   assert.equal(t('ru', 'JPEG background'), 'Цвет фона JPEG')
@@ -114,6 +158,39 @@ test('audio normalization targets and guidance are translated', () => {
 test('audio extraction guidance and unavailable states are translated', () => {
   for (const key of ['Audio extraction format', 'No audio track found in the selected video.', 'Selected audio output format is unavailable in FFmpeg.', 'No supported audio output format is available in FFmpeg.', 'Audio extraction only lists formats supported by the installed FFmpeg.'] as const) {
     assert.equal(t('en', key), key)
+    assert.notEqual(t('ru', key), key)
+    assert.notEqual(t('zh', key), key)
+  }
+})
+
+test('PDF page resolution setting is translated in every language', () => {
+  for (const language of ['ru', 'zh'] as const) assert.notEqual(t(language, 'PDF page resolution'), 'PDF page resolution')
+})
+
+test('scanned PDF text-conversion warning is translated', () => {
+  for (const language of ['ru', 'zh'] as const) assert.notEqual(t(language, 'No selectable text was found in this PDF. Try OCR before converting.'), 'No selectable text was found in this PDF. Try OCR before converting.')
+})
+
+test('document layout limitation is translated', () => {
+  for (const language of ['ru', 'zh'] as const) assert.notEqual(t(language, 'Document conversion may change the original layout depending on the source and output formats.'), 'Document conversion may change the original layout depending on the source and output formats.')
+})
+
+test('PDF page size and orientation controls are translated', () => {
+  for (const language of ['ru', 'zh'] as const) {
+    for (const key of ['PDF page size', 'Page orientation', 'Automatic', 'Portrait', 'Landscape', 'Page size and orientation apply to image-to-PDF exports.'] as const) assert.notEqual(t(language, key), key)
+  }
+})
+
+test('ZIP compression controls are translated in supported languages', () => {
+  for (const language of ['ru', 'zh'] as const) for (const key of ['ZIP compression', 'Higher compression can make ZIP archives smaller but takes longer.'] as const) assert.notEqual(t(language, key), key)
+})
+
+test('ZIP preview and conflict states are translated in supported languages', () => {
+  for (const language of ['ru', 'zh'] as const) for (const key of ['Archive preview', 'Total size', 'Selected items', 'Select all', 'Clear selection', 'Extract archive', 'Archive contains conflicting names; extraction is disabled.'] as const) assert.notEqual(t(language, key), key)
+})
+
+test('settings section reset labels are translated', () => {
+  for (const key of ['Reset', 'Reset appearance settings', 'Reset keyboard settings'] as const) {
     assert.notEqual(t('ru', key), key)
     assert.notEqual(t('zh', key), key)
   }

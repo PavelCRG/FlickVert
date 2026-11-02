@@ -20,6 +20,7 @@ type Format = { extension: string; label: string }
 type Position = { x: number; y: number }
 type WheelChoice = { key: string; label: string; glyph?: AppIconName; disabled: boolean; disabledReason?: string; onChoose: () => void }
 type QueueItem = { id: string; name: string; status: 'queued' | 'processing' | 'done' | 'failed' | 'cancelled'; outputPath?: string; retryReady?: boolean; jobId?: string; progress?: number; error?: OperationErrorKind }
+type ZipPreview = { entries: { path: string; size: number; directory: boolean }[]; fileCount: number; totalSize: number; conflicts: string[] }
 const imageExtensions = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'svg']
 const quickWindowSize = { width: 288, height: 288 }
 
@@ -64,6 +65,9 @@ export default function QuickMenu() {
   const [dragMode, setDragMode] = useState(false)
   const [wheelMode, setWheelMode] = useState<'convert' | 'tools' | 'actions'>('convert')
   const [files, setFiles] = useState<NativeFile[]>([])
+  const [zipPreview, setZipPreview] = useState<ZipPreview | null>(null)
+  const [selectedZipPaths, setSelectedZipPaths] = useState<string[]>([])
+  const [skipExistingZip, setSkipExistingZip] = useState(false)
   const [formats, setFormats] = useState<Format[]>([])
   const [active, setActive] = useState(-1)
   const [status, setStatus] = useState('')
@@ -130,6 +134,8 @@ export default function QuickMenu() {
     inspectedPaths.current = ''
     inspectingPaths.current = null
     setFiles([])
+    setZipPreview(null)
+    setSelectedZipPaths([])
     setFormats([])
     setActive(-1)
     setStatus('')
@@ -139,9 +145,11 @@ export default function QuickMenu() {
 
   function showActionError(error: unknown) {
     const message = String(error)
-    setStatus(message.includes('flickvert-error:')
-      ? tr(operationErrorMessages[operationErrorKind(error)])
-      : tr('Could not complete action'))
+    if (message.includes('flickvert-error:')) {
+      const kind = operationErrorKind(error)
+      void invoke('log_operation_error', { kind }).catch(() => {})
+      setStatus(tr(operationErrorMessages[kind]))
+    } else setStatus(tr('Could not complete action'))
   }
 
   async function refreshFiles(paths: string[]) {
@@ -190,7 +198,7 @@ export default function QuickMenu() {
       onJobStartedRef.current?.(jobId)
       if (cancelRequestedRef.current) void invoke('cancel_operation_job', { jobId })
       try {
-        return await invoke<string>('convert_file', { inputPath: file.path, outputExtension: format.extension, quality: preferences.quality, width: preferences.width, height: preferences.height, destinationFolder: preferences.outputFolder, jobId })
+        return await invoke<string>('convert_file', { inputPath: file.path, outputExtension: format.extension, quality: preferences.quality, width: preferences.width, height: preferences.height, pdfDpi: preferences.pdfDpi, destinationFolder: preferences.outputFolder, jobId })
       } finally {
         if (activeJobIdRef.current === jobId) activeJobIdRef.current = null
         await invoke('finish_operation_job', { jobId }).catch(() => {})
@@ -203,7 +211,7 @@ export default function QuickMenu() {
       const bytes = await invoke<number[]>('read_dropped_file', { inputPath: file.path })
       const input = new File([Uint8Array.from(bytes)], file.name, { type: file.mime })
       if (format.extension === 'pdf') {
-        const pdf = await imagesToPdf([input], preferences.quality)
+        const pdf = await imagesToPdf([input], preferences.quality, preferences.pdfPageSize, preferences.pdfPageOrientation)
         return invoke<string>('save_output', { fileName: `${stem}.pdf`, inputPath: file.path, destinationFolder: preferences.outputFolder, bytes: Array.from(pdf) })
       }
       const outputType = format.extension === 'png' ? 'image/png' : format.extension === 'jpg' ? 'image/jpeg' : 'image/webp'
@@ -298,7 +306,8 @@ export default function QuickMenu() {
           const bytes = await invoke<number[]>('read_dropped_file', { inputPath: file.path })
           inputs.push(new File([Uint8Array.from(bytes)], file.name, { type: file.mime }))
         }
-        const bytes = await imagesToPdf(inputs, loadSettings().quality)
+        const settings = loadSettings()
+        const bytes = await imagesToPdf(inputs, settings.quality, settings.pdfPageSize, settings.pdfPageOrientation)
         const name = items.length === 1 ? items[0].name.replace(/\.[^.]+$/, '') : 'images'
         await invoke<string>('save_output', { fileName: `${name}.pdf`, inputPath: items[0].path, destinationFolder: loadSettings().outputFolder, bytes: Array.from(bytes) })
         setStatus(tr('PDF created'))
@@ -523,6 +532,16 @@ export default function QuickMenu() {
       else if (dragModeRef.current) { filesRef.current = []; formatsRef.current = []; setFiles([]); setFormats([]); setStatus(tr('No selected files found')) }
       else { filesRef.current = []; formatsRef.current = []; setFiles([]); setFormats([]); setDragVisible(false) }
     }).then(addStop)
+    void listen<{ actionId: string; paths: string[] }>('flickvert://operation-shortcut', async ({ payload }) => {
+      try {
+        const { received } = await refreshFiles(payload.paths)
+        const totalBytes = received.reduce((sum, file) => sum + file.size, 0)
+        const toolIds = toolActionsFor(received, ffmpegAvailableRef.current, imagemagickAvailableRef.current, videoCodecsRef.current, pdfMergeAvailableRef.current, pdfSplitAvailableRef.current, pdfEditAvailableRef.current).map((action) => action.id)
+        if (canRunSelectedTool(payload.actionId, toolIds, received.length) && canRunWheelTool(payload.actionId, received.length, totalBytes)) await runTool(payload.actionId, received)
+        else if (canRunFileAction(payload.actionId, received)) await choose(payload.actionId)
+        else setStatus(tr('Check the selected file and required engine.'))
+      } catch { setStatus(tr('Could not open files')) }
+    }).then(addStop)
     void invoke<string[]>('take_startup_files').then((paths) => {
       if (paths.length) void refreshFiles(paths).catch(() => setStatus(tr('Could not open files')))
     }).catch(() => {})
@@ -568,13 +587,16 @@ export default function QuickMenu() {
         return
       } else if (actionId === 'create-zip') {
         const items = filesRef.current
-        const output = await invoke<string>('create_zip_archive', { inputPaths: items.map((file) => file.path), destinationFolder: loadSettings().outputFolder })
+        const settings = loadSettings()
+        const output = await invoke<string>('create_zip_archive', { inputPaths: items.map((file) => file.path), destinationFolder: settings.outputFolder, compressionLevel: settings.zipCompressionLevel })
         setStatus(`${tr('Archive created')}: ${output.split(/[\\/]/).pop()}`)
       } else if (actionId === 'extract-zip') {
         const file = filesRef.current[0]
         if (!file) return
-        const output = await invoke<string>('extract_zip_archive', { inputPath: file.path, destinationFolder: loadSettings().outputFolder })
-        setStatus(`${tr('Archive extracted')}: ${output.split(/[\\/]/).pop()}`)
+        const archive = await invoke<ZipPreview>('preview_zip_archive', { inputPath: file.path })
+        setZipPreview(archive)
+        setSelectedZipPaths(archive.entries.filter((entry) => !entry.directory).map((entry) => entry.path))
+        return
       } else if (actionId === 'copy-to-folder' || actionId === 'move-to-folder') {
         const items = filesRef.current
         if (!items.length) return
@@ -590,7 +612,7 @@ export default function QuickMenu() {
       } else if (actionId === 'open-terminal') {
         const path = filesRef.current[0]?.path
         if (!path) return
-        await invoke('open_terminal', { inputPath: path })
+        await invoke('open_terminal', { inputPath: path, terminalPreference: loadSettings().terminalPreference })
         setStatus(tr('Terminal opened'))
       } else {
         await invoke('quick_action', { actionId })
@@ -600,6 +622,40 @@ export default function QuickMenu() {
     } catch (error) {
       showActionError(error)
     }
+  }
+
+  function toggleZipEntry(entry: ZipPreview['entries'][number], checked: boolean) {
+    if (!zipPreview) return
+    const prefix = `${entry.path}/`
+    setSelectedZipPaths((current) => {
+      if (entry.directory && checked) return [...current.filter((path) => !path.startsWith(prefix)), entry.path]
+      if (entry.directory) return current.filter((path) => path !== entry.path && !path.startsWith(prefix))
+      if (checked) return [...new Set([...current, entry.path])]
+      const ancestors = current.filter((path) => entry.path.startsWith(`${path}/`))
+      const next = current.filter((path) => path !== entry.path && !ancestors.includes(path))
+      for (const ancestor of ancestors) for (const child of zipPreview.entries) if (!child.directory && child.path.startsWith(`${ancestor}/`) && child.path !== entry.path) next.push(child.path)
+      return [...new Set(next)]
+    })
+  }
+
+  function zipEntryChecked(entry: ZipPreview['entries'][number]) {
+    if (!zipPreview) return false
+    const includes = (path: string) => selectedZipPaths.some((selected) => path === selected || path.startsWith(`${selected}/`))
+    if (!entry.directory) return includes(entry.path)
+    if (includes(entry.path)) return true
+    const files = zipPreview.entries.filter((child) => !child.directory && child.path.startsWith(`${entry.path}/`))
+    return files.length > 0 && files.every((file) => includes(file.path))
+  }
+
+  async function confirmZipExtraction() {
+    const file = filesRef.current[0]
+    if (!file) return
+    try {
+      const output = await invoke<string>('extract_zip_archive', { inputPath: file.path, destinationFolder: loadSettings().outputFolder, selectedPaths: selectedZipPaths, skipExisting: skipExistingZip })
+      setZipPreview(null)
+      setStatus(output ? `${tr('Archive extracted')}: ${output.split(/[\\/]/).pop()}` : tr('Archive skipped because the output folder already exists.'))
+      window.setTimeout(hide, 650)
+    } catch (error) { showActionError(error) }
   }
 
   const actions = files.length ? wheelMode === 'actions' ? visibleFileActions : wheelMode === 'tools' ? toolActionsFor(files, ffmpegAvailable, imagemagickAvailable, videoCodecs, pdfMergeAvailable, pdfSplitAvailable, pdfEditAvailable) : [] : []
@@ -615,7 +671,7 @@ export default function QuickMenu() {
     })
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') { hide(); return }
+      if (event.key === 'Escape') { if (zipPreview) setZipPreview(null); else hide(); return }
       const modes = ['convert', 'tools', 'actions'] as const
       if (['1', '2', '3'].includes(event.key)) { setActiveWheelMode(modes[Number(event.key) - 1]); return }
       const count = choices.length
@@ -629,19 +685,21 @@ export default function QuickMenu() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [active, choices])
+  }, [active, choices, zipPreview])
   const emptyWheel = !files.length && !choices.length
   const activeChoice = choices[active]
   const preview = activeChoice && wheelMode === 'convert' && !status
     ? conversionPreview(files, activeChoice.key, settings.outputFolder)
     : undefined
+  const pdfPageExport = Boolean(preview && files.some((file) => file.extension === 'pdf') && ['jpg', 'png'].includes(activeChoice?.key ?? ''))
   const previewDestination = preview?.destination === 'Source folders' ? tr('Source folders') : preview?.destination
   const centerTitle = status || activeChoice?.label || (files.length === 1 ? files[0].name : files.length ? `${files.length} ${tr('files')}` : tr('Drag a file here'))
   const centerDetail = status ? (files.length === 1 ? files[0].name : '') : activeChoice?.disabledReason || preview?.outputName || (activeChoice ? (files.length === 1 ? files[0].name : '') : files.length ? wheelMode === 'convert' ? tr('Select output format') : '' : '')
   return <main className={`quick-shell${dragMode ? ' drag-mode' : ''}${emptyWheel ? ' quick-empty' : ''}`} data-appearance={settings.appearance} style={{ '--wheel-accent-base': accentColor(settings) } as CSSProperties} aria-label="FlickVert quick actions">
     <div className={`quick-orbit${emptyWheel ? ' no-choices' : ''}`} aria-label={tr(wheelMode === 'convert' ? 'Select output format' : wheelMode === 'tools' ? 'Tools' : 'Actions')}>
       <WheelChoices items={choices} active={active} onActive={setActive}/>
-      <div className="quick-center" aria-live="polite"><strong>{centerTitle}</strong>{centerDetail && <small>{centerDetail}</small>}{preview && <small className="quick-preview-path" title={previewDestination}>{tr('Save to')}: {previewDestination}</small>}</div>
+      <div className="quick-center" aria-live="polite"><strong>{centerTitle}</strong>{centerDetail && <small>{centerDetail}</small>}{pdfPageExport && <small>{tr('PDF page resolution')}: {settings.pdfDpi} DPI</small>}{preview && <small className="quick-preview-path" title={previewDestination}>{tr('Save to')}: {previewDestination}</small>}</div>
     </div>
+    {zipPreview && <section className="zip-preview" role="dialog" aria-modal="true" aria-labelledby="zip-preview-title"><h2 id="zip-preview-title">{tr('Archive preview')}</h2><p>{zipPreview.fileCount} {tr('files')} · {tr('Total size')}: {zipPreview.totalSize} B · {tr('Selected items')}: {selectedZipPaths.length}</p>{zipPreview.conflicts.length > 0 && <p className="zip-conflicts" role="alert">{tr('Archive contains conflicting names; extraction is disabled.')}: {zipPreview.conflicts.join(', ')}</p>}<fieldset className="zip-conflict-choice"><legend>{tr('If the output folder already exists')}</legend><label><input type="radio" name="zip-conflict" checked={!skipExistingZip} onChange={() => setSkipExistingZip(false)}/>{tr('Extract into a safely named new folder')}</label><label><input type="radio" name="zip-conflict" checked={skipExistingZip} onChange={() => setSkipExistingZip(true)}/>{tr('Skip extraction')}</label></fieldset><div className="zip-select-actions"><button type="button" onClick={() => setSelectedZipPaths(zipPreview.entries.filter((entry) => !entry.directory).map((entry) => entry.path))}>{tr('Select all')}</button><button type="button" onClick={() => setSelectedZipPaths([])}>{tr('Clear selection')}</button></div><ul>{zipPreview.entries.map((entry, index) => <li key={`${entry.path}-${index}`}><label><input type="checkbox" checked={zipEntryChecked(entry)} onChange={(event) => toggleZipEntry(entry, event.target.checked)}/><span>{entry.directory ? '[Folder] ' : ''}{entry.path}</span></label><small>{entry.size} B</small></li>)}</ul><footer><button type="button" className="zip-cancel" onClick={() => { setZipPreview(null); setSelectedZipPaths([]) }}>{tr('Close')}</button><button type="button" className="zip-confirm" disabled={zipPreview.conflicts.length > 0 || selectedZipPaths.length === 0} onClick={() => void confirmZipExtraction()}>{tr('Extract archive')}</button></footer></section>}
   </main>
 }

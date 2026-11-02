@@ -62,6 +62,25 @@ html:has(.quick-shell), body:has(.quick-shell), #root:has(.quick-shell) {
 }
 .quick-center small { max-width: 78px; overflow: hidden; color: color-mix(in srgb, CanvasText 58%, transparent); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .quick-center .quick-preview-path { max-width: 92px; color: color-mix(in srgb, CanvasText 46%, transparent); font-size: 8px; }
+.zip-preview { position: absolute; inset: 10px; z-index: 5; display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 12px; border: 1px solid color-mix(in srgb, CanvasText 18%, transparent); border-radius: 12px; background: Canvas; box-shadow: 0 8px 30px #0003; color: CanvasText; pointer-events: auto; }
+.zip-preview h2 { margin: 0; font-size: 14px; }
+.zip-preview p { margin: 0; font-size: 10px; color: color-mix(in srgb, CanvasText 65%, transparent); }
+.zip-preview .zip-conflicts { color: #b42318; }
+.zip-conflict-choice { display: flex; flex-wrap: wrap; gap: 8px 16px; border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+.zip-conflict-choice legend { color: var(--muted); padding: 0 4px; }
+.zip-conflict-choice label { display: flex; align-items: center; gap: 6px; }
+.zip-preview ul { min-height: 0; flex: 1; overflow: auto; margin: 0; padding: 0 3px 0 16px; user-select: text; }
+.zip-preview li { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; font-size: 10px; }
+.zip-preview li label { display: flex; flex: 1; min-width: 0; align-items: flex-start; gap: 5px; }
+.zip-preview li label input { flex: none; margin: 0; }
+.zip-preview li label span { overflow-wrap: anywhere; }
+.zip-preview li small { flex: none; color: color-mix(in srgb, CanvasText 55%, transparent); }
+.zip-preview .zip-select-actions { display: flex; gap: 6px; }
+.zip-preview .zip-select-actions button { min-height: 24px; padding: 3px 7px; font-size: 10px; }
+.zip-preview footer { display: flex; justify-content: flex-end; gap: 8px; }
+.zip-preview button { min-height: 28px; padding: 4px 9px; border: 1px solid color-mix(in srgb, CanvasText 20%, transparent); border-radius: 6px; background: Canvas; color: CanvasText; font: inherit; cursor: pointer; }
+.zip-preview .zip-confirm { border-color: var(--wheel-accent); background: var(--wheel-accent); color: white; }
+.zip-preview button:disabled { opacity: .55; cursor: not-allowed; }
 .quick-empty .quick-orbit::before { display: none; }
 .quick-empty .quick-center { width: auto; height: auto; min-width: 136px; min-height: 42px; padding: 9px 14px; border-radius: 999px; }
 .quick-empty .quick-center strong { max-width: 180px; font-weight: 500; }
