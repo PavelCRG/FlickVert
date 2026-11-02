@@ -93,7 +93,7 @@ FlickVert supports Windows 10/11 and macOS 13 or later. On macOS, allow Accessib
 
 ## Privacy
 
-Files are processed locally and are never uploaded. Optional conversion engines run on your device.
+Files are processed on your device; FlickVert does not upload them or use analytics. Installed builds contact GitHub Releases to check for and download signed updates. Optional conversion engines run locally as separate programs.
 
 ## Languages
 
