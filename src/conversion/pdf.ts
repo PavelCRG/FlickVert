@@ -5,7 +5,7 @@ function text(value: string) {
 }
 
 async function jpegPage(file: File, quality: number) {
-  const bitmap = await createImageBitmap(file)
+  const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
   try {
     const canvas = document.createElement('canvas')
     canvas.width = bitmap.width

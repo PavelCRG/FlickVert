@@ -20,7 +20,7 @@ export function fitWithin(width: number, height: number, maxWidth?: number, maxH
 
 export async function convertImage(file: File, options: ImageOptions): Promise<Blob> {
   const normalized = normalizeImageOptions(options)
-  const bitmap = await createImageBitmap(file)
+  const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
   try {
     const size = fitWithin(bitmap.width, bitmap.height, normalized.width, normalized.height)
     const canvas = document.createElement('canvas')

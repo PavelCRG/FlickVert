@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "npm run build && tauri dev",
     "build": "tsc -b && node scripts/prepare-dist.mjs && esbuild src/main.tsx --bundle --outdir=dist/assets --jsx=automatic --platform=browser --target=safari16 --minify",
-    "test": "node --experimental-strip-types --test --test-isolation=none src/settings.test.ts src/i18n.test.ts src/conversion/images.test.ts src/conversion/concurrent.test.ts src/image-editor/image-editor.test.ts src/quick-menu/quick-actions.test.ts src/quick-menu/radial-wheel.test.ts scripts/create-update-manifest.test.mjs scripts/sync-release-version.test.mjs",
+    "test": "node --experimental-strip-types --test --test-isolation=none src/settings.test.ts src/i18n.test.ts src/conversion/images.test.ts src/conversion/concurrent.test.ts src/image-editor/image-editor.test.ts src/quick-menu/quick-actions.test.ts src/quick-menu/radial-wheel.test.ts src/video-export-preview.test.ts src/pdf-merge.test.ts src/pdf-split.test.ts src/pdf-pages.test.ts scripts/create-update-manifest.test.mjs scripts/sync-release-version.test.mjs",
     "preview": "vite preview",
     "tauri": "tauri"
   },

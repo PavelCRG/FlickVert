@@ -1,12 +1,16 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
+    ffi::OsString,
     fs,
     io::Write,
     path::{Path, PathBuf},
     process::{Command, Output, Stdio},
-    sync::Mutex,
+    sync::{
+        atomic::{AtomicBool, AtomicU64, Ordering},
+        Arc, Mutex,
+    },
 };
 use tauri::{
     menu::{Menu, MenuItem},
@@ -53,6 +57,84 @@ struct DragTrigger(Mutex<bool>);
 
 struct StartupFiles(Mutex<Vec<String>>);
 
+#[derive(Default)]
+struct OperationJobs {
+    next: AtomicU64,
+    active: Mutex<HashMap<String, Arc<AtomicBool>>>,
+}
+
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct OperationProgress {
+    job_id: String,
+    progress: u8,
+}
+
+fn media_duration_us(input: &Path) -> Option<u64> {
+    let ffprobe = operations::find_executable("ffprobe")?;
+    let args = [
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+    ]
+    .into_iter()
+    .map(std::ffi::OsString::from)
+    .chain([input.as_os_str().to_owned()])
+    .collect::<Vec<_>>();
+    let output = operations::run(&ffprobe, &args).ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let seconds = String::from_utf8_lossy(&output.stdout)
+        .trim()
+        .parse::<f64>()
+        .ok()?;
+    (seconds.is_finite() && seconds > 0.0).then_some((seconds * 1_000_000.0) as u64)
+}
+
+#[tauri::command(async)]
+fn inspect_media_streams(input_path: String, dropped: tauri::State<'_, DroppedFiles>) -> Result<Vec<operations::MediaStream>, String> {
+    let input = selected_dropped_file(&input_path, &dropped).map_err(|_| operation_error("input"))?;
+    operations::media_streams(&input).ok_or_else(|| operation_error("engine"))
+}
+
+fn operation_error(kind: &str) -> String {
+    format!("flickvert-error:{kind}")
+}
+
+fn process_error(error: std::io::Error) -> String {
+    operation_error(if error.kind() == std::io::ErrorKind::Interrupted {
+        "cancelled"
+    } else {
+        "engine"
+    })
+}
+
+#[tauri::command]
+fn begin_operation_job(jobs: tauri::State<'_, OperationJobs>) -> String {
+    let id = jobs.next.fetch_add(1, Ordering::Relaxed).to_string();
+    jobs.active
+        .lock()
+        .unwrap()
+        .insert(id.clone(), Arc::new(AtomicBool::new(false)));
+    id
+}
+
+#[tauri::command]
+fn cancel_operation_job(job_id: String, jobs: tauri::State<'_, OperationJobs>) {
+    if let Some(cancelled) = jobs.active.lock().unwrap().get(&job_id) {
+        cancelled.store(true, Ordering::Release);
+    }
+}
+
+#[tauri::command]
+fn finish_operation_job(job_id: String, jobs: tauri::State<'_, OperationJobs>) {
+    jobs.active.lock().unwrap().remove(&job_id);
+}
+
 #[tauri::command]
 fn take_startup_files(files: tauri::State<'_, StartupFiles>, app: AppHandle) -> Vec<String> {
     let paths = std::mem::take(&mut *files.0.lock().unwrap());
@@ -71,6 +153,7 @@ struct NativeFile {
     extension: String,
     mime: &'static str,
     is_directory: bool,
+    has_audio: Option<bool>,
 }
 
 #[derive(Clone, serde::Serialize)]
@@ -128,7 +211,6 @@ fn inspect_dropped_files(
     paths: Vec<String>,
     dropped: tauri::State<'_, DroppedFiles>,
 ) -> Vec<NativeFile> {
-    let mut selected = dropped.0.lock().unwrap();
     paths
         .into_iter()
         .filter_map(|path| {
@@ -144,7 +226,10 @@ fn inspect_dropped_files(
                 return None;
             }
             let name = path.file_name()?.to_string_lossy().into_owned();
-            selected.insert(path.clone());
+            let has_audio = (mime.starts_with("video/") && metadata.is_file())
+                .then(|| operations::has_audio_stream(&path))
+                .flatten();
+            dropped.0.lock().unwrap().insert(path.clone());
             Some(NativeFile {
                 path: path.to_string_lossy().into_owned(),
                 name,
@@ -152,6 +237,7 @@ fn inspect_dropped_files(
                 extension,
                 mime,
                 is_directory: metadata.is_dir(),
+                has_audio,
             })
         })
         .collect()
@@ -160,6 +246,74 @@ fn inspect_dropped_files(
 #[tauri::command]
 fn engine_status() -> operations::Engines {
     operations::all_engine_status()
+}
+
+#[tauri::command]
+fn video_codecs() -> Vec<&'static str> {
+    operations::available_video_codecs()
+}
+
+#[tauri::command]
+fn audio_formats() -> Vec<&'static str> {
+    operations::available_audio_formats()
+}
+
+#[tauri::command]
+fn pdf_merge_available() -> bool {
+    operations::all_engine_status().pdfunite
+}
+
+#[tauri::command]
+fn pdf_split_available() -> bool {
+    operations::all_engine_status().pdfsplit
+}
+
+#[tauri::command]
+fn pdf_edit_available() -> bool {
+    operations::all_engine_status().qpdf
+}
+
+fn read_qpdf_page_count(input: &Path) -> Result<u32, String> {
+    let qpdf = operations::find_executable("qpdf").ok_or_else(|| operation_error("engine"))?;
+    let encryption = operations::run(&qpdf, &[OsString::from("--is-encrypted"), input.as_os_str().to_owned()]).map_err(process_error)?;
+    match encryption.status.code().and_then(operations::qpdf_encryption_status) {
+        Some(true) => return Err(operation_error("protected")),
+        Some(false) => {},
+        None => return Err(operation_error("conversion")),
+    }
+    let output = operations::run(&qpdf, &[OsString::from("--show-npages"), input.as_os_str().to_owned()]).map_err(process_error)?;
+    if !output.status.success() { return Err(operation_error("conversion")); }
+    operations::parse_qpdf_page_count(&String::from_utf8_lossy(&output.stdout)).ok_or_else(|| operation_error("unsupported"))
+}
+
+#[tauri::command(async)]
+fn pdf_edit_page_count(input_path: String, dropped: tauri::State<'_, DroppedFiles>) -> Result<u32, String> {
+    let input = selected_dropped_file(&input_path, &dropped).map_err(|_| operation_error("input"))?;
+    if !input.extension().and_then(|value| value.to_str()).is_some_and(|value| value.eq_ignore_ascii_case("pdf")) { return Err(operation_error("unsupported")); }
+    read_qpdf_page_count(&input)
+}
+
+fn read_pdf_page_count(input: &Path) -> Option<u32> {
+    let pdfinfo = operations::find_executable("pdfinfo")?;
+    let output = operations::run(&pdfinfo, &[input.as_os_str().to_owned()]).ok()?;
+    output.status.success().then(|| operations::parse_pdf_page_count(&String::from_utf8_lossy(&output.stdout))).flatten()
+}
+
+#[tauri::command(async)]
+fn pdf_page_count(input_path: String, dropped: tauri::State<'_, DroppedFiles>) -> Result<u32, String> {
+    let input = selected_dropped_file(&input_path, &dropped).map_err(|_| operation_error("input"))?;
+    if !input.extension().and_then(|value| value.to_str()).is_some_and(|value| value.eq_ignore_ascii_case("pdf")) { return Err(operation_error("unsupported")); }
+    read_pdf_page_count(&input).ok_or_else(|| operation_error("conversion"))
+}
+
+#[tauri::command]
+fn video_scaling_available() -> bool {
+    operations::video_scaling_available()
+}
+
+#[tauri::command]
+fn conversion_catalog() -> Vec<operations::ConversionCatalogItem> {
+    operations::conversion_catalog(operations::all_engine_status())
 }
 
 #[tauri::command]
@@ -204,14 +358,12 @@ fn quick_formats(
         .and_then(|value| value.to_str())
         .unwrap_or("")
         .to_ascii_lowercase();
-    if ["png", "jpg", "jpeg", "webp", "gif", "bmp", "svg"].contains(&extension.as_str()) {
-        let mut formats = ["png", "jpg", "webp", "pdf"].map(str::to_owned).to_vec();
+    if let Some(mut formats) = operations::quick_image_formats(&extension) {
         let engines = operations::all_engine_status();
-        if engines.imagemagick {
-            formats.extend(["bmp", "heic", "tiff", "avif"].map(str::to_owned));
-        }
-        if extension == "gif" && engines.ffmpeg {
-            formats.extend(["mp4", "webm"].map(str::to_owned));
+        for format in operations::output_extensions_for(&extension, engines) {
+            if !formats.contains(&format) {
+                formats.push(format);
+            }
         }
         return Ok(formats);
     }
@@ -259,28 +411,58 @@ fn convert_file(
     height: Option<u32>,
     destination_folder: Option<String>,
     dropped: tauri::State<'_, DroppedFiles>,
+    job_id: String,
+    jobs: tauri::State<'_, OperationJobs>,
 ) -> Result<String, String> {
-    let input = fs::canonicalize(&input_path).map_err(|error| error.to_string())?;
+    let cancelled = jobs
+        .active
+        .lock()
+        .unwrap()
+        .get(&job_id)
+        .cloned()
+        .ok_or_else(|| operation_error("cancelled"))?;
+    let input = fs::canonicalize(&input_path).map_err(|error| {
+        operation_error(if error.kind() == std::io::ErrorKind::NotFound {
+            "input"
+        } else {
+            "access"
+        })
+    })?;
     if !dropped.0.lock().unwrap().contains(&input) {
-        return Err("Select the input file in FlickVert".into());
+        return Err(operation_error("input"));
     }
     let extension = input
         .extension()
         .and_then(|value| value.to_str())
         .unwrap_or("")
         .to_ascii_lowercase();
-    let operation = operations::operation_for(
-        &extension,
-        &output_extension,
-        operations::all_engine_status(),
-    )
-    .ok_or_else(|| "No installed engine supports this input and output format".to_string())?;
+    let engines = operations::all_engine_status();
+    let operation = operations::operation_for(&extension, &output_extension, engines);
+    let Some(operation) = operation else {
+        let all_engines = operations::Engines {
+            ffmpeg: true,
+            pandoc: true,
+            imagemagick: true,
+            libreoffice: true,
+            poppler: true,
+            pdfunite: true,
+            pdfsplit: true,
+            qpdf: true,
+        };
+        return Err(operation_error(
+            if operations::operation_for(&extension, &output_extension, all_engines).is_some() {
+                "engine"
+            } else {
+                "unsupported"
+            },
+        ));
+    };
     let work_root = app
         .path()
         .app_cache_dir()
-        .map_err(|error| error.to_string())?
+        .map_err(|_| operation_error("access"))?
         .join("media-work");
-    fs::create_dir_all(&work_root).map_err(|error| error.to_string())?;
+    fs::create_dir_all(&work_root).map_err(|_| operation_error("access"))?;
     let work_dir = loop {
         let candidate = work_root.join(format!(
             "{}-{}",
@@ -290,43 +472,63 @@ fn convert_file(
         match fs::create_dir(&candidate) {
             Ok(()) => break candidate,
             Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
-            Err(error) => return Err(error.to_string()),
+            Err(_) => return Err(operation_error("access")),
         }
     };
     let result = (|| {
+        if cancelled.load(Ordering::Acquire) {
+            return Err(operation_error("cancelled"));
+        }
         let stem = input
             .file_stem()
             .and_then(|value| value.to_str())
             .unwrap_or("converted");
         if operation.engine == operations::Engine::Poppler {
-            let destination = destination_for(&input, destination_folder.as_deref())?;
-            return convert_pdf(&input, &work_dir, &destination, stem, &output_extension);
+            let destination = destination_for(&input, destination_folder.as_deref())
+                .map_err(|_| operation_error("access"))?;
+            return convert_pdf(
+                &input,
+                &work_dir,
+                &destination,
+                stem,
+                &output_extension,
+                &cancelled,
+            );
         }
         if operation.engine == operations::Engine::LibreOffice
             && ["png", "jpg"].contains(&output_extension.as_str())
         {
             let soffice =
-                operations::find_executable("soffice").ok_or("LibreOffice is not installed")?;
+                operations::find_executable("soffice").ok_or_else(|| operation_error("engine"))?;
             let args = operations::libreoffice_args(&input, &work_dir);
-            let output = operations::run(&soffice, &args).map_err(|error| error.to_string())?;
+            let output =
+                operations::run_cancellable(&soffice, &args, &cancelled).map_err(process_error)?;
             if !output.status.success() {
-                return Err(String::from_utf8_lossy(&output.stderr).trim().to_owned());
+                return Err(operation_error("conversion"));
             }
             let pdf = work_dir.join(format!("{stem}.pdf"));
             if !pdf.is_file() {
-                return Err("LibreOffice did not export slides to PDF".into());
+                return Err(operation_error("conversion"));
             }
-            let destination = destination_for(&input, destination_folder.as_deref())?;
-            return convert_pdf(&pdf, &work_dir, &destination, stem, &output_extension);
+            let destination = destination_for(&input, destination_folder.as_deref())
+                .map_err(|_| operation_error("access"))?;
+            return convert_pdf(
+                &pdf,
+                &work_dir,
+                &destination,
+                stem,
+                &output_extension,
+                &cancelled,
+            );
         }
         let output_temp = if operation.engine == operations::Engine::LibreOffice {
             work_dir.join(format!("{stem}.{output_extension}"))
         } else {
             work_dir.join(format!("converted.{output_extension}"))
         };
-        let (executable, args) = match operation.engine {
+        let (executable, mut args) = match operation.engine {
             operations::Engine::Ffmpeg => (
-                operations::find_executable("ffmpeg").ok_or("FFmpeg is not installed")?,
+                operations::find_executable("ffmpeg").ok_or_else(|| operation_error("engine"))?,
                 if ["png", "jpg"].contains(&output_extension.as_str()) {
                     operations::ffmpeg_image_args(
                         &input,
@@ -335,16 +537,19 @@ fn convert_file(
                         width,
                         height,
                     )
+                } else if operations::is_subtitle_input(&extension) {
+                    operations::subtitle_ffmpeg_args(&input, &output_temp, &output_extension)
+                        .ok_or_else(|| operation_error("unsupported"))?
                 } else {
                     operations::ffmpeg_args(&input, &output_temp)
                 },
             ),
             operations::Engine::Pandoc => (
-                operations::find_executable("pandoc").ok_or("Pandoc is not installed")?,
+                operations::find_executable("pandoc").ok_or_else(|| operation_error("engine"))?,
                 operations::pandoc_args(&input, &output_temp),
             ),
             operations::Engine::ImageMagick => (
-                operations::find_executable("magick").ok_or("ImageMagick is not installed")?,
+                operations::find_executable("magick").ok_or_else(|| operation_error("engine"))?,
                 operations::imagemagick_args(
                     &input,
                     &output_temp,
@@ -354,36 +559,72 @@ fn convert_file(
                 ),
             ),
             operations::Engine::LibreOffice => (
-                operations::find_executable("soffice").ok_or("LibreOffice is not installed")?,
+                operations::find_executable("soffice").ok_or_else(|| operation_error("engine"))?,
                 operations::libreoffice_convert_args(&input, &work_dir, &output_extension),
             ),
             operations::Engine::Poppler => unreachable!(),
         };
-        let output: Output =
-            operations::run(&executable, &args).map_err(|error| error.to_string())?;
+        let duration_us = (operation.engine == operations::Engine::Ffmpeg)
+            .then(|| media_duration_us(&input))
+            .flatten();
+        if duration_us.is_some() {
+            args.splice(
+                0..0,
+                ["-progress", "pipe:1", "-nostats"].map(std::ffi::OsString::from),
+            );
+        }
+        let progress_app = app.clone();
+        let progress_job = job_id.clone();
+        let on_progress = move |progress| {
+            let _ = progress_app.emit(
+                "flickvert://operation-progress",
+                OperationProgress {
+                    job_id: progress_job.clone(),
+                    progress,
+                },
+            );
+        };
+        let output: Output = operations::run_cancellable_with_progress(
+            &executable,
+            &args,
+            &cancelled,
+            duration_us,
+            on_progress,
+        )
+        .map_err(process_error)?;
         if !output.status.success() {
-            return Err(String::from_utf8_lossy(&output.stderr).trim().to_owned());
+            return Err(operation_error("conversion"));
         }
         if !output_temp.is_file()
             || fs::metadata(&output_temp)
-                .map_err(|error| error.to_string())?
+                .map_err(|_| operation_error("access"))?
                 .len()
                 == 0
         {
-            return Err("The conversion engine did not create an output file".into());
+            return Err(operation_error("conversion"));
+        }
+        if cancelled.load(Ordering::Acquire) {
+            return Err(operation_error("cancelled"));
         }
         let stem = input
             .file_stem()
             .and_then(|value| value.to_str())
             .unwrap_or("converted");
         let name = format!("{stem}.{output_extension}");
-        let destination = destination_for(&input, destination_folder.as_deref())?;
+        let destination = destination_for(&input, destination_folder.as_deref())
+            .map_err(|_| operation_error("access"))?;
         files::write_output_file(&destination, &name, &output_temp)
             .map(|path| path.to_string_lossy().into_owned())
-            .map_err(|error| error.to_string())
+            .map_err(|_| operation_error("write"))
     })();
     let _ = fs::remove_dir_all(work_dir);
-    result
+    result.map_err(|error| {
+        if error.starts_with("flickvert-error:") {
+            error
+        } else {
+            operation_error("conversion")
+        }
+    })
 }
 
 fn convert_pdf(
@@ -392,49 +633,57 @@ fn convert_pdf(
     destination: &Path,
     stem: &str,
     extension: &str,
+    cancelled: &AtomicBool,
 ) -> Result<String, String> {
     if ["txt", "md", "docx", "epub"].contains(&extension) {
         let executable =
-            operations::find_executable("pdftotext").ok_or("Poppler is not installed")?;
+            operations::find_executable("pdftotext").ok_or_else(|| operation_error("engine"))?;
         let temporary = work_dir.join("result.txt");
         let args = [
             std::ffi::OsString::from("-layout"),
             input.as_os_str().to_owned(),
             temporary.as_os_str().to_owned(),
         ];
-        let output = operations::run(&executable, &args).map_err(|error| error.to_string())?;
+        let output =
+            operations::run_cancellable(&executable, &args, cancelled).map_err(process_error)?;
         if !output.status.success() {
-            return Err(String::from_utf8_lossy(&output.stderr).trim().to_owned());
+            return Err(operation_error("conversion"));
         }
         if !temporary.is_file()
             || fs::metadata(&temporary)
-                .map_err(|error| error.to_string())?
+                .map_err(|_| operation_error("access"))?
                 .len()
                 == 0
         {
-            return Err("This PDF has no extractable text".into());
+            return Err(operation_error("conversion"));
         }
         let source = if ["docx", "epub"].contains(&extension) {
-            let pandoc = operations::find_executable("pandoc").ok_or("Pandoc is not installed")?;
+            let pandoc =
+                operations::find_executable("pandoc").ok_or_else(|| operation_error("engine"))?;
             let target = work_dir.join(format!("result.{extension}"));
             let args = [
                 std::ffi::OsString::from("--output"),
                 target.as_os_str().to_owned(),
                 temporary.as_os_str().to_owned(),
             ];
-            let output = operations::run(&pandoc, &args).map_err(|error| error.to_string())?;
+            let output =
+                operations::run_cancellable(&pandoc, &args, cancelled).map_err(process_error)?;
             if !output.status.success() {
-                return Err(String::from_utf8_lossy(&output.stderr).trim().to_owned());
+                return Err(operation_error("conversion"));
             }
             target
         } else {
             temporary
         };
+        if cancelled.load(Ordering::Acquire) {
+            return Err(operation_error("cancelled"));
+        }
         return files::write_output_file(destination, &format!("{stem}.{extension}"), &source)
             .map(|path| path.to_string_lossy().into_owned())
-            .map_err(|error| error.to_string());
+            .map_err(|_| operation_error("write"));
     }
-    let executable = operations::find_executable("pdftoppm").ok_or("Poppler is not installed")?;
+    let executable =
+        operations::find_executable("pdftoppm").ok_or_else(|| operation_error("engine"))?;
     let prefix = work_dir.join("page");
     let args = [
         std::ffi::OsString::from("-r"),
@@ -443,39 +692,44 @@ fn convert_pdf(
         input.as_os_str().to_owned(),
         prefix.as_os_str().to_owned(),
     ];
-    let output = operations::run(&executable, &args).map_err(|error| error.to_string())?;
+    let output =
+        operations::run_cancellable(&executable, &args, cancelled).map_err(process_error)?;
     if !output.status.success() {
-        return Err(String::from_utf8_lossy(&output.stderr).trim().to_owned());
+        return Err(operation_error("conversion"));
     }
     let image_extension = if extension == "png" { "png" } else { "jpg" };
     let mut pages = fs::read_dir(work_dir)
-        .map_err(|error| error.to_string())?
+        .map_err(|_| operation_error("access"))?
         .filter_map(Result::ok)
         .map(|entry| entry.path())
         .filter(|path| path.extension().and_then(|value| value.to_str()) == Some(image_extension))
         .collect::<Vec<_>>();
     pages.sort();
     if pages.is_empty() {
-        return Err("Poppler did not render any PDF pages".into());
+        return Err(operation_error("conversion"));
     }
     let folder = loop {
         let candidate =
             files::unique_output_path(destination, &format!("{stem}-{extension}-pages"))
-                .map_err(|error| error.to_string())?;
+                .map_err(|_| operation_error("write"))?;
         match fs::create_dir(&candidate) {
             Ok(()) => break candidate,
             Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
-            Err(error) => return Err(error.to_string()),
+            Err(_) => return Err(operation_error("write")),
         }
     };
     let result = (|| {
         for page in pages {
+            if cancelled.load(Ordering::Acquire) {
+                return Err(operation_error("cancelled"));
+            }
             let name = page
                 .file_name()
                 .ok_or("PDF page name not found")?
                 .to_string_lossy()
                 .into_owned();
-            files::write_output_file(&folder, &name, &page).map_err(|error| error.to_string())?;
+            files::write_output_file(&folder, &name, &page)
+                .map_err(|_| operation_error("write"))?;
         }
         Ok(folder.to_string_lossy().into_owned())
     })();
@@ -496,14 +750,15 @@ fn process_image_tool(
     destination_folder: Option<String>,
     dropped: tauri::State<'_, DroppedFiles>,
 ) -> Result<String, String> {
-    let input = selected_dropped_file(&input_path, &dropped)?;
+    let input =
+        selected_dropped_file(&input_path, &dropped).map_err(|_| operation_error("input"))?;
     let extension = input
         .extension()
         .and_then(|value| value.to_str())
         .unwrap_or("")
         .to_ascii_lowercase();
     if !["heic", "heif", "avif", "tif", "tiff", "svg"].contains(&extension.as_str()) {
-        return Err("This image tool is unavailable for the selected file".into());
+        return Err(operation_error("unsupported"));
     }
     let mut options = Vec::new();
     match action_id.as_str() {
@@ -523,15 +778,15 @@ fn process_image_tool(
             std::ffi::OsString::from(quality.unwrap_or(76).clamp(40, 100).to_string()),
         ]),
         "metadata" => options.push("-strip".into()),
-        _ => return Err("Unknown image tool".into()),
+        _ => return Err(operation_error("unsupported")),
     }
-    let magick = operations::find_executable("magick").ok_or("ImageMagick is not installed")?;
+    let magick = operations::find_executable("magick").ok_or_else(|| operation_error("engine"))?;
     let work_root = app
         .path()
         .app_cache_dir()
-        .map_err(|error| error.to_string())?
+        .map_err(|_| operation_error("access"))?
         .join("image-work");
-    fs::create_dir_all(&work_root).map_err(|error| error.to_string())?;
+    fs::create_dir_all(&work_root).map_err(|_| operation_error("access"))?;
     let work_dir = loop {
         let candidate = work_root.join(format!(
             "{}-{}",
@@ -541,7 +796,7 @@ fn process_image_tool(
         match fs::create_dir(&candidate) {
             Ok(()) => break candidate,
             Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
-            Err(error) => return Err(error.to_string()),
+            Err(_) => return Err(operation_error("access")),
         }
     };
     let result = (|| {
@@ -557,33 +812,40 @@ fn process_image_tool(
         ))];
         args.extend(options);
         args.push(temporary.as_os_str().to_owned());
-        let output = operations::run(&magick, &args).map_err(|error| error.to_string())?;
+        let output = operations::run(&magick, &args).map_err(process_error)?;
         if !output.status.success() {
-            return Err(String::from_utf8_lossy(&output.stderr).trim().to_owned());
+            return Err(operation_error("conversion"));
         }
         if !temporary.is_file()
             || fs::metadata(&temporary)
-                .map_err(|error| error.to_string())?
+                .map_err(|_| operation_error("access"))?
                 .len()
                 == 0
         {
-            return Err("ImageMagick did not create an output file".into());
+            return Err(operation_error("conversion"));
         }
         let stem = input
             .file_stem()
             .and_then(|value| value.to_str())
             .unwrap_or("image");
-        let destination = destination_for(&input, destination_folder.as_deref())?;
+        let destination = destination_for(&input, destination_folder.as_deref())
+            .map_err(|_| operation_error("access"))?;
         files::write_output_file(
             &destination,
             &format!("{stem}-{}.{output_extension}", action_id),
             &temporary,
         )
         .map(|path| path.to_string_lossy().into_owned())
-        .map_err(|error| error.to_string())
+        .map_err(|_| operation_error("write"))
     })();
     let _ = fs::remove_dir_all(work_dir);
-    result
+    result.map_err(|error| {
+        if error.starts_with("flickvert-error:") {
+            error
+        } else {
+            operation_error("conversion")
+        }
+    })
 }
 
 #[tauri::command(async)]
@@ -591,10 +853,23 @@ fn process_media_tool(
     app: AppHandle,
     input_path: String,
     action_id: String,
+    video_preset: Option<String>,
+    video_codec: Option<String>,
+    video_height: Option<u32>,
+    trim_start_us: Option<u64>,
+    trim_end_us: Option<u64>,
+    thumbnail_time_us: Option<u64>,
+    audio_target_lufs: Option<i8>,
+    audio_true_peak_db: Option<i8>,
+    audio_extraction_format: Option<String>,
+    video_stream_index: Option<usize>,
+    audio_stream_index: Option<usize>,
+    subtitle_stream_index: Option<usize>,
     destination_folder: Option<String>,
     dropped: tauri::State<'_, DroppedFiles>,
 ) -> Result<String, String> {
-    let input = selected_dropped_file(&input_path, &dropped)?;
+    let input =
+        selected_dropped_file(&input_path, &dropped).map_err(|_| operation_error("input"))?;
     let extension = input
         .extension()
         .and_then(|value| value.to_str())
@@ -602,21 +877,76 @@ fn process_media_tool(
         .to_ascii_lowercase();
     let is_video = operations::is_video_input(&extension);
     let is_audio = operations::is_audio_input(&extension);
+    let selected_video_codec = video_codec.as_deref().unwrap_or("h264");
+    let selected_audio_format = audio_extraction_format.as_deref().unwrap_or("mp3");
+    if action_id == "trim-video" && (video_stream_index.is_some() || audio_stream_index.is_some() || subtitle_stream_index.is_some()) {
+        let streams = operations::media_streams(&input).ok_or_else(|| operation_error("engine"))?;
+        if video_stream_index.is_some_and(|index| !streams.iter().any(|stream| stream.kind == "video" && stream.track_index == index))
+            || audio_stream_index.is_some_and(|index| !streams.iter().any(|stream| stream.kind == "audio" && stream.track_index == index))
+            || subtitle_stream_index.is_some_and(|index| !streams.iter().any(|stream| stream.kind == "subtitle" && stream.track_index == index)) {
+            return Err(operation_error("unsupported"));
+        }
+    }
+    let audio_normalization = if action_id == "normalize-audio" {
+        let values = (audio_target_lufs.unwrap_or(-16), audio_true_peak_db.unwrap_or(-1));
+        if !operations::valid_audio_normalization(values.0, values.1) {
+            return Err(operation_error("unsupported"));
+        }
+        Some(values)
+    } else {
+        None
+    };
+    if action_id == "mute-video" {
+        if !operations::available_video_codecs().contains(&"h264") {
+            return Err(operation_error("engine"));
+        }
+        match operations::has_audio_stream(&input) {
+            Some(true) => {}
+            Some(false) => return Err(operation_error("unsupported")),
+            None => return Err(operation_error("engine")),
+        }
+    }
+    if action_id == "extract-audio" {
+        if !operations::available_audio_formats().contains(&selected_audio_format) {
+            return Err(operation_error("engine"));
+        }
+        match operations::has_audio_stream(&input) {
+            Some(true) => {}
+            Some(false) => return Err(operation_error("unsupported")),
+            None => return Err(operation_error("engine")),
+        }
+    }
     let output_extension = match (is_video, is_audio, action_id.as_str()) {
-        (true, _, "compress-video") => "mp4",
+        (true, _, "compress-video") => match selected_video_codec {
+            "h264" => "mp4",
+            "hevc" => "mkv",
+            _ => return Err(operation_error("unsupported")),
+        },
+        (true, _, "trim-video") => match selected_video_codec {
+            "h264" => "mp4",
+            "hevc" => "mkv",
+            _ => return Err(operation_error("unsupported")),
+        },
         (true, _, "mute-video") => "mp4",
-        (true, _, "extract-audio") => "mp3",
+        (true, _, "extract-audio") => match selected_audio_format {
+            "mp3" => "mp3",
+            "m4a" => "m4a",
+            "opus" => "opus",
+            "flac" => "flac",
+            "wav" => "wav",
+            _ => return Err(operation_error("unsupported")),
+        },
         (true, _, "video-thumbnail") => "jpg",
         (_, true, "compress-audio" | "normalize-audio") => "m4a",
-        _ => return Err("This tool is not available for the selected media".into()),
+        _ => return Err(operation_error("unsupported")),
     };
-    let ffmpeg = operations::find_executable("ffmpeg").ok_or("FFmpeg is not installed")?;
+    let ffmpeg = operations::find_executable("ffmpeg").ok_or_else(|| operation_error("engine"))?;
     let work_root = app
         .path()
         .app_cache_dir()
-        .map_err(|error| error.to_string())?
+        .map_err(|_| operation_error("access"))?
         .join("media-work");
-    fs::create_dir_all(&work_root).map_err(|error| error.to_string())?;
+    fs::create_dir_all(&work_root).map_err(|_| operation_error("access"))?;
     let work_dir = loop {
         let candidate = work_root.join(format!(
             "{}-{}",
@@ -626,29 +956,50 @@ fn process_media_tool(
         match fs::create_dir(&candidate) {
             Ok(()) => break candidate,
             Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
-            Err(error) => return Err(error.to_string()),
+            Err(_) => return Err(operation_error("access")),
         }
     };
     let result = (|| {
         let output_temp = work_dir.join(format!("result.{output_extension}"));
-        let args = operations::ffmpeg_tool_args(&action_id, &input, &output_temp)
-            .ok_or("Unknown media tool")?;
-        let output = operations::run(&ffmpeg, &args).map_err(|error| error.to_string())?;
+        let trim_range = if action_id == "trim-video" {
+            let start = trim_start_us.ok_or_else(|| operation_error("unsupported"))?;
+            let end = trim_end_us.ok_or_else(|| operation_error("unsupported"))?;
+            let duration = media_duration_us(&input).ok_or_else(|| operation_error("engine"))?;
+            operations::trim_duration_us(start, end, duration)
+                .ok_or_else(|| operation_error("unsupported"))?;
+            if !operations::available_video_codecs().contains(&selected_video_codec) {
+                return Err(operation_error("engine"));
+            }
+            Some((start, end))
+        } else {
+            None
+        };
+        let thumbnail_time = if action_id == "video-thumbnail" {
+            let time = thumbnail_time_us.ok_or_else(|| operation_error("unsupported"))?;
+            let duration = media_duration_us(&input).ok_or_else(|| operation_error("engine"))?;
+            Some(operations::valid_video_frame_time_us(time, duration).ok_or_else(|| operation_error("unsupported"))?)
+        } else {
+            None
+        };
+        if action_id == "compress-video" && !operations::available_video_codecs().contains(&selected_video_codec) {
+            return Err(operation_error("engine"));
+        }
+        if action_id == "compress-video" && video_height.is_some() && !operations::video_scaling_available() {
+            return Err(operation_error("unsupported"));
+        }
+        let args = operations::ffmpeg_tool_args_with_streams(video_preset.as_deref().unwrap_or("balanced"), selected_video_codec, video_height, trim_range, thumbnail_time, audio_normalization, (action_id == "extract-audio").then_some(selected_audio_format), &action_id, &input, &output_temp, (action_id == "trim-video").then_some(video_stream_index).flatten(), (action_id == "trim-video").then_some(audio_stream_index).flatten(), (action_id == "trim-video").then_some(subtitle_stream_index).flatten())
+            .ok_or_else(|| operation_error("unsupported"))?;
+        let output = operations::run(&ffmpeg, &args).map_err(process_error)?;
         if !output.status.success() {
-            let message = String::from_utf8_lossy(&output.stderr).trim().to_owned();
-            return Err(if message.is_empty() {
-                "FFmpeg could not process this file".into()
-            } else {
-                message
-            });
+            return Err(operation_error("conversion"));
         }
         if !output_temp.is_file()
             || fs::metadata(&output_temp)
-                .map_err(|error| error.to_string())?
+                .map_err(|_| operation_error("access"))?
                 .len()
                 == 0
         {
-            return Err("FFmpeg did not create an output file".into());
+            return Err(operation_error("conversion"));
         }
         let stem = input
             .file_stem()
@@ -659,14 +1010,184 @@ fn process_media_tool(
             "mute-video" => "muted",
             "extract-audio" => "audio",
             "video-thumbnail" => "thumbnail",
+            "trim-video" => "trimmed",
             "normalize-audio" => "normalized",
-            _ => return Err("Unknown media tool".into()),
+            _ => return Err(operation_error("unsupported")),
         };
         let name = format!("{stem}-{suffix}.{output_extension}");
-        let destination = destination_for(&input, destination_folder.as_deref())?;
+        let destination = destination_for(&input, destination_folder.as_deref())
+            .map_err(|_| operation_error("access"))?;
         files::write_output_file(&destination, &name, &output_temp)
             .map(|path| path.to_string_lossy().into_owned())
-            .map_err(|error| error.to_string())
+            .map_err(|_| operation_error("write"))
+    })();
+    let _ = fs::remove_dir_all(work_dir);
+    result.map_err(|error| {
+        if error.starts_with("flickvert-error:") {
+            error
+        } else {
+            operation_error("conversion")
+        }
+    })
+}
+
+#[tauri::command(async)]
+fn split_pdf_pages(
+    app: AppHandle,
+    input_path: String,
+    page_numbers: Vec<u32>,
+    destination_folder: Option<String>,
+    dropped: tauri::State<'_, DroppedFiles>,
+) -> Result<Vec<String>, String> {
+    let input = selected_dropped_file(&input_path, &dropped).map_err(|_| operation_error("input"))?;
+    if !input.extension().and_then(|value| value.to_str()).is_some_and(|value| value.eq_ignore_ascii_case("pdf")) { return Err(operation_error("unsupported")); }
+    if !pdf_split_available() { return Err(operation_error("engine")); }
+    let page_count = read_pdf_page_count(&input).ok_or_else(|| operation_error("conversion"))?;
+    if !operations::valid_pdf_page_numbers(&page_numbers, page_count) { return Err(operation_error("unsupported")); }
+    let pdfseparate = operations::find_executable("pdfseparate").ok_or_else(|| operation_error("engine"))?;
+    let destination = destination_for(&input, destination_folder.as_deref()).map_err(|_| operation_error("access"))?;
+    let work_root = app.path().app_cache_dir().map_err(|_| operation_error("access"))?.join("media-work");
+    fs::create_dir_all(&work_root).map_err(|_| operation_error("access"))?;
+    let work_dir = loop {
+        let candidate = work_root.join(format!("{}-{}", std::process::id(), MEDIA_TEMP_ID.fetch_add(1, Ordering::Relaxed)));
+        match fs::create_dir(&candidate) {
+            Ok(()) => break candidate,
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(_) => return Err(operation_error("access")),
+        }
+    };
+    let result = (|| {
+        let pattern = work_dir.join("page-%d.pdf");
+        let mut ranges = Vec::<(u32, u32)>::new();
+        for page in &page_numbers {
+            if let Some(last) = ranges.last_mut() {
+                if last.1.checked_add(1) == Some(*page) { last.1 = *page; continue; }
+            }
+            ranges.push((*page, *page));
+        }
+        for (start, end) in ranges {
+            let args = operations::pdf_split_args(&input, start, end, &pattern).ok_or_else(|| operation_error("unsupported"))?;
+            let output = operations::run(&pdfseparate, &args).map_err(process_error)?;
+            if !output.status.success() {
+                return Err(if String::from_utf8_lossy(&output.stderr).to_ascii_lowercase().contains("encrypt") { operation_error("protected") } else { operation_error("conversion") });
+            }
+        }
+        for page in &page_numbers {
+            let extracted = work_dir.join(format!("page-{page}.pdf"));
+            if !extracted.is_file() || fs::metadata(&extracted).map_err(|_| operation_error("access"))?.len() == 0 {
+                return Err(operation_error("conversion"));
+            }
+        }
+        let stem = input.file_stem().and_then(|value| value.to_str()).unwrap_or("document");
+        let mut written = Vec::with_capacity(page_numbers.len());
+        for page in &page_numbers {
+            let extracted = work_dir.join(format!("page-{page}.pdf"));
+            match files::write_output_file(&destination, &format!("{stem}-page-{page}.pdf"), &extracted) {
+                Ok(path) => written.push(path),
+                Err(_) => {
+                    for path in written { let _ = fs::remove_file(path); }
+                    return Err(operation_error("write"));
+                }
+            }
+        }
+        Ok(written.into_iter().map(|path| path.to_string_lossy().into_owned()).collect())
+    })();
+    let _ = fs::remove_dir_all(work_dir);
+    result
+}
+
+#[tauri::command(async)]
+fn edit_pdf_pages(
+    app: AppHandle,
+    input_path: String,
+    page_order: Vec<u32>,
+    rotations: Vec<u16>,
+    destination_folder: Option<String>,
+    dropped: tauri::State<'_, DroppedFiles>,
+) -> Result<String, String> {
+    let input = selected_dropped_file(&input_path, &dropped).map_err(|_| operation_error("input"))?;
+    if !input.extension().and_then(|value| value.to_str()).is_some_and(|value| value.eq_ignore_ascii_case("pdf")) { return Err(operation_error("unsupported")); }
+    if !pdf_edit_available() { return Err(operation_error("engine")); }
+    let page_count = read_qpdf_page_count(&input)?;
+    if !operations::valid_pdf_page_order(&page_order, page_count) || rotations.len() != page_count as usize || rotations.iter().any(|angle| ![0, 90, 180, 270].contains(angle)) { return Err(operation_error("unsupported")); }
+    let qpdf = operations::find_executable("qpdf").ok_or_else(|| operation_error("engine"))?;
+    let destination = destination_for(&input, destination_folder.as_deref()).map_err(|_| operation_error("access"))?;
+    let work_root = app.path().app_cache_dir().map_err(|_| operation_error("access"))?.join("media-work");
+    fs::create_dir_all(&work_root).map_err(|_| operation_error("access"))?;
+    let work_dir = loop {
+        let candidate = work_root.join(format!("{}-{}", std::process::id(), MEDIA_TEMP_ID.fetch_add(1, Ordering::Relaxed)));
+        match fs::create_dir(&candidate) {
+            Ok(()) => break candidate,
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(_) => return Err(operation_error("access")),
+        }
+    };
+    let result = (|| {
+        let rotations = rotations.iter().enumerate().map(|(index, angle)| (index as u32 + 1, *angle)).collect::<Vec<_>>();
+        let rotated = work_dir.join("rotated.pdf");
+        let ordered = work_dir.join("edited.pdf");
+        let source = if rotations.iter().any(|(_, angle)| *angle != 0) {
+            let args = operations::pdf_rotate_args(&input, &rotated, &rotations, page_count).ok_or_else(|| operation_error("unsupported"))?;
+            let output = operations::run(&qpdf, &args).map_err(process_error)?;
+            if !output.status.success() { return Err(if String::from_utf8_lossy(&output.stderr).to_ascii_lowercase().contains("encrypt") { operation_error("protected") } else { operation_error("conversion") }); }
+            rotated.as_path()
+        } else { input.as_path() };
+        let args = operations::pdf_page_order_args(source, &ordered, &page_order, page_count).ok_or_else(|| operation_error("unsupported"))?;
+        let output = operations::run(&qpdf, &args).map_err(process_error)?;
+        if !output.status.success() { return Err(if String::from_utf8_lossy(&output.stderr).to_ascii_lowercase().contains("encrypt") { operation_error("protected") } else { operation_error("conversion") }); }
+        if !ordered.is_file() || fs::metadata(&ordered).map_err(|_| operation_error("access"))?.len() == 0 { return Err(operation_error("conversion")); }
+        let stem = input.file_stem().and_then(|value| value.to_str()).unwrap_or("document");
+        files::write_output_file(&destination, &format!("{stem}-edited.pdf"), &ordered).map(|path| path.to_string_lossy().into_owned()).map_err(|_| operation_error("write"))
+    })();
+    let _ = fs::remove_dir_all(work_dir);
+    result
+}
+
+#[tauri::command(async)]
+fn merge_pdf_files(
+    app: AppHandle,
+    input_paths: Vec<String>,
+    destination_folder: Option<String>,
+    dropped: tauri::State<'_, DroppedFiles>,
+) -> Result<String, String> {
+    if !(2..=1_000).contains(&input_paths.len()) { return Err(operation_error("unsupported")); }
+    let mut inputs = Vec::with_capacity(input_paths.len());
+    for input_path in input_paths {
+        let input = selected_dropped_file(&input_path, &dropped).map_err(|_| operation_error("input"))?;
+        if !input.extension().and_then(|value| value.to_str()).is_some_and(|value| value.eq_ignore_ascii_case("pdf")) {
+            return Err(operation_error("unsupported"));
+        }
+        inputs.push(input);
+    }
+    let pdfunite = operations::find_executable("pdfunite").ok_or_else(|| operation_error("engine"))?;
+    let work_root = app.path().app_cache_dir().map_err(|_| operation_error("access"))?.join("media-work");
+    fs::create_dir_all(&work_root).map_err(|_| operation_error("access"))?;
+    let work_dir = loop {
+        let candidate = work_root.join(format!("{}-{}", std::process::id(), MEDIA_TEMP_ID.fetch_add(1, Ordering::Relaxed)));
+        match fs::create_dir(&candidate) {
+            Ok(()) => break candidate,
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(_) => return Err(operation_error("access")),
+        }
+    };
+    let result = (|| {
+        let output_temp = work_dir.join("merged.pdf");
+        let args = operations::pdf_merge_args(&inputs, &output_temp).ok_or_else(|| operation_error("unsupported"))?;
+        let output = operations::run(&pdfunite, &args).map_err(process_error)?;
+        if !output.status.success() {
+            return Err(if String::from_utf8_lossy(&output.stderr).to_ascii_lowercase().contains("encrypt") {
+                operation_error("protected")
+            } else {
+                operation_error("conversion")
+            });
+        }
+        if !output_temp.is_file() || fs::metadata(&output_temp).map_err(|_| operation_error("access"))?.len() == 0 {
+            return Err(operation_error("conversion"));
+        }
+        let stem = inputs[0].file_stem().and_then(|value| value.to_str()).unwrap_or("document");
+        let destination = destination_for(&inputs[0], destination_folder.as_deref()).map_err(|_| operation_error("access"))?;
+        files::write_output_file(&destination, &format!("{stem}-merged.pdf"), &output_temp)
+            .map(|path| path.to_string_lossy().into_owned()).map_err(|_| operation_error("write"))
     })();
     let _ = fs::remove_dir_all(work_dir);
     result
@@ -876,6 +1397,110 @@ fn open_image_editor(
     .map_err(|error| error.to_string())
 }
 
+#[tauri::command(async)]
+fn open_video_trim_editor(
+    app: AppHandle,
+    input_path: String,
+    dropped: tauri::State<'_, DroppedFiles>,
+) -> Result<(), String> {
+    let input = selected_dropped_file(&input_path, &dropped)?;
+    let extension = input.extension().and_then(|value| value.to_str()).unwrap_or("").to_ascii_lowercase();
+    if !operations::is_video_input(&extension) {
+        return Err(operation_error("unsupported"));
+    }
+    show_main(&app);
+    app.emit("flickvert://video-trim-open", input.to_string_lossy().into_owned())
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command(async)]
+fn open_video_export_preview(
+    app: AppHandle,
+    input_paths: Vec<String>,
+    dropped: tauri::State<'_, DroppedFiles>,
+) -> Result<(), String> {
+    if input_paths.is_empty() { return Err(operation_error("input")); }
+    let mut paths = Vec::with_capacity(input_paths.len());
+    for input_path in &input_paths {
+        let input = selected_dropped_file(input_path, &dropped).map_err(|_| operation_error("input"))?;
+        let extension = input.extension().and_then(|value| value.to_str()).unwrap_or("").to_ascii_lowercase();
+        if !operations::is_video_input(&extension) { return Err(operation_error("unsupported")); }
+        paths.push(input.to_string_lossy().into_owned());
+    }
+    show_main(&app);
+    app.emit("flickvert://video-export-preview-open", paths).map_err(|_| operation_error("access"))
+}
+
+#[tauri::command(async)]
+fn open_pdf_merge_editor(
+    app: AppHandle,
+    input_paths: Vec<String>,
+    dropped: tauri::State<'_, DroppedFiles>,
+) -> Result<(), String> {
+    if !(2..=1_000).contains(&input_paths.len()) {
+        return Err(operation_error("unsupported"));
+    }
+    if !pdf_merge_available() { return Err(operation_error("engine")); }
+    let mut paths = Vec::with_capacity(input_paths.len());
+    for input_path in input_paths {
+        let input = selected_dropped_file(&input_path, &dropped).map_err(|_| operation_error("input"))?;
+        if !input.extension().and_then(|value| value.to_str()).is_some_and(|value| value.eq_ignore_ascii_case("pdf")) {
+            return Err(operation_error("unsupported"));
+        }
+        paths.push(input.to_string_lossy().into_owned());
+    }
+    show_main(&app);
+    app.emit("flickvert://pdf-merge-open", paths).map_err(|_| operation_error("access"))
+}
+
+#[tauri::command(async)]
+fn open_pdf_split_editor(
+    app: AppHandle,
+    input_path: String,
+    dropped: tauri::State<'_, DroppedFiles>,
+) -> Result<(), String> {
+    let input = selected_dropped_file(&input_path, &dropped).map_err(|_| operation_error("input"))?;
+    if !input.extension().and_then(|value| value.to_str()).is_some_and(|value| value.eq_ignore_ascii_case("pdf")) { return Err(operation_error("unsupported")); }
+    if !pdf_split_available() { return Err(operation_error("engine")); }
+    show_main(&app);
+    app.emit("flickvert://pdf-split-open", input.to_string_lossy().into_owned()).map_err(|_| operation_error("access"))
+}
+
+#[tauri::command(async)]
+fn open_pdf_pages_editor(
+    app: AppHandle,
+    input_path: String,
+    dropped: tauri::State<'_, DroppedFiles>,
+) -> Result<(), String> {
+    let input = selected_dropped_file(&input_path, &dropped).map_err(|_| operation_error("input"))?;
+    if !input.extension().and_then(|value| value.to_str()).is_some_and(|value| value.eq_ignore_ascii_case("pdf")) { return Err(operation_error("unsupported")); }
+    if !pdf_edit_available() { return Err(operation_error("engine")); }
+    show_main(&app);
+    app.emit("flickvert://pdf-pages-open", input.to_string_lossy().into_owned()).map_err(|_| operation_error("access"))
+}
+
+#[tauri::command(async)]
+fn open_video_thumbnail_editor(
+    app: AppHandle,
+    input_path: String,
+    dropped: tauri::State<'_, DroppedFiles>,
+) -> Result<(), String> {
+    let input = selected_dropped_file(&input_path, &dropped)?;
+    let extension = input.extension().and_then(|value| value.to_str()).unwrap_or("").to_ascii_lowercase();
+    if !operations::is_video_input(&extension) {
+        return Err(operation_error("unsupported"));
+    }
+    show_main(&app);
+    app.emit("flickvert://video-thumbnail-open", input.to_string_lossy().into_owned())
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn media_duration(input_path: String, dropped: tauri::State<'_, DroppedFiles>) -> Result<u64, String> {
+    let input = selected_dropped_file(&input_path, &dropped).map_err(|_| operation_error("input"))?;
+    media_duration_us(&input).ok_or_else(|| operation_error("engine"))
+}
+
 #[tauri::command]
 fn reveal_dropped_file(
     input_path: String,
@@ -883,6 +1508,21 @@ fn reveal_dropped_file(
 ) -> Result<(), String> {
     let path = selected_dropped_path(&input_path, &dropped)?;
     reveal_in_file_manager(&path).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn reveal_output_path(output_path: String) -> Result<(), String> {
+    let path = existing_output_path(&output_path)?;
+    reveal_in_file_manager(&path).map_err(|error| error.to_string())
+}
+
+fn existing_output_path(output_path: &str) -> Result<PathBuf, String> {
+    let path = fs::canonicalize(output_path).map_err(|_| "Output is unavailable")?;
+    if path.is_file() || path.is_dir() {
+        Ok(path)
+    } else {
+        Err("Output is unavailable".into())
+    }
 }
 
 fn selected_dropped_path(input_path: &str, dropped: &DroppedFiles) -> Result<PathBuf, String> {
@@ -952,7 +1592,9 @@ fn copy_powershell_path(
     let path = selected_dropped_path(&input_path, &dropped)?;
     #[cfg(windows)]
     {
-        copy_path_to_clipboard(&format!("'{}'", path.to_string_lossy().replace('\'', "''")))
+        copy_path_to_clipboard(&operations::powershell_path_literal(
+            &path.to_string_lossy(),
+        ))
     }
     #[cfg(not(windows))]
     {
@@ -1132,7 +1774,10 @@ fn register_shortcut(app: AppHandle, shortcut: String) -> Result<(), String> {
     let key = parts.pop().ok_or("Shortcut has no key")?;
     let valid_key = key == "SPACE"
         || (key.len() == 1 && key.as_bytes()[0].is_ascii_alphanumeric())
-        || (key.strip_prefix('F').and_then(|n| n.parse::<u8>().ok()).is_some_and(|n| (1..=12).contains(&n)));
+        || (key
+            .strip_prefix('F')
+            .and_then(|n| n.parse::<u8>().ok())
+            .is_some_and(|n| (1..=12).contains(&n)));
     if !valid_key
         || parts.is_empty()
         || parts.iter().enumerate().any(|(index, modifier)| {
@@ -1223,11 +1868,23 @@ fn main() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![
+            begin_operation_job,
+            cancel_operation_job,
+            finish_operation_job,
             output_directory,
             save_output,
             quick_action,
             open_image_editor,
+            open_video_trim_editor,
+            open_video_export_preview,
+            open_pdf_merge_editor,
+            open_pdf_split_editor,
+            open_pdf_pages_editor,
+            open_video_thumbnail_editor,
+            media_duration,
+            inspect_media_streams,
             reveal_dropped_file,
+            reveal_output_path,
             copy_dropped_file_path,
             copy_powershell_path,
             open_terminal,
@@ -1243,11 +1900,23 @@ fn main() {
             read_dropped_file,
             inspect_dropped_files,
             engine_status,
+            video_codecs,
+            audio_formats,
+            pdf_merge_available,
+            pdf_split_available,
+            pdf_edit_available,
+            pdf_edit_page_count,
+            pdf_page_count,
+            video_scaling_available,
+            conversion_catalog,
             supports_in_app_updates,
             convert_file,
             process_image_tool,
             process_media_tool,
             create_zip_archive,
+            merge_pdf_files,
+            split_pdf_pages,
+            edit_pdf_pages,
             extract_zip_archive
         ])
         .setup(|app| {
@@ -1255,6 +1924,7 @@ fn main() {
                 eprintln!("Could not register the default shortcut: {error}");
             }
             app.manage(DroppedFiles::default());
+            app.manage(OperationJobs::default());
             app.manage(DragTrigger::default());
             app.manage(StartupFiles(Mutex::new(
                 std::env::args_os()
@@ -1406,5 +2076,30 @@ mod file_type_tests {
         assert_eq!(file_mime("cr3"), Some("image/x-raw"));
         assert_eq!(file_mime("svg"), Some("image/svg+xml"));
         assert_eq!(file_mime("exe"), None);
+    }
+}
+
+#[cfg(test)]
+mod output_path_tests {
+    use super::existing_output_path;
+
+    #[test]
+    fn accepts_existing_output_files_and_rejects_missing_paths() {
+        let directory = std::env::temp_dir().join(format!(
+            "flickvert-output-path-{}-{}",
+            std::process::id(),
+            super::MEDIA_TEMP_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+        ));
+        std::fs::create_dir(&directory).unwrap();
+        let file = directory.join("result.txt");
+        std::fs::write(&file, "result").unwrap();
+
+        assert_eq!(
+            existing_output_path(file.to_str().unwrap()).unwrap(),
+            std::fs::canonicalize(&file).unwrap()
+        );
+        assert!(existing_output_path(directory.join("missing.txt").to_str().unwrap()).is_err());
+
+        std::fs::remove_dir_all(directory).unwrap();
     }
 }

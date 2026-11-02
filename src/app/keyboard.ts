@@ -1,0 +1,1 @@
+export const modifierLabel = (key: 'SHIFT' | 'CTRL' | 'ALT') => key === 'SHIFT' ? 'Shift' : key === 'CTRL' ? (/Mac/.test(navigator.userAgent) ? 'Command' : 'Ctrl') : (/Mac/.test(navigator.userAgent) ? 'Control' : 'Alt')

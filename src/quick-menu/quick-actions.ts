@@ -1,11 +1,11 @@
 import type { MessageKey } from '../i18n'
+import type { AppIconName } from '../icons/AppIcon'
 
-export type ActionIconName = 'image' | 'pdf' | 'resize' | 'rotate' | 'flip' | 'tone' | 'crop' | 'compress' | 'tag' | 'mute' | 'music' | 'film' | 'wave' | 'archive' | 'copy' | 'move' | 'folder' | 'terminal'
-export type QuickAction = { id: string; label: MessageKey; glyph: ActionIconName }
-type FileInfo = { extension: string; mime: string }
+export type QuickAction = { id: string; label: MessageKey; glyph: AppIconName }
+type FileInfo = { extension: string; mime: string; hasAudio?: boolean | null }
 
 export const imageToolActions = [
-  { id: 'image-editor', label: 'Edit image', glyph: 'image' },
+  { id: 'image-editor', label: 'Edit image', glyph: 'image-edit' },
   { id: 'images-to-pdf', label: 'Images to PDF', glyph: 'pdf' },
   { id: 'resize', label: 'Resize', glyph: 'resize' },
   { id: 'rotate', label: 'Rotate', glyph: 'rotate' },
@@ -18,6 +18,7 @@ export const imageToolActions = [
 
 export const videoToolActions = [
   { id: 'compress-video', label: 'Compress', glyph: 'compress' },
+  { id: 'trim-video', label: 'Trim video', glyph: 'crop' },
   { id: 'mute-video', label: 'Mute video', glyph: 'mute' },
   { id: 'extract-audio', label: 'Extract audio', glyph: 'music' },
   { id: 'video-thumbnail', label: 'Create thumbnail', glyph: 'film' },
@@ -29,6 +30,9 @@ export const audioToolActions = [
 ] as const satisfies readonly QuickAction[]
 
 export const archiveToolActions = [{ id: 'extract-zip', label: 'Extract ZIP', glyph: 'archive' }] as const satisfies readonly QuickAction[]
+export const pdfMergeActions = [{ id: 'merge-pdf', label: 'Merge PDFs', glyph: 'pdf-merge' }] as const satisfies readonly QuickAction[]
+export const pdfSplitActions = [{ id: 'split-pdf', label: 'Split PDF', glyph: 'pdf-split' }] as const satisfies readonly QuickAction[]
+export const pdfPageActions = [{ id: 'edit-pdf-pages', label: 'Arrange PDF pages', glyph: 'pdf-pages' }] as const satisfies readonly QuickAction[]
 export const allToolActions: QuickAction[] = [...imageToolActions, ...videoToolActions, ...audioToolActions]
 
 export const fileActions = [
@@ -49,11 +53,13 @@ export function fileActionsForPlatform(isWindows: boolean): QuickAction[] {
 const imageExtensions = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'svg']
 const extendedImageExtensions = [...imageExtensions, 'heic', 'heif', 'avif', 'tif', 'tiff']
 
-export function toolActionsFor(files: FileInfo[], ffmpegAvailable: boolean, imagemagickAvailable: boolean): QuickAction[] {
+export function toolActionsFor(files: FileInfo[], ffmpegAvailable: boolean, imagemagickAvailable: boolean, videoCodecs: string[] = [], pdfMergeAvailable = false, pdfSplitAvailable = false, pdfEditAvailable = false): QuickAction[] {
   if (files.length === 1 && files[0].extension === 'zip') return [...archiveToolActions]
+  if (files.length === 1 && files[0].extension === 'pdf') return [...(pdfEditAvailable ? pdfPageActions : []), ...(pdfSplitAvailable ? pdfSplitActions : [])]
+  if (pdfMergeAvailable && files.length > 1 && files.every((file) => file.extension === 'pdf')) return [...pdfMergeActions]
   if (files.length && files.every((file) => imageExtensions.includes(file.extension))) return files.some((file) => file.extension === 'svg') ? imageToolActions.filter((action) => action.id !== 'image-editor') : [...imageToolActions]
   if (imagemagickAvailable && files.length && files.every((file) => extendedImageExtensions.includes(file.extension))) return imageToolActions.filter((action) => !['image-editor', 'images-to-pdf', 'square'].includes(action.id))
-  if (ffmpegAvailable && files.length && files.every((file) => file.mime.startsWith('video/'))) return [...videoToolActions]
+  if (ffmpegAvailable && files.length && files.every((file) => file.mime.startsWith('video/'))) return videoToolActions.filter((action) => ['compress-video', 'trim-video'].includes(action.id) ? videoCodecs.length > 0 : action.id === 'mute-video' ? videoCodecs.includes('h264') : true)
   if (ffmpegAvailable && files.length && files.every((file) => file.mime.startsWith('audio/'))) return [...audioToolActions]
   return []
 }
@@ -62,9 +68,23 @@ export function canRunSelectedTool(actionId: string, actionIds: string[], fileCo
   return fileCount > 0 && actionIds.includes(actionId)
 }
 
+export function selectedToolUnavailableReason(actionId: string, files: { hasAudio?: boolean | null }[], audioFormat?: string, audioFormats: string[] = []): MessageKey | null {
+  if (actionId !== 'mute-video' && actionId !== 'extract-audio') return null
+  if (files.some((file) => file.hasAudio === false)) return actionId === 'mute-video' ? 'Mute video needs an audio track in every selected file.' : 'No audio track found in the selected video.'
+  if (!files.every((file) => file.hasAudio === true)) return 'Could not verify an audio track in every selected file.'
+  if (actionId === 'extract-audio' && !audioFormats.length) return 'No supported audio output format is available in FFmpeg.'
+  if (actionId === 'extract-audio' && (!audioFormat || !audioFormats.includes(audioFormat))) return 'Selected audio output format is unavailable in FFmpeg.'
+  return null
+}
+
 export function canRunWheelTool(actionId: string, fileCount: number, totalBytes: number) {
   if (!Number.isInteger(fileCount) || fileCount < 1 || !Number.isFinite(totalBytes) || totalBytes < 0) return false
   if (actionId === 'image-editor') return fileCount === 1
+  if (actionId === 'trim-video') return fileCount === 1
+  if (actionId === 'video-thumbnail') return fileCount === 1
+  if (actionId === 'merge-pdf') return fileCount >= 2 && fileCount <= 1_000
+  if (actionId === 'split-pdf') return fileCount === 1
+  if (actionId === 'edit-pdf-pages') return fileCount === 1
   if (actionId === 'images-to-pdf') return fileCount <= 100 && totalBytes <= 32 * 1024 * 1024
   return true
 }
@@ -79,6 +99,15 @@ export function canRunFileAction(actionId: string, files: { extension: string }[
 export function canUseNativeImagePath(inputExtension: string, outputExtension: string, ffmpegAvailable: boolean) {
   if (!ffmpegAvailable || inputExtension === 'svg') return false
   return outputExtension === 'png' || (outputExtension === 'jpg' && ['jpg', 'jpeg'].includes(inputExtension))
+}
+
+export function conversionConcurrency(outputExtension: string, files: { extension: string; size: number }[], ffmpegAvailable: boolean) {
+  const safeSmallImages = ['png', 'jpg', 'webp'].includes(outputExtension)
+    && files.length > 0
+    && files.every((file) => imageExtensions.includes(file.extension)
+      && file.size <= 16 * 1024 * 1024
+      && !canUseNativeImagePath(file.extension, outputExtension, ffmpegAvailable))
+  return safeSmallImages ? 2 : 1
 }
 
 export async function commonFormats(files: { path: string; extension: string; isDirectory: boolean }[], getFormats: (path: string) => Promise<string[]>) {
