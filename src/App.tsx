@@ -4,6 +4,7 @@ import { emit, listen } from '@tauri-apps/api/event'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { accentColor, accentColors, loadSettings, normalizeSettings, saveSettings, validShortcut, type AccentColor, type AppSettings } from './settings'
 import { audioToolActions, fileActionsForPlatform, imageToolActions, videoToolActions } from './quick-menu/quick-actions'
+import { ActionIcon } from './quick-menu/ActionIcon'
 import { t, type MessageKey } from './i18n'
 import ImageEditor, { type ImageEditTool } from './image-editor/ImageEditor'
 import UpdateNotice from './updates/UpdateNotice'
@@ -189,7 +190,7 @@ export default function App() {
       <div className="sidebar-bottom">
         <UpdateNotice language={preferences.language}/>
         <div className="privacy"><svg className="privacy-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5 16 5v4.4c0 3.8-2.6 6.4-6 8.1-3.4-1.7-6-4.3-6-8.1V5l6-2.5Z"/><path d="m7.2 9.8 1.8 1.8 3.8-4"/></svg><div><strong>{tr('Your files stay here')}</strong><small>{tr('Processed on this device')}</small></div></div>
-        <div className="version">FlickVert <span>0.1.1</span></div>
+        <div className="version">FlickVert <span>0.1.2</span></div>
       </div>
     </aside>
 
@@ -215,10 +216,10 @@ export default function App() {
           <div><strong>{tr('Audio and video')}</strong><span>AAC · FLAC · M4A · MP3 · OGG · WAV · AVI · MKV · MOV · MP4 · WebM</span><small>{tr('Requires')} FFmpeg · {tr('Subtitles')}: ASS · SRT · SSA · VTT</small></div>
           <div><strong>{tr('PDF documents')}</strong><span>PDF → PNG · JPEG · TXT · Markdown · DOCX · EPUB</span><small>{tr('Requires')} Poppler + Pandoc · {tr('Office files')}: XLSX · PPTX · ODS via LibreOffice</small></div>
         </div></section>
-        <section className="settings-group"><h2>{tr('Images and PDFs')}</h2><p>{tr('Available when the matching file type is selected.')}</p><div className="tool-catalog">{imageToolActions.map((action) => <div className="catalog-row" key={action.id}><span className="catalog-glyph">{action.glyph}</span><strong>{tr(action.label)}</strong><small>{tr('Built in')}</small></div>)}<div className="catalog-row"><span className="catalog-glyph">IMG</span><strong>HEIC, HEIF, AVIF, TIFF</strong><small>{tr('Requires')} ImageMagick</small></div></div><p className="catalog-note">{tr('ImageMagick enables additional image formats.')}</p></section>
-        <section className="settings-group"><h2>{tr('Video')}</h2><div className="tool-catalog">{videoToolActions.map((action) => <div className="catalog-row" key={action.id}><span className="catalog-glyph">{action.glyph}</span><strong>{tr(action.label)}</strong><small>{tr('Requires')} FFmpeg</small></div>)}</div></section>
-        <section className="settings-group"><h2>{tr('Audio')}</h2><div className="tool-catalog">{audioToolActions.map((action) => <div className="catalog-row" key={action.id}><span className="catalog-glyph">{action.glyph}</span><strong>{tr(action.label)}</strong><small>{tr('Requires')} FFmpeg</small></div>)}</div></section>
-        <section className="settings-group"><h2>{tr('Files and archives')}</h2><div className="tool-catalog">{fileActionsForPlatform(navigator.userAgent.includes('Windows')).map((action) => <div className="catalog-row" key={action.id}><span className="catalog-glyph">{action.glyph}</span><strong>{tr(action.label === 'Open Terminal' && navigator.userAgent.includes('Windows') ? 'Open PowerShell' : action.label)}</strong><small>{tr('Built in')}</small></div>)}</div></section>
+        <section className="settings-group"><h2>{tr('Images and PDFs')}</h2><p>{tr('Available when the matching file type is selected.')}</p><div className="tool-catalog">{imageToolActions.map((action) => <div className="catalog-row" key={action.id}><span className="catalog-icon"><ActionIcon name={action.glyph} className="action-icon"/></span><strong>{tr(action.label)}</strong><small>{tr('Built in')}</small></div>)}<div className="catalog-row"><span className="catalog-icon"><ActionIcon name="image" className="action-icon"/></span><strong>HEIC, HEIF, AVIF, TIFF</strong><small>{tr('Requires')} ImageMagick</small></div></div><p className="catalog-note">{tr('ImageMagick enables additional image formats.')}</p></section>
+        <section className="settings-group"><h2>{tr('Video')}</h2><div className="tool-catalog">{videoToolActions.map((action) => <div className="catalog-row" key={action.id}><span className="catalog-icon"><ActionIcon name={action.glyph} className="action-icon"/></span><strong>{tr(action.label)}</strong><small>{tr('Requires')} FFmpeg</small></div>)}</div></section>
+        <section className="settings-group"><h2>{tr('Audio')}</h2><div className="tool-catalog">{audioToolActions.map((action) => <div className="catalog-row" key={action.id}><span className="catalog-icon"><ActionIcon name={action.glyph} className="action-icon"/></span><strong>{tr(action.label)}</strong><small>{tr('Requires')} FFmpeg</small></div>)}</div></section>
+        <section className="settings-group"><h2>{tr('Files and archives')}</h2><div className="tool-catalog">{fileActionsForPlatform(navigator.userAgent.includes('Windows')).map((action) => <div className="catalog-row" key={action.id}><span className="catalog-icon"><ActionIcon name={action.glyph} className="action-icon"/></span><strong>{tr(action.label === 'Open Terminal' && navigator.userAgent.includes('Windows') ? 'Open PowerShell' : action.label)}</strong><small>{tr('Built in')}</small></div>)}</div></section>
         <section className="settings-group"><h2>{tr('Convert files')}</h2><p>{tr('Optional engines only enable the formats they support.')}</p><div className="engine-status">{([['Pandoc', engines.pandoc], ['LibreOffice', engines.libreoffice], ['Poppler', engines.poppler], ['FFmpeg', engines.ffmpeg]] as const).map(([name, available]) => <div key={name}><span>{name}</span><span className={available ? 'engine-found' : ''}>{tr(available ? 'Detected' : 'Not detected on PATH')}</span></div>)}</div></section>
         <p className="catalog-note">{tr('Press Shift for formats, Ctrl or Command for tools, and Alt or Control for file actions.')}</p>
       </div> : section === 'guide' ? <div className="page welcome-page">

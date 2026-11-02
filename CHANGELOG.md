@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2
+
+- Replaced corrupted text symbols with consistent vector icons in the tools catalog and quick wheel.
+- Refined catalog spacing and requirement badges for clearer scanning.
+
 ## 0.1.1
 
 - Reworked the workspace and settings navigation, added a searchable tools and formats catalog, and removed the history page.

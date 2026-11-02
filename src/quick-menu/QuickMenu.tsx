@@ -10,12 +10,13 @@ import { accentColor, loadSettings, normalizeSettings, saveSettings } from '../s
 import { t, type MessageKey } from '../i18n'
 import { allToolActions, canRunFileAction, canRunSelectedTool, canRunWheelTool, canUseNativeImagePath, commonFormats, fileActionsForPlatform, imageToolActions, toolActionsFor } from './quick-actions'
 import { wheelLabelPosition, wheelSectorAt, wheelSlicePath } from './radial-wheel'
+import { ActionIcon } from './ActionIcon'
 import './quick-menu.css'
 
 type NativeFile = { path: string; name: string; size: number; extension: string; mime: string; isDirectory: boolean }
 type Format = { extension: string; label: string }
 type Position = { x: number; y: number }
-type WheelChoice = { key: string; label: string; glyph?: string; disabled: boolean; onChoose: () => void }
+type WheelChoice = { key: string; label: string; glyph?: import('./quick-actions').ActionIconName; disabled: boolean; onChoose: () => void }
 const imageExtensions = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'svg']
 const quickWindowSize = { width: 288, height: 288 }
 
@@ -42,7 +43,7 @@ function WheelChoices({ items, active, onActive }: { items: WheelChoice[]; activ
     </svg>
     <div className="quick-labels" aria-hidden="true">
       {items.map((item, index) => <span key={item.key} className={`quick-label${active === index ? ' active' : ''}${item.disabled ? ' disabled' : ''}`} style={wheelLabelPosition(index, items.length) as CSSProperties}>
-        {item.glyph && <span className="quick-glyph">{item.glyph}</span>}
+        {item.glyph && <ActionIcon name={item.glyph} className="quick-glyph"/>}
         <strong>{item.label}</strong>
       </span>)}
     </div>

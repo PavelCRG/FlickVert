@@ -1,44 +1,45 @@
 import type { MessageKey } from '../i18n'
 
-export type QuickAction = { id: string; label: MessageKey; glyph: string }
+export type ActionIconName = 'image' | 'pdf' | 'resize' | 'rotate' | 'flip' | 'tone' | 'crop' | 'compress' | 'tag' | 'mute' | 'music' | 'film' | 'wave' | 'archive' | 'copy' | 'move' | 'folder' | 'terminal'
+export type QuickAction = { id: string; label: MessageKey; glyph: ActionIconName }
 type FileInfo = { extension: string; mime: string }
 
 export const imageToolActions = [
-  { id: 'image-editor', label: 'Edit image', glyph: 'вњ¦' },
-  { id: 'images-to-pdf', label: 'Images to PDF', glyph: 'PDF' },
-  { id: 'resize', label: 'Resize', glyph: 'в†”' },
-  { id: 'rotate', label: 'Rotate', glyph: 'в†»' },
-  { id: 'flip', label: 'Flip', glyph: 'в‡‹' },
-  { id: 'grayscale', label: 'Grayscale', glyph: 'в—ђ' },
-  { id: 'square', label: 'Square crop', glyph: 'в–Ў' },
-  { id: 'compress', label: 'Compress', glyph: 'в—’' },
-  { id: 'metadata', label: 'Remove metadata', glyph: 'в—‡' },
+  { id: 'image-editor', label: 'Edit image', glyph: 'image' },
+  { id: 'images-to-pdf', label: 'Images to PDF', glyph: 'pdf' },
+  { id: 'resize', label: 'Resize', glyph: 'resize' },
+  { id: 'rotate', label: 'Rotate', glyph: 'rotate' },
+  { id: 'flip', label: 'Flip', glyph: 'flip' },
+  { id: 'grayscale', label: 'Grayscale', glyph: 'tone' },
+  { id: 'square', label: 'Square crop', glyph: 'crop' },
+  { id: 'compress', label: 'Compress', glyph: 'compress' },
+  { id: 'metadata', label: 'Remove metadata', glyph: 'tag' },
 ] as const satisfies readonly QuickAction[]
 
 export const videoToolActions = [
-  { id: 'compress-video', label: 'Compress', glyph: 'в—’' },
-  { id: 'mute-video', label: 'Mute video', glyph: 'в—–' },
-  { id: 'extract-audio', label: 'Extract audio', glyph: 'в™«' },
-  { id: 'video-thumbnail', label: 'Create thumbnail', glyph: 'в–Ј' },
+  { id: 'compress-video', label: 'Compress', glyph: 'compress' },
+  { id: 'mute-video', label: 'Mute video', glyph: 'mute' },
+  { id: 'extract-audio', label: 'Extract audio', glyph: 'music' },
+  { id: 'video-thumbnail', label: 'Create thumbnail', glyph: 'film' },
 ] as const satisfies readonly QuickAction[]
 
 export const audioToolActions = [
-  { id: 'compress-audio', label: 'Compress', glyph: 'в—’' },
-  { id: 'normalize-audio', label: 'Normalize audio', glyph: 'в–‚' },
+  { id: 'compress-audio', label: 'Compress', glyph: 'compress' },
+  { id: 'normalize-audio', label: 'Normalize audio', glyph: 'wave' },
 ] as const satisfies readonly QuickAction[]
 
-export const archiveToolActions = [{ id: 'extract-zip', label: 'Extract ZIP', glyph: 'ZIP' }] as const satisfies readonly QuickAction[]
+export const archiveToolActions = [{ id: 'extract-zip', label: 'Extract ZIP', glyph: 'archive' }] as const satisfies readonly QuickAction[]
 export const allToolActions: QuickAction[] = [...imageToolActions, ...videoToolActions, ...audioToolActions]
 
 export const fileActions = [
-  { id: 'create-zip', label: 'Create ZIP', glyph: 'в–±' },
-  { id: 'extract-zip', label: 'Extract ZIP', glyph: 'в–Ј' },
-  { id: 'copy-to-folder', label: 'Copy to FlickVert', glyph: 'в§‰' },
-  { id: 'move-to-folder', label: 'Move to FlickVert', glyph: 'в‡Ґ' },
-  { id: 'reveal', label: 'Show in folder', glyph: 'в†—' },
-  { id: 'copy-path', label: 'Copy path', glyph: 'вЋ' },
-  { id: 'copy-powershell-path', label: 'Copy path for PowerShell', glyph: '>_' },
-  { id: 'open-terminal', label: 'Open Terminal', glyph: '>_' },
+  { id: 'create-zip', label: 'Create ZIP', glyph: 'archive' },
+  { id: 'extract-zip', label: 'Extract ZIP', glyph: 'archive' },
+  { id: 'copy-to-folder', label: 'Copy to FlickVert', glyph: 'copy' },
+  { id: 'move-to-folder', label: 'Move to FlickVert', glyph: 'move' },
+  { id: 'reveal', label: 'Show in folder', glyph: 'folder' },
+  { id: 'copy-path', label: 'Copy path', glyph: 'copy' },
+  { id: 'copy-powershell-path', label: 'Copy path for PowerShell', glyph: 'terminal' },
+  { id: 'open-terminal', label: 'Open Terminal', glyph: 'terminal' },
 ] as const satisfies readonly QuickAction[]
 
 export function fileActionsForPlatform(isWindows: boolean): QuickAction[] {
