@@ -29,6 +29,8 @@ On **macOS 13 or later**, download the DMG for Apple Silicon or Intel from the [
 
 Windows requires the Microsoft Edge WebView2 Runtime. Optional conversion engines are installed separately.
 
+Current release: `0.1.3`.
+
 After installing a release that includes the updater, FlickVert checks for signed updates at startup and every six hours while running. Use **Updates** in the sidebar to check again and install an available update. On Windows, the app selects the matching EXE or MSI update automatically. The portable build must be updated manually from GitHub Releases.
 
 ## Quick start

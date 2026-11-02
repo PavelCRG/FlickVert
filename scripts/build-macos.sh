@@ -22,15 +22,27 @@ fi
 
 echo 'DMG build hit a busy mounted image. Inspecting mounted images before a single retry.' >&2
 hdiutil info
-bundle_dir="${FLICKVERT_TAURI_TARGET_DIR:-src-tauri/target}/$target/release/bundle/dmg"
-if [[ ! -d "$bundle_dir" ]]; then
-  echo "DMG output directory is missing: $bundle_dir" >&2
+bundle_dir="${FLICKVERT_TAURI_TARGET_DIR:-src-tauri/target}/$target/release/bundle"
+macos_dir="$bundle_dir/macos"
+if [[ ! -d "$macos_dir" ]]; then
+  echo "macOS bundle directory is missing: $macos_dir" >&2
   exit "$status"
 fi
+case "$target" in
+  x86_64-apple-darwin) arch=x64 ;;
+  aarch64-apple-darwin) arch=aarch64 ;;
+  *) echo "Unsupported macOS target: $target" >&2; exit "$status" ;;
+esac
+version=$(node -p "require('./package.json').version")
+if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "Invalid package version for DMG matching: $version" >&2
+  exit "$status"
+fi
+expected_image="FlickVert_${version}_${arch}.dmg"
 images=()
-while IFS= read -r image_path; do images+=("$image_path"); done < <(find "$bundle_dir" -maxdepth 1 -type f -name '*.dmg' -print)
+while IFS= read -r image_path; do images+=("$image_path"); done < <(find "$macos_dir" -maxdepth 1 -type f -name "rw.*.$expected_image" -print)
 if [[ ${#images[@]} -ne 1 ]]; then
-  echo "Expected one DMG to inspect in $bundle_dir; found ${#images[@]}. Refusing to detach an unrelated image." >&2
+  echo "Expected one mounted interstitial DMG matching $expected_image in $macos_dir; found ${#images[@]}. Refusing to detach an unrelated image." >&2
   exit "$status"
 fi
 image=$(cd "$(dirname "${images[0]}")" && pwd)/$(basename "${images[0]}")

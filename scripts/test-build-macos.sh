@@ -19,7 +19,7 @@ count=$((count + 1))
 printf '%s' "$count" > "$FLICKVERT_TEST_ROOT/count"
 case "$FLICKVERT_TEST_MODE:$count" in
   nonbusy:*) echo 'packaging failed'; exit 17 ;;
-  busy:1) mkdir -p "$FLICKVERT_TAURI_TARGET_DIR/$FLICKVERT_TEST_TARGET/release/bundle/dmg"; touch "$FLICKVERT_TEST_IMAGE"; echo 'hdiutil: Resource busy'; exit 17 ;;
+  busy:1) mkdir -p "$FLICKVERT_TAURI_TARGET_DIR/$FLICKVERT_TEST_TARGET/release/bundle/macos"; touch "$FLICKVERT_TEST_IMAGE"; echo 'hdiutil: Resource busy'; exit 17 ;;
   busy:*) exit 0 ;;
 esac
 MOCK
@@ -49,7 +49,22 @@ set -e
 [[ $status -eq 17 && $(cat "$root/count") -eq 1 ]] || { cat "$root/nonbusy.log"; echo 'Non-busy failure was retried or masked.' >&2; exit 1; }
 
 rm -f "$root/count" "$root/detached"
-export FLICKVERT_TEST_MODE=busy FLICKVERT_TEST_IMAGE="$target_dir/$target/release/bundle/dmg/FlickVert.dmg"
+version=$(node -p "require('./package.json').version")
+export FLICKVERT_TEST_MODE=busy FLICKVERT_TEST_IMAGE="$target_dir/$target/release/bundle/macos/rw.17070.FlickVert_${version}_x64.dmg"
 bash scripts/build-macos.sh "$target" > "$root/busy.log" 2>&1 || { cat "$root/busy.log"; exit 1; }
 [[ $(cat "$root/count") -eq 2 && $(cat "$root/detached") == /dev/disk42 ]] || { cat "$root/busy.log"; echo 'Busy-disk retry did not detach only its matching image and retry once.' >&2; exit 1; }
+
+rm -f "$root/count" "$root/detached"
+arm_target=aarch64-apple-darwin
+export FLICKVERT_TEST_MODE=busy FLICKVERT_TEST_TARGET="$arm_target" FLICKVERT_TEST_IMAGE="$target_dir/$arm_target/release/bundle/macos/rw.17070.FlickVert_${version}_aarch64.dmg"
+bash scripts/build-macos.sh "$arm_target" > "$root/arm.log" 2>&1 || { cat "$root/arm.log"; exit 1; }
+[[ $(cat "$root/detached") == /dev/disk42 ]] || { cat "$root/arm.log"; echo 'Apple Silicon DMG retry did not match its architecture-specific image.' >&2; exit 1; }
+
+rm -f "$root/count" "$root/detached"
+export FLICKVERT_TEST_MODE=busy FLICKVERT_TEST_TARGET="$target" FLICKVERT_TEST_IMAGE="$target_dir/$target/release/bundle/macos/rw.17070.FlickVert_0.1.2_x64.dmg"
+set +e
+bash scripts/build-macos.sh "$target" > "$root/unrelated.log" 2>&1
+status=$?
+set -e
+[[ $status -eq 17 && $(cat "$root/count") -eq 1 && ! -f "$root/detached" ]] || { cat "$root/unrelated.log"; echo 'Unrelated mounted images must not be detached or retried.' >&2; exit 1; }
 echo 'macOS DMG retry tests passed.'
