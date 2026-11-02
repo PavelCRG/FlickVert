@@ -63,9 +63,13 @@ export default function UpdateNotice({ language }: { language: Language }) {
   }
 
   return <section className="settings-group update-group" aria-labelledby="updates-title">
-    <h2 id="updates-title">{labels.title}</h2>
-    <div className="update-row"><span aria-live="polite">{status === 'available' ? `${labels.available}: ${version}` : status === 'manual' ? `${labels.available}: ${version}. ${labels.manual}` : status === 'downloading' && progress !== null ? `${labels.downloading} ${progress}%` : labels[status]}</span>
-      {status === 'available' ? <button className="primary-button" onClick={() => void install()}>{labels.install}</button> : status === 'restart' ? <button className="primary-button" onClick={() => void relaunch()}>{labels.restart}</button> : <button className="secondary-button" disabled={status === 'checking' || status === 'downloading'} onClick={() => void checkUpdate()}>{labels.check}</button>}
+    <div className="update-heading"><span className="update-heading-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M16 8a6.2 6.2 0 0 0-10.7-3L4 6.5M4 3.5v3h3M4 12a6.2 6.2 0 0 0 10.7 3L16 13.5m0 3v-3h-3"/></svg></span><h2 id="updates-title">{labels.title}</h2></div>
+    <div className="update-row">
+      <div className={`update-state update-state-${status}`} aria-live="polite">
+        <span className="update-state-icon" aria-hidden="true">{status === 'current' ? <svg viewBox="0 0 16 16"><path d="m3.5 8 3 3 6-6"/></svg> : status === 'error' ? <svg viewBox="0 0 16 16"><path d="M8 4v4m0 3h.01"/><circle cx="8" cy="8" r="6"/></svg> : <span/>}</span>
+        <span>{status === 'available' ? `${labels.available}: ${version}` : status === 'manual' ? `${labels.available}: ${version}. ${labels.manual}` : status === 'downloading' && progress !== null ? `${labels.downloading} ${progress}%` : labels[status]}</span>
+      </div>
+      {status === 'available' ? <button className="primary-button update-button" onClick={() => void install()}><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m-3-3 3 3 3-3M3 12v2h10v-2"/></svg>{labels.install}</button> : status === 'restart' ? <button className="primary-button update-button" onClick={() => void relaunch()}><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 6V2m0 0H9m4 0-3 3a5 5 0 1 0 1.5 5"/></svg>{labels.restart}</button> : <button className="secondary-button update-button" disabled={status === 'checking' || status === 'downloading'} onClick={() => void checkUpdate()}><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 6a5.2 5.2 0 0 0-8.9-2.3L3 5m0-3v3h3m7 2v3h-3"/></svg>{labels.check}</button>}
     </div>
   </section>
 }

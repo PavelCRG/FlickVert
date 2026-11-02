@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.3
+
+- Refined the sidebar update panel with clearer status, state icons, and a full-width update action.
+- Restyled the on-device privacy note and version label to match the app's sidebar cards.
+
 ## 0.1.2
 
 - Replaced corrupted text symbols with consistent vector icons in the tools catalog and quick wheel.

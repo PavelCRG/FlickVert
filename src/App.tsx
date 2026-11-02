@@ -189,8 +189,8 @@ export default function App() {
       </nav>}
       <div className="sidebar-bottom">
         <UpdateNotice language={preferences.language}/>
-        <div className="privacy"><svg className="privacy-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5 16 5v4.4c0 3.8-2.6 6.4-6 8.1-3.4-1.7-6-4.3-6-8.1V5l6-2.5Z"/><path d="m7.2 9.8 1.8 1.8 3.8-4"/></svg><div><strong>{tr('Your files stay here')}</strong><small>{tr('Processed on this device')}</small></div></div>
-        <div className="version">FlickVert <span>0.1.2</span></div>
+        <div className="privacy"><span className="privacy-icon-wrap"><svg className="privacy-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5 16 5v4.4c0 3.8-2.6 6.4-6 8.1-3.4-1.7-6-4.3-6-8.1V5l6-2.5Z"/><path d="m7.2 9.8 1.8 1.8 3.8-4"/></svg></span><span><strong>{tr('Your files stay here')}</strong><small>{tr('Processed on this device')}</small></span></div>
+        <div className="version">FlickVert <span>0.1.3</span></div>
       </div>
     </aside>
 
