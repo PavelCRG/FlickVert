@@ -378,6 +378,37 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "manual large-file memory sample"]
+    fn creates_zip_for_256_mib_input() {
+        let root = std::env::temp_dir().join(format!(
+            "flickvert-large-zip-{}-{}",
+            std::process::id(),
+            SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos()
+        ));
+        fs::create_dir_all(&root).unwrap();
+        let input = root.join("large.bin");
+        let mut file = File::create(&input).unwrap();
+        let block = [0xA5; 64 * 1024];
+        for _ in 0..4096 {
+            io::Write::write_all(&mut file, &block).unwrap();
+        }
+        drop(file);
+
+        let output = root.join("large.zip");
+        let started = std::time::Instant::now();
+        create_zip(&[input], &output, 1).unwrap();
+        let elapsed = started.elapsed().as_millis();
+        let output_size = fs::metadata(&output).unwrap().len();
+        let mut archive = ZipArchive::new(File::open(&output).unwrap()).unwrap();
+        let entry_size = archive.by_index(0).unwrap().size();
+        fs::remove_dir_all(&root).unwrap();
+
+        assert_eq!(entry_size, 256 * 1024 * 1024);
+        assert!(output_size < 2 * 1024 * 1024);
+        println!("ZIP input=256 MiB output={output_size} bytes elapsed={elapsed} ms");
+    }
+
+    #[test]
     fn archive_path_keys_normalize_unicode_composition() {
         assert_eq!(path_key("caf\u{00e9}.txt"), path_key("cafe\u{0301}.txt"));
     }

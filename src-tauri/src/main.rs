@@ -34,21 +34,21 @@ const QUICK_HEIGHT: u32 = 288;
 static MEDIA_TEMP_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 #[cfg(windows)]
-fn webview_data_directory(root: &Path, window: &str) -> std::io::Result<PathBuf> {
+fn webview_data_directory(root: &Path) -> std::io::Result<PathBuf> {
     let directory = root
         .join("app.flickvert.desktop.v2")
-        .join(format!("webview-{window}"));
+        .join("webview-main");
     fs::create_dir_all(&directory)?;
     Ok(directory)
 }
 
 #[cfg(windows)]
-fn windows_webview_data_directory(window: &str) -> std::io::Result<PathBuf> {
+fn windows_webview_data_directory() -> std::io::Result<PathBuf> {
     let root = std::env::var_os("LOCALAPPDATA")
         .map(PathBuf::from)
         .unwrap_or_else(std::env::temp_dir);
-    webview_data_directory(&root, window).or_else(|_| {
-        webview_data_directory(&std::env::temp_dir().join("FlickVert-WebView2"), window)
+    webview_data_directory(&root).or_else(|_| {
+        webview_data_directory(&std::env::temp_dir().join("FlickVert-WebView2"))
     })
 }
 
@@ -2232,7 +2232,7 @@ fn main() {
             let quick_window =
                 WebviewWindowBuilder::new(app, "quick", WebviewUrl::App("index.html".into()));
             #[cfg(windows)]
-            let quick_window = match windows_webview_data_directory("quick") {
+            let quick_window = match windows_webview_data_directory() {
                 Ok(directory) => quick_window.data_directory(directory),
                 Err(error) => {
                     eprintln!("Could not prepare quick actions profile: {error}");
@@ -2322,7 +2322,7 @@ fn main() {
                     .decorations(false)
                     .center();
                     #[cfg(windows)]
-                    let window = match windows_webview_data_directory("main") {
+                    let window = match windows_webview_data_directory() {
                         Ok(directory) => window.data_directory(directory),
                         Err(error) => {
                             eprintln!("Could not prepare main window profile: {error}");
@@ -2346,13 +2346,13 @@ mod file_type_tests {
 
     #[cfg(windows)]
     #[test]
-    fn webview_windows_get_separate_created_profiles() {
+    fn webview_windows_reuse_the_main_profile() {
         let root =
             std::env::temp_dir().join(format!("flickvert-profile-test-{}", std::process::id()));
-        let quick = super::webview_data_directory(&root, "quick").unwrap();
-        let main = super::webview_data_directory(&root, "main").unwrap();
-        assert!(quick.is_dir() && main.is_dir());
-        assert_ne!(quick, main);
+        let quick = super::webview_data_directory(&root).unwrap();
+        let main = super::webview_data_directory(&root).unwrap();
+        assert_eq!(quick, main);
+        assert!(quick.ends_with("webview-main"));
         std::fs::remove_dir_all(root).unwrap();
     }
 
