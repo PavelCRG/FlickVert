@@ -8,7 +8,7 @@ import { mapConcurrent } from '../conversion/concurrent'
 import { imagesToPdf } from '../conversion/pdf'
 import { accentColor, loadSettings, normalizeSettings, saveSettings } from '../settings'
 import { t, type MessageKey } from '../i18n'
-import { allToolActions, canRunFileAction, canRunSelectedTool, canRunWheelTool, canUseNativeImagePath, commonFormats, conversionConcurrency, fileActionsForPlatform, imageToolActions, selectedToolUnavailableReason, toolActionsFor } from './quick-actions'
+import { allToolActions, canRunFileAction, canRunSelectedTool, canRunWheelTool, canUseNativeImagePath, commonFormats, conversionConcurrency, fileActionsForPlatform, imageToolActions, launcherActions, selectedToolUnavailableReason, toolActionsFor } from './quick-actions'
 import { wheelLabelPosition, wheelSectorAt, wheelSlicePath } from './radial-wheel'
 import { AppIcon, type AppIconName } from '../icons/AppIcon'
 import { operationErrorKind, operationErrorMessages, type OperationErrorKind } from './operation-errors'
@@ -22,7 +22,7 @@ type WheelChoice = { key: string; label: string; glyph?: AppIconName; disabled: 
 type QueueItem = { id: string; name: string; status: 'queued' | 'processing' | 'done' | 'failed' | 'cancelled'; outputPath?: string; retryReady?: boolean; jobId?: string; progress?: number; error?: OperationErrorKind }
 type ZipPreview = { entries: { path: string; size: number; directory: boolean }[]; fileCount: number; totalSize: number; conflicts: string[] }
 const imageExtensions = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'svg']
-const quickWindowSize = { width: 288, height: 288 }
+const quickWindowSize = { width: 400, height: 400 }
 
 function outputLabel(extension: string) {
   return extension === 'jpg' ? 'JPEG' : extension.toUpperCase()
@@ -659,7 +659,12 @@ export default function QuickMenu() {
   }
 
   const actions = files.length ? wheelMode === 'actions' ? visibleFileActions : wheelMode === 'tools' ? toolActionsFor(files, ffmpegAvailable, imagemagickAvailable, videoCodecs, pdfMergeAvailable, pdfSplitAvailable, pdfEditAvailable) : [] : []
-  const choices: WheelChoice[] = wheelMode === 'convert'
+  const choices: WheelChoice[] = !files.length
+    ? launcherActions.map((action) => ({ key: action.id, label: tr(action.label), glyph: action.glyph, disabled: false, onChoose: () => {
+      if (action.id === 'choose-files') void invoke('choose_files')
+      else void invoke('quick_action', { actionId: action.id })
+    } }))
+    : wheelMode === 'convert'
     ? formats.map((format) => ({ key: format.extension, label: format.label, disabled: false, onChoose: () => void convertFiles(filesRef.current, format) }))
     : actions.map((action) => {
       const imageTool = allToolActions.some((tool) => tool.id === action.id)
@@ -693,8 +698,8 @@ export default function QuickMenu() {
     : undefined
   const pdfPageExport = Boolean(preview && files.some((file) => file.extension === 'pdf') && ['jpg', 'png'].includes(activeChoice?.key ?? ''))
   const previewDestination = preview?.destination === 'Source folders' ? tr('Source folders') : preview?.destination
-  const centerTitle = status || activeChoice?.label || (files.length === 1 ? files[0].name : files.length ? `${files.length} ${tr('files')}` : tr('Drag a file here'))
-  const centerDetail = status ? (files.length === 1 ? files[0].name : '') : activeChoice?.disabledReason || preview?.outputName || (activeChoice ? (files.length === 1 ? files[0].name : '') : files.length ? wheelMode === 'convert' ? tr('Select output format') : '' : '')
+  const centerTitle = status || activeChoice?.label || (files.length === 1 ? files[0].name : files.length ? `${files.length} ${tr('files')}` : 'FlickVert')
+  const centerDetail = status ? (files.length === 1 ? files[0].name : '') : activeChoice?.disabledReason || preview?.outputName || (activeChoice ? (files.length === 1 ? files[0].name : '') : files.length ? wheelMode === 'convert' ? tr('Select output format') : '' : tr('Choose files, tools, or settings'))
   return <main className={`quick-shell${dragMode ? ' drag-mode' : ''}${emptyWheel ? ' quick-empty' : ''}`} data-appearance={settings.appearance} style={{ '--wheel-accent-base': accentColor(settings) } as CSSProperties} aria-label="FlickVert quick actions">
     <div className={`quick-orbit${emptyWheel ? ' no-choices' : ''}`} aria-label={tr(wheelMode === 'convert' ? 'Select output format' : wheelMode === 'tools' ? 'Tools' : 'Actions')}>
       <WheelChoices items={choices} active={active} onActive={setActive}/>

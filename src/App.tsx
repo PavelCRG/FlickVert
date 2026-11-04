@@ -85,7 +85,11 @@ export default function App() {
     let disposed = false
     const stops: (() => void)[] = []
     const addStop = (stop: () => void) => { if (disposed) stop(); else stops.push(stop) }
-    void listen<string>('flickvert://quick-action', () => { setSection('settings'); setSettingsPage('general') }).then(addStop)
+    void listen<string>('flickvert://quick-action', ({ payload }) => {
+      if (payload === 'tools') setSection('tools')
+      else if (payload === 'home') setSection('home')
+      else if (payload === 'settings') { setSection('settings'); setSettingsPage('general') }
+    }).then(addStop)
     void listen<OperationQueueItem[]>('flickvert://operation-queue', ({ payload }) => setOperationQueue(payload.slice(0, 100))).then(addStop)
     void listen<{ jobId: string; progress: number }>('flickvert://operation-progress', ({ payload }) => setOperationQueue((queue) => queue.map((item) => item.jobId === payload.jobId ? { ...item, progress: payload.progress } : item))).then(addStop)
     void listen<{ inputPath: string; initialTool: ImageEditTool }>('flickvert://image-editor-open', ({ payload }) => {

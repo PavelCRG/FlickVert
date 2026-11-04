@@ -6,20 +6,21 @@ html:has(.quick-shell), body:has(.quick-shell), #root:has(.quick-shell) {
   position: relative; width: 100%; height: 100%; color: CanvasText;
   --wheel-accent-base: #315fce; --wheel-accent: var(--wheel-accent-base);
   color-scheme: light dark;
-  font: 12px system-ui, -apple-system, "Segoe UI", sans-serif;
+  font: 13px system-ui, -apple-system, "Segoe UI", sans-serif;
   user-select: none; pointer-events: none;
 }
 .quick-shell[data-appearance="light"] { color-scheme: light; }
 .quick-shell[data-appearance="dark"] { color-scheme: dark; --wheel-accent: color-mix(in srgb, var(--wheel-accent-base) 66%, white); }
 .quick-shell[data-appearance="system"] { color-scheme: light dark; }
 .quick-orbit {
-  position: absolute; top: 8px; left: 8px; width: 272px; height: 272px;
+  position: absolute; top: 8px; left: 8px; width: 384px; height: 384px;
   border-radius: 50%; pointer-events: none;
 }
 .quick-orbit::before {
   position: absolute; inset: 1px; content: "";
-  border: 1px solid color-mix(in srgb, var(--wheel-accent) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--wheel-accent) 18%, transparent);
   border-radius: 50%; pointer-events: none;
+  box-shadow: 0 14px 42px #12203324;
 }
 .quick-segments { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .quick-segment {
@@ -38,30 +39,30 @@ html:has(.quick-shell), body:has(.quick-shell), #root:has(.quick-shell) {
 }
 .quick-labels { position: absolute; inset: 0; pointer-events: none; }
 .quick-label {
-  position: absolute; width: 72px; min-height: 34px; display: flex;
+  position: absolute; width: 92px; min-height: 42px; display: flex;
   flex-direction: column; align-items: center; justify-content: center; gap: 3px;
   transform: translate(-50%, -50%); color: color-mix(in srgb, CanvasText 86%, transparent);
   text-align: center; transition: color .13s ease, transform .16s cubic-bezier(.2, .75, .25, 1);
 }
-.quick-label strong { max-width: 72px; font-size: 9px; line-height: 1.15; font-weight: 650; text-wrap: balance; }
-.quick-label .quick-glyph { width: 17px; height: 17px; color: color-mix(in srgb, CanvasText 62%, transparent); }
+.quick-label strong { max-width: 92px; font-size: 11px; line-height: 1.2; font-weight: 650; text-wrap: balance; }
+.quick-label .quick-glyph { width: 21px; height: 21px; color: color-mix(in srgb, CanvasText 62%, transparent); }
 .quick-label.active { color: var(--wheel-accent); transform: translate(-50%, -50%) scale(1.06); }
 .quick-label.active .quick-glyph { color: var(--wheel-accent); }
 .quick-label.disabled { opacity: .42; }
 .quick-center {
-  position: absolute; top: 50%; left: 50%; width: 100px; height: 100px;
+  position: absolute; top: 50%; left: 50%; width: 132px; height: 132px;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
   padding: 12px; transform: translate(-50%, -50%); border: 1px solid color-mix(in srgb, CanvasText 9%, transparent);
   border-radius: 50%; background: color-mix(in srgb, Canvas 97%, transparent);
-  box-shadow: 0 3px 12px #18364b14; text-align: center; pointer-events: none;
+  box-shadow: 0 4px 16px #18364b20; text-align: center; pointer-events: none;
 }
 .quick-center strong {
-  display: -webkit-box; max-width: 80px; overflow: hidden; color: CanvasText;
-  font-size: 11px; font-weight: 650; line-height: 1.2; text-overflow: ellipsis;
+  display: -webkit-box; max-width: 108px; overflow: hidden; color: CanvasText;
+  font-size: 15px; font-weight: 700; line-height: 1.2; text-overflow: ellipsis;
   -webkit-box-orient: vertical; -webkit-line-clamp: 2;
 }
-.quick-center small { max-width: 78px; overflow: hidden; color: color-mix(in srgb, CanvasText 58%, transparent); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
-.quick-center .quick-preview-path { max-width: 92px; color: color-mix(in srgb, CanvasText 46%, transparent); font-size: 8px; }
+.quick-center small { max-width: 108px; overflow: hidden; color: color-mix(in srgb, CanvasText 58%, transparent); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.quick-center .quick-preview-path { max-width: 116px; color: color-mix(in srgb, CanvasText 46%, transparent); font-size: 9px; }
 .zip-preview { position: absolute; inset: 10px; z-index: 5; display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 12px; border: 1px solid color-mix(in srgb, CanvasText 18%, transparent); border-radius: 12px; background: Canvas; box-shadow: 0 8px 30px #0003; color: CanvasText; pointer-events: auto; }
 .zip-preview h2 { margin: 0; font-size: 14px; }
 .zip-preview p { margin: 0; font-size: 10px; color: color-mix(in srgb, CanvasText 65%, transparent); }

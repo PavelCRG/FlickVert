@@ -4,6 +4,12 @@ import type { AppIconName } from '../icons/AppIcon'
 export type QuickAction = { id: string; label: MessageKey; glyph: AppIconName }
 type FileInfo = { extension: string; mime: string; hasAudio?: boolean | null }
 
+export const launcherActions = [
+  { id: 'choose-files', label: 'Choose files', glyph: 'folder' },
+  { id: 'tools', label: 'Tools', glyph: 'image' },
+  { id: 'settings', label: 'Settings', glyph: 'settings' },
+] as const satisfies readonly QuickAction[]
+
 export const imageToolActions = [
   { id: 'image-editor', label: 'Edit image', glyph: 'image-edit' },
   { id: 'images-to-pdf', label: 'Images to PDF', glyph: 'pdf' },

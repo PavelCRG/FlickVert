@@ -21,7 +21,7 @@ test('theme labels are translated in English, Russian, and Simplified Chinese', 
 })
 
 test('startup preference and failure are translated in every language', () => {
-  for (const key of ['Launch FlickVert when I sign in', 'Could not change startup settings.', 'FlickVert starts after you sign in; it cannot run while your PC is off.'] as const) {
+  for (const key of ['Launch FlickVert when I sign in', 'Could not change startup settings.', 'FlickVert starts after you sign in; it cannot run while your PC is off.', 'Choose files, tools, or settings'] as const) {
     assert.equal(t('en', key), key)
     assert.notEqual(t('ru', key), key)
     assert.notEqual(t('zh', key), key)

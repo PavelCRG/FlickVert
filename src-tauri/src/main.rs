@@ -29,8 +29,8 @@ mod quick_window;
 mod selection;
 mod shell_integration;
 
-const QUICK_WIDTH: u32 = 288;
-const QUICK_HEIGHT: u32 = 288;
+const QUICK_WIDTH: u32 = 400;
+const QUICK_HEIGHT: u32 = 400;
 static MEDIA_TEMP_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 #[cfg(windows)]
@@ -1499,7 +1499,7 @@ fn choose_output_folder() -> Option<String> {
 
 #[tauri::command]
 fn quick_action(app: AppHandle, action_id: String) -> Result<(), String> {
-    if action_id != "settings" {
+    if !["home", "tools", "settings"].contains(&action_id.as_str()) {
         return Err("Unknown quick action".into());
     }
     show_main(&app);

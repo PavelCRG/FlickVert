@@ -27,11 +27,11 @@ test('pointer selects clockwise sectors at native and scaled window sizes', () =
   assert.equal(wheelSectorAt({ x: 600, y: 320 }, { width: 640, height: 640 }, 4), 1)
 })
 
-test('compact wheel hit area matches its 288px window', () => {
-  const size = { width: 288, height: 288 }
-  assert.equal(wheelSectorAt({ x: 144, y: 12 }, size, 4), 0)
-  assert.equal(wheelSectorAt({ x: 144, y: 7 }, size, 4), -1)
-  assert.equal(wheelSectorAt({ x: 144, y: 83 }, size, 4), -1)
+test('quick wheel hit area matches its 400px window', () => {
+  const size = { width: 400, height: 400 }
+  assert.equal(wheelSectorAt({ x: 200, y: 20 }, size, 4), 0)
+  assert.equal(wheelSectorAt({ x: 200, y: 9 }, size, 4), -1)
+  assert.equal(wheelSectorAt({ x: 200, y: 200 }, size, 4), -1)
 })
 
 test('pointer in the hub, outside the ring, or with no sectors selects nothing', () => {

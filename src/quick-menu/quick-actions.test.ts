@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import { strict as assert } from 'node:assert'
-import { canRunFileAction, canRunSelectedTool, canRunWheelTool, canUseNativeImagePath, commonFormats, conversionConcurrency, operationShortcutActions, selectedToolUnavailableReason, toolActionsFor } from './quick-actions.ts'
+import { canRunFileAction, canRunSelectedTool, canRunWheelTool, canUseNativeImagePath, commonFormats, conversionConcurrency, launcherActions, operationShortcutActions, selectedToolUnavailableReason, toolActionsFor } from './quick-actions.ts'
 import { operationErrorKind } from './operation-errors.ts'
 import { conversionPreview } from './conversion-preview.ts'
 import { validateVideoFrameTime, validateVideoTrimRange } from '../video-trim.ts'
@@ -17,6 +17,10 @@ test('conversion preview shows the target name and destination before starting',
     destination: '/exports',
   })
   assert.equal(conversionPreview([{ name: 'a.png', path: '/one/a.png' }, { name: 'b.png', path: '/two/b.png' }], 'jpg').destination, 'Source folders')
+})
+
+test('the empty quick popup offers file selection, tools, and settings without file actions', () => {
+  assert.deepEqual(launcherActions.map(({ id }) => id), ['choose-files', 'tools', 'settings'])
 })
 
 test('operation errors map only known native codes to user-facing categories', () => {
