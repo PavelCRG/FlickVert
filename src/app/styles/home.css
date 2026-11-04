@@ -1,0 +1,66 @@
+.dashboard-page {
+  gap: 16px;
+}
+
+.dashboard-page .settings-header {
+  min-height: 82px;
+}
+
+.dashboard-start {
+  padding: 20px 22px;
+  border-radius: 12px;
+}
+
+.dashboard-start h2 {
+  font-size: 16px;
+}
+
+.dashboard-start p {
+  font-size: 12px;
+}
+
+.dashboard-grid {
+  gap: 11px;
+}
+
+.dashboard-card {
+  min-height: 98px;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 5px 12px;
+  padding: 15px;
+  border-radius: 11px;
+}
+
+.dashboard-card-icon {
+  width: 36px;
+  height: 36px;
+}
+
+.dashboard-card strong {
+  font-size: 13px;
+}
+
+.dashboard-card small {
+  font-size: 11px;
+}
+
+.dashboard-shortcut {
+  min-height: 48px;
+  padding: 9px 13px;
+}
+
+.dashboard-shortcut span:first-child {
+  font-size: 12px;
+}
+
+.dashboard-shortcut span:last-child,
+.dashboard-shortcut kbd {
+  font-size: 11px;
+}
+
+@media (max-width: 760px) {
+  .dashboard-start {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

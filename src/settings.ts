@@ -1,6 +1,6 @@
 export type Language = 'en' | 'ru' | 'zh'
 export type Appearance = 'system' | 'light' | 'dark'
-export type AccentColor = 'blue' | 'violet' | 'teal' | 'green' | 'rose'
+export type AccentColor = 'orange' | 'blue' | 'violet' | 'teal' | 'green' | 'rose'
 export type VideoPreset = 'small' | 'balanced' | 'high'
 export type VideoCodec = 'h264' | 'hevc'
 export type VideoHeight = 480 | 720 | 1080
@@ -35,6 +35,7 @@ export type AppSettings = {
   shortcut: string
   terminalPreference: TerminalPreference
   launchAtStartup: boolean
+  launchAtStartupConfigured: boolean
   contextMenuEnabled: boolean
   confirmQuitOnClose: boolean
   operationShortcuts: Record<string, string>
@@ -42,11 +43,11 @@ export type AppSettings = {
 }
 
 export const defaultSettings: AppSettings = {
-  language: 'en', appearance: 'system', accent: 'blue', quality: 88, pdfDpi: 300, pdfPageSize: 'source', pdfPageOrientation: 'auto', zipCompressionLevel: 6, format: 'image/webp', videoPreset: 'balanced', videoCodec: 'h264', audioTargetLufs: -16, audioTruePeakDb: -1, audioExtractionFormat: 'mp3', shortcut: 'CTRL+ALT+SPACE', terminalPreference: 'windows-terminal', launchAtStartup: false, contextMenuEnabled: false, confirmQuitOnClose: false, operationShortcuts: {}, dragModifiers: { convert: 'SHIFT', tools: 'CTRL', actions: 'ALT' },
+  language: 'en', appearance: 'system', accent: 'orange', quality: 88, pdfDpi: 300, pdfPageSize: 'source', pdfPageOrientation: 'auto', zipCompressionLevel: 6, format: 'image/webp', videoPreset: 'balanced', videoCodec: 'h264', audioTargetLufs: -16, audioTruePeakDb: -1, audioExtractionFormat: 'mp3', shortcut: 'CTRL+ALT+SPACE', terminalPreference: 'windows-terminal', launchAtStartup: true, launchAtStartupConfigured: false, contextMenuEnabled: false, confirmQuitOnClose: false, operationShortcuts: {}, dragModifiers: { convert: 'SHIFT', tools: 'CTRL', actions: 'ALT' },
 }
 
 export const accentColors: Record<AccentColor, string> = {
-  blue: '#315FCE', violet: '#7258D7', teal: '#087F78', green: '#27845F', rose: '#BD4F70',
+  orange: '#D96C24', blue: '#315FCE', violet: '#7258D7', teal: '#087F78', green: '#27845F', rose: '#BD4F70',
 }
 
 export function accentColor(settings: AppSettings): string {
@@ -54,7 +55,7 @@ export function accentColor(settings: AppSettings): string {
 }
 
 export function resetSettingsSection(section: 'appearance' | 'keyboard' | 'paths'): Partial<AppSettings> {
-  if (section === 'appearance') return { appearance: 'system', accent: 'blue', customAccent: undefined }
+  if (section === 'appearance') return { appearance: 'system', accent: 'orange', customAccent: undefined }
   if (section === 'keyboard') return { shortcut: defaultSettings.shortcut, operationShortcuts: {}, dragModifiers: defaultSettings.dragModifiers }
   return { outputFolder: undefined }
 }
@@ -102,7 +103,7 @@ export function normalizeSettings(value: unknown): AppSettings {
   return {
     language: raw.language === 'ru' || raw.language === 'zh' ? raw.language : 'en',
     appearance: raw.appearance === 'dark' || raw.appearance === 'light' ? raw.appearance : 'system',
-    accent: ['blue', 'violet', 'teal', 'green', 'rose'].includes(String(raw.accent)) ? raw.accent as AccentColor : 'blue',
+    accent: ['orange', 'blue', 'violet', 'teal', 'green', 'rose'].includes(String(raw.accent)) ? raw.accent as AccentColor : 'orange',
     ...(typeof raw.customAccent === 'string' && /^#[0-9a-fA-F]{6}$/.test(raw.customAccent) ? { customAccent: raw.customAccent } : {}),
     ...(Array.isArray(raw.favoriteActions) ? { favoriteActions: [...new Set(raw.favoriteActions.filter((id): id is string => typeof id === 'string' && /^[a-z0-9-]+$/.test(id)))].slice(0, 100) } : {}),
     quality: Number.isInteger(raw.quality) && Number(raw.quality) >= 40 && Number(raw.quality) <= 100 ? Number(raw.quality) : 88,
@@ -120,7 +121,8 @@ export function normalizeSettings(value: unknown): AppSettings {
     shortcut,
     operationShortcuts: normalizeOperationShortcuts(raw.operationShortcuts, shortcut),
     terminalPreference: raw.terminalPreference === 'powershell' ? 'powershell' : 'windows-terminal',
-    launchAtStartup: raw.launchAtStartup === true,
+    launchAtStartup: raw.launchAtStartupConfigured === true ? raw.launchAtStartup === true : true,
+    launchAtStartupConfigured: raw.launchAtStartupConfigured === true,
     contextMenuEnabled: raw.contextMenuEnabled === true,
     confirmQuitOnClose: raw.confirmQuitOnClose === true,
     dragModifiers: validModifiers ? rawModifiers as DragModifiers : defaultSettings.dragModifiers,
@@ -142,7 +144,7 @@ export function restoreSettingsBackup(value: unknown, outputFolder?: string): Ap
   if (backup.app !== 'FlickVert' || backup.version !== 1 || !backup.settings || typeof backup.settings !== 'object') throw new Error('Invalid settings backup')
   const settings = backup.settings as Record<string, unknown>
   if (!['language', 'appearance', 'accent', 'quality', 'format', 'shortcut', 'dragModifiers'].every((key) => Object.prototype.hasOwnProperty.call(settings, key))) throw new Error('Incomplete settings backup')
-  return normalizeSettings({ ...settings, outputFolder })
+  return normalizeSettings({ ...settings, launchAtStartupConfigured: true, outputFolder })
 }
 
 export function loadSettings(): AppSettings {

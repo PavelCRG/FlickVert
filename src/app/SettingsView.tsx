@@ -12,6 +12,7 @@ import type { Engines } from './types'
 type SettingsViewProps = {
   settingsPage: SettingsPage; preferences: AppSettings; tr: (key: MessageKey) => string; pickError: boolean
   shortcutError: boolean; operationShortcutError: boolean; modifierError: boolean; recordingShortcut: boolean; recordingOperationShortcut: string | null
+  startupError: boolean; setStartupError: (error: boolean) => void
   setRecordingShortcut: (recording: boolean) => void; setRecordingOperationShortcut: (actionId: string | null) => void; setShortcutError: (error: boolean) => void; setOperationShortcutError: (error: boolean) => void
   updatePreferences: (patch: Partial<AppSettings>) => void; updateShortcut: (shortcut: string) => Promise<void>; updateOperationShortcut: (actionId: string, shortcut?: string) => Promise<void>
   updateDragModifier: (mode: 'convert' | 'tools' | 'actions', value: 'SHIFT' | 'CTRL' | 'ALT') => void
@@ -25,10 +26,9 @@ type SettingsViewProps = {
 }
 
 export function SettingsView(props: SettingsViewProps) {
-  const [startupError, setStartupError] = useState(false)
   const [closeError, setCloseError] = useState(false)
   const [contextMenuError, setContextMenuError] = useState(false)
-  const { settingsPage, preferences, tr, pickError, shortcutError, operationShortcutError, modifierError, recordingShortcut, recordingOperationShortcut, setRecordingShortcut, setRecordingOperationShortcut, setShortcutError, setOperationShortcutError, updatePreferences, updateShortcut, updateOperationShortcut, updateDragModifier, setSection, chooseOutputFolder, engines, videoCodecs, audioFormats, videoScalingAvailable, selectedDimensionPreset, setSelectedDimensionPreset, applyDimensionPreset, saveDimensionPreset, removeDimensionPreset, presetName, setPresetName, presetSaved, setPresetSaved, exportSettings, importSettings, settingsImportInput, settingsImportError } = props
+  const { settingsPage, preferences, tr, pickError, shortcutError, operationShortcutError, modifierError, recordingShortcut, recordingOperationShortcut, startupError, setStartupError, setRecordingShortcut, setRecordingOperationShortcut, setShortcutError, setOperationShortcutError, updatePreferences, updateShortcut, updateOperationShortcut, updateDragModifier, setSection, chooseOutputFolder, engines, videoCodecs, audioFormats, videoScalingAvailable, selectedDimensionPreset, setSelectedDimensionPreset, applyDimensionPreset, saveDimensionPreset, removeDimensionPreset, presetName, setPresetName, presetSaved, setPresetSaved, exportSettings, importSettings, settingsImportInput, settingsImportError } = props
   const shellIntegrationSupported = isTauri() && /Win|Mac/.test(navigator.platform)
   return <div className="page settings-page">
         <header className="settings-header">
@@ -43,7 +43,7 @@ export function SettingsView(props: SettingsViewProps) {
           {isTauri() && <label className="setting-row"><span>{tr('Ask before quitting when closing the window')}</span><input type="checkbox" checked={preferences.confirmQuitOnClose} onChange={(event) => { const enabled = event.target.checked; setCloseError(false); void invoke('set_confirm_quit_on_close', { enabled }).then(() => updatePreferences({ confirmQuitOnClose: enabled })).catch(() => setCloseError(true)) }}/></label>}
           {closeError && <p className="shortcut-error" role="alert">{tr('Could not update close behavior.')}</p>}
           <SettingsRow label={tr('Preferred Windows terminal')}><select className="modifier-select" aria-label={tr('Preferred Windows terminal')} value={preferences.terminalPreference} onChange={(event) => updatePreferences({ terminalPreference: event.target.value as AppSettings['terminalPreference'] })}><option value="windows-terminal">Windows Terminal</option><option value="powershell">PowerShell</option></select></SettingsRow>
-          <label className="setting-row"><span>{tr('Launch FlickVert when I sign in')}</span><input type="checkbox" checked={preferences.launchAtStartup} onChange={(event) => { const enabled = event.target.checked; setStartupError(false); void invoke('set_startup_enabled', { enabled }).then(() => updatePreferences({ launchAtStartup: enabled })).catch(() => setStartupError(true)) }}/></label>
+          {shellIntegrationSupported && <><label className="setting-row"><span>{tr('Launch FlickVert when I sign in')}</span><input type="checkbox" checked={preferences.launchAtStartup} onChange={(event) => { const enabled = event.target.checked; setStartupError(false); void invoke('set_startup_enabled', { enabled }).then(() => updatePreferences({ launchAtStartup: enabled, launchAtStartupConfigured: true })).catch(() => setStartupError(true)) }}/></label><p className="catalog-note">{tr('FlickVert starts after you sign in; it cannot run while your PC is off.')}</p></>}
           {startupError && <p className="shortcut-error" role="alert">{tr('Could not change startup settings.')}</p>}
           {shellIntegrationSupported && <label className="setting-row"><span>{tr('Add FlickVert to file context menu')}</span><input type="checkbox" checked={preferences.contextMenuEnabled} onChange={(event) => { const enabled = event.target.checked; setContextMenuError(false); void invoke('set_context_menu_enabled', { enabled }).then(() => updatePreferences({ contextMenuEnabled: enabled })).catch(() => setContextMenuError(true)) }}/></label>}
           {contextMenuError && <p className="shortcut-error" role="alert">{tr('Could not change context menu settings.')}</p>}

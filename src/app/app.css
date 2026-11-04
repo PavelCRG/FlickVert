@@ -1,4 +1,4 @@
-/* Main window: quiet Fluent surfaces with FlickVert blue reserved for actions. */
+/* Shared app shell and component styles. Page layouts live in ./styles. */
 .app {
   --bg: #f4f6f9;
   --surface: #fff;
@@ -8,8 +8,8 @@
   --muted: #687384;
   --faint: #8994a4;
   --line: #e1e6ed;
-  --accent: var(--accent-base, #315fce);
-  --accent-soft: color-mix(in srgb, var(--accent-base, #315fce) 13%, var(--surface));
+  --accent: var(--accent-base, #d96c24);
+  --accent-soft: color-mix(in srgb, var(--accent-base, #d96c24) 13%, var(--surface));
   --good: #27845f;
   --bad: #bd3e4d;
   font-size: 13px;
@@ -39,8 +39,8 @@
   --bg: #1a1e24; --surface: #222831; --surface-2: #282f39;
   --sidebar: #1e242c; --text: #eff3f8; --muted: #abb5c3;
   --faint: #828e9e; --line: #343d49;
-  --accent: color-mix(in srgb, var(--accent-base, #315fce) 66%, white);
-  --accent-soft: color-mix(in srgb, var(--accent-base, #315fce) 24%, var(--surface));
+  --accent: color-mix(in srgb, var(--accent-base, #d96c24) 66%, white);
+  --accent-soft: color-mix(in srgb, var(--accent-base, #d96c24) 24%, var(--surface));
   --good: #68c89b; --bad: #ff9299;
 }
 @media (prefers-color-scheme: dark) {
@@ -48,8 +48,8 @@
     --bg: #1a1e24; --surface: #222831; --surface-2: #282f39;
     --sidebar: #1e242c; --text: #eff3f8; --muted: #abb5c3;
     --faint: #828e9e; --line: #343d49;
-    --accent: color-mix(in srgb, var(--accent-base, #315fce) 66%, white);
-    --accent-soft: color-mix(in srgb, var(--accent-base, #315fce) 24%, var(--surface));
+    --accent: color-mix(in srgb, var(--accent-base, #d96c24) 66%, white);
+    --accent-soft: color-mix(in srgb, var(--accent-base, #d96c24) 24%, var(--surface));
     --good: #68c89b; --bad: #ff9299;
   }
 }

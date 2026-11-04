@@ -63,7 +63,7 @@ test('ZIP compression level is bounded and retained in settings backups', () => 
 
 test('valid settings retain supported preferences', () => {
   assert.deepEqual(normalizeSettings({ language: 'ru', appearance: 'dark', quality: 75, width: 1200, height: 900, format: 'image/jpeg', shortcut: 'CTRL+SHIFT+SPACE', outputFolder: 'D:/Photos' }), {
-    language: 'ru', appearance: 'dark', accent: 'blue', quality: 75, pdfDpi: 300, pdfPageSize: 'source', pdfPageOrientation: 'auto', zipCompressionLevel: 6, width: 1200, height: 900, format: 'image/jpeg', videoPreset: 'balanced', videoCodec: 'h264', audioTargetLufs: -16, audioTruePeakDb: -1, audioExtractionFormat: 'mp3', shortcut: 'CTRL+SHIFT+SPACE', operationShortcuts: {}, terminalPreference: 'windows-terminal', launchAtStartup: false, contextMenuEnabled: false, confirmQuitOnClose: false, dragModifiers: { convert: 'SHIFT', tools: 'CTRL', actions: 'ALT' }, outputFolder: 'D:/Photos',
+    language: 'ru', appearance: 'dark', accent: 'orange', quality: 75, pdfDpi: 300, pdfPageSize: 'source', pdfPageOrientation: 'auto', zipCompressionLevel: 6, width: 1200, height: 900, format: 'image/jpeg', videoPreset: 'balanced', videoCodec: 'h264', audioTargetLufs: -16, audioTruePeakDb: -1, audioExtractionFormat: 'mp3', shortcut: 'CTRL+SHIFT+SPACE', operationShortcuts: {}, terminalPreference: 'windows-terminal', launchAtStartup: true, launchAtStartupConfigured: false, contextMenuEnabled: false, confirmQuitOnClose: false, dragModifiers: { convert: 'SHIFT', tools: 'CTRL', actions: 'ALT' }, outputFolder: 'D:/Photos',
   })
 })
 
@@ -73,10 +73,13 @@ test('preferred terminal is validated and included in settings backups', () => {
   assert.equal(restoreSettingsBackup(JSON.parse(createSettingsBackup(settings))).terminalPreference, 'powershell')
 })
 
-test('startup preference defaults off and is retained in settings backups', () => {
-  assert.equal(normalizeSettings({ launchAtStartup: 'true' }).launchAtStartup, false)
-  const settings = normalizeSettings({ launchAtStartup: true })
-  assert.equal(restoreSettingsBackup(JSON.parse(createSettingsBackup(settings))).launchAtStartup, true)
+test('startup is enabled for new and legacy settings, while an explicit opt-out survives backups', () => {
+  assert.equal(defaultSettings.launchAtStartup, true)
+  assert.equal(normalizeSettings({ launchAtStartup: false }).launchAtStartup, true)
+  assert.equal(normalizeSettings({ launchAtStartup: 'false' }).launchAtStartup, true)
+  const settings = normalizeSettings({ launchAtStartup: false, launchAtStartupConfigured: true })
+  assert.equal(settings.launchAtStartup, false)
+  assert.equal(restoreSettingsBackup(JSON.parse(createSettingsBackup(settings))).launchAtStartup, false)
 })
 
 test('context menu integration defaults off and is retained in settings backups', () => {
@@ -98,13 +101,13 @@ test('operation shortcut assignments reject malformed keys and collisions', () =
   assert.deepEqual(normalizeOperationShortcuts({ square: 'CTRL+ALT+SPACE' }, 'CTRL+ALT+SPACE'), {})
 })
 
-test('missing or invalid accent preferences default to blue', () => {
-  assert.equal(normalizeSettings(undefined).accent, 'blue')
-  assert.equal(normalizeSettings({ accent: 'chartreuse' }).accent, 'blue')
+test('missing or invalid accent preferences default to orange', () => {
+  assert.equal(normalizeSettings(undefined).accent, 'orange')
+  assert.equal(normalizeSettings({ accent: 'chartreuse' }).accent, 'orange')
 })
 
 test('every supported accent preference is retained', () => {
-  for (const accent of ['blue', 'violet', 'teal', 'green', 'rose']) {
+  for (const accent of ['orange', 'blue', 'violet', 'teal', 'green', 'rose']) {
     assert.equal(normalizeSettings({ accent }).accent, accent)
   }
 })
@@ -134,7 +137,7 @@ test('settings backups exclude local paths and restore valid preferences', () =>
   const settings = { ...defaultSettings, outputFolder: 'C:/Users/Pavel/Private' }
   const backup = JSON.parse(createSettingsBackup(settings))
   assert.equal(JSON.stringify(backup).includes('Private'), false)
-  assert.deepEqual(restoreSettingsBackup(backup, 'D:/Local'), { ...defaultSettings, outputFolder: 'D:/Local' })
+  assert.deepEqual(restoreSettingsBackup(backup, 'D:/Local'), { ...defaultSettings, launchAtStartupConfigured: true, outputFolder: 'D:/Local' })
 })
 
 test('settings backups retain custom dimension presets but exclude output paths', () => {
@@ -153,7 +156,7 @@ test('section resets change only their own preferences', () => {
   const current = normalizeSettings({ appearance: 'dark', accent: 'teal', customAccent: '#112233', shortcut: 'CTRL+SHIFT+SPACE', outputFolder: 'D:/Files' })
   const appearance = normalizeSettings({ ...current, ...resetSettingsSection('appearance') })
   assert.equal(appearance.appearance, 'system')
-  assert.equal(appearance.accent, 'blue')
+  assert.equal(appearance.accent, 'orange')
   assert.equal(appearance.customAccent, undefined)
   assert.equal(appearance.outputFolder, current.outputFolder)
   assert.deepEqual(normalizeSettings({ ...current, ...resetSettingsSection('keyboard') }), { ...current, shortcut: defaultSettings.shortcut, operationShortcuts: {}, dragModifiers: defaultSettings.dragModifiers })

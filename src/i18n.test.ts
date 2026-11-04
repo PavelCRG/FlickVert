@@ -10,6 +10,7 @@ test('theme labels are translated in English, Russian, and Simplified Chinese', 
     Teal: ['Teal', 'Бирюзовый', '青绿色'],
     Green: ['Green', 'Зелёный', '绿色'],
     Rose: ['Rose', 'Розовый', '玫瑰色'],
+    Orange: ['Orange', '\u041e\u0440\u0430\u043d\u0436\u0435\u0432\u044b\u0439', '\u6a59\u8272'],
   } as const
 
   for (const [key, labels] of Object.entries(expected)) {
@@ -20,7 +21,7 @@ test('theme labels are translated in English, Russian, and Simplified Chinese', 
 })
 
 test('startup preference and failure are translated in every language', () => {
-  for (const key of ['Launch FlickVert when I sign in', 'Could not change startup settings.'] as const) {
+  for (const key of ['Launch FlickVert when I sign in', 'Could not change startup settings.', 'FlickVert starts after you sign in; it cannot run while your PC is off.'] as const) {
     assert.equal(t('en', key), key)
     assert.notEqual(t('ru', key), key)
     assert.notEqual(t('zh', key), key)

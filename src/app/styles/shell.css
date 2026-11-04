@@ -1,0 +1,114 @@
+.app {
+  font-size: 14px;
+}
+
+.sidebar {
+  width: 244px;
+  padding: 22px 16px 18px;
+}
+
+.side-label {
+  margin-bottom: 12px;
+  font-size: 12px;
+}
+
+.nav-item {
+  min-height: 42px;
+  font-size: 13px;
+}
+
+.settings-nav .nav-item {
+  min-height: 37px;
+  font-size: 12px;
+}
+
+.page {
+  max-width: 1080px;
+  padding: 38px 48px 42px;
+}
+
+.settings-header h1,
+.simple-page h1 {
+  font-size: 30px;
+  letter-spacing: -.85px;
+}
+
+.subtitle {
+  font-size: 13px;
+}
+
+.settings-header {
+  margin-bottom: 12px;
+}
+
+.settings-group {
+  padding: 19px 21px 17px;
+  border-radius: 12px;
+}
+
+.settings-group>h2 {
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.setting-row {
+  min-height: 48px;
+  font-size: 13px;
+}
+
+.secondary-button,
+.primary-button {
+  min-height: 38px;
+  padding-inline: 13px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.choose-files-button {
+  min-height: 42px;
+  font-size: 13px;
+}
+
+.engine-status,
+.engine-status>div {
+  font-size: 12px;
+}
+
+.update-state {
+  font-size: 11px;
+}
+
+.sidebar .update-group>.update-heading h2 {
+  font-size: 12px;
+}
+
+.privacy strong {
+  font-size: 12px;
+}
+
+.privacy small,
+.version {
+  font-size: 11px;
+}
+
+@media (max-width: 900px) {
+  .page {
+    padding: 30px 26px 34px;
+  }
+}
+
+@media (max-width: 760px) {
+  .sidebar {
+    width: 204px;
+    padding-inline: 12px;
+  }
+
+  .page {
+    padding: 24px 18px 30px;
+  }
+
+  .settings-header h1,
+  .simple-page h1 {
+    font-size: 26px;
+  }
+}

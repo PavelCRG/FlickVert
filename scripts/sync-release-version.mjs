@@ -16,14 +16,14 @@ export async function syncReleaseVersion(root, tag) {
   const tauriConfig = JSON.parse(await read('src-tauri/tauri.conf.json'))
   const cargoToml = await read('src-tauri/Cargo.toml')
   const cargoLock = await read('src-tauri/Cargo.lock')
-  const app = await read('src/App.tsx')
+  const appSidebar = await read('src/app/AppSidebar.tsx')
   const readmePaths = ['README.md', 'README.ru.md', 'README.zh-CN.md']
   const readmes = await Promise.all(readmePaths.map(read))
   const cargoPackage = /(\[package\][\s\S]*?\r?\nname = "flickvert"\r?\nversion = ")[^"]+(\")/
   const cargoLockPackage = /(\[\[package\]\]\r?\nname = "flickvert"\r?\nversion = ")[^"]+(\")/
   const appVersion = /(<div className="version">FlickVert <span>)[^<]+(<\/span><\/div>)/
   const readmeVersions = [/Current release: `[^`]+`\./, /Текущий релиз — `[^`]+`\./, /当前版本为 `[^`]+`。/]
-  if (!packageLock.packages?.[''] || !cargoPackage.test(cargoToml) || !cargoLockPackage.test(cargoLock) || !appVersion.test(app) || readmes.some((readme, index) => !readmeVersions[index].test(readme))) {
+  if (!packageLock.packages?.[''] || !cargoPackage.test(cargoToml) || !cargoLockPackage.test(cargoLock) || !appVersion.test(appSidebar) || readmes.some((readme, index) => !readmeVersions[index].test(readme))) {
     throw new Error('Could not find every FlickVert version field')
   }
 
@@ -37,7 +37,7 @@ export async function syncReleaseVersion(root, tag) {
     write('src-tauri/Cargo.toml', cargoToml.replace(cargoPackage, `$1${version}$2`)),
     write('src-tauri/Cargo.lock', cargoLock.replace(cargoLockPackage, `$1${version}$2`)),
     write('src-tauri/tauri.conf.json', `${JSON.stringify(tauriConfig, null, 2)}\n`),
-    write('src/App.tsx', app.replace(appVersion, `$1${version}$2`)),
+    write('src/app/AppSidebar.tsx', appSidebar.replace(appVersion, `$1${version}$2`)),
     ...readmes.map((readme, index) => write(readmePaths[index], readme.replace(readmeVersions[index], (match) => match.replace(/`[^`]+`/, '`' + version + '`')))),
   ])
 }

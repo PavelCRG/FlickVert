@@ -2043,7 +2043,7 @@ fn set_system_startup(enabled: bool) -> Result<(), String> {
     const KEY: &str = "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run";
     if enabled {
         let executable = std::env::current_exe().map_err(|_| "Could not locate FlickVert")?;
-        let output = Command::new("reg.exe").args(["add", KEY, "/v", "FlickVert", "/t", "REG_SZ", "/d"]).arg(format!("\"{}\"", executable.to_string_lossy())).arg("/f").output().map_err(|_| "Could not update startup settings")?;
+        let output = Command::new("reg.exe").args(["add", KEY, "/v", "FlickVert", "/t", "REG_SZ", "/d"]).arg(format!("\"{}\" --background", executable.to_string_lossy())).arg("/f").output().map_err(|_| "Could not update startup settings")?;
         output.status.success().then_some(()).ok_or("Could not update startup settings".into())
     } else {
         let query = Command::new("reg.exe").args(["query", KEY, "/v", "FlickVert"]).output().map_err(|_| "Could not update startup settings")?;
@@ -2061,7 +2061,7 @@ fn set_system_startup(enabled: bool) -> Result<(), String> {
     if enabled {
         let executable = std::env::current_exe().map_err(|_| "Could not locate FlickVert")?;
         fs::create_dir_all(&directory).map_err(|_| "Could not update startup settings")?;
-        let plist = format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?><!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\"><plist version=\"1.0\"><dict><key>Label</key><string>app.flickvert.desktop.v2</string><key>ProgramArguments</key><array><string>{}</string></array><key>RunAtLoad</key><true/></dict></plist>", xml_escape(&executable.to_string_lossy()));
+        let plist = format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?><!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\"><plist version=\"1.0\"><dict><key>Label</key><string>app.flickvert.desktop.v2</string><key>ProgramArguments</key><array><string>{}</string><string>--background</string></array><key>RunAtLoad</key><true/></dict></plist>", xml_escape(&executable.to_string_lossy()));
         fs::write(&agent, plist).map_err(|_| "Could not update startup settings")?;
         let status = Command::new("launchctl").args(["load", "-w"]).arg(&agent).status().map_err(|_| "Could not update startup settings")?;
         if !status.success() { let _ = fs::remove_file(&agent); return Err("Could not update startup settings".into()); }
@@ -2307,6 +2307,8 @@ fn main() {
         .build(tauri::generate_context!())
         .expect("FlickVert failed to start")
         .run(|app, event| {
+            let launch_in_background = std::env::args_os()
+                .any(|argument| argument == std::ffi::OsStr::new("--background"));
             if matches!(event, tauri::RunEvent::Ready) && app.get_webview_window("main").is_none() {
                 let handle = app.clone();
                 if let Err(error) = app.run_on_main_thread(move || {
@@ -2329,7 +2331,11 @@ fn main() {
                             window
                         }
                     };
-                    if let Err(error) = window.visible(true).focused(true).build() {
+                    if let Err(error) = window
+                        .visible(!launch_in_background)
+                        .focused(!launch_in_background)
+                        .build()
+                    {
                         eprintln!("Could not create the main window: {error}");
                         handle.exit(1);
                     }

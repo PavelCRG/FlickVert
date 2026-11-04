@@ -34,7 +34,7 @@ FlickVert 可与文件资源管理器和 Finder 配合使用。拖动文件并�
 
 Windows 需要 Microsoft Edge WebView2 Runtime。其他转换引擎需单独安装。
 
-当前版本为 `0.1.3`。安装版会在启动时及每六小时检查一次签名更新；Windows 安装版使用匹配的 EXE 或 MSI 更新。便携版需手动更新。发布下一个版本时推送版本标签（例如 `v0.1.4`），GitHub Actions 将构建 Windows 和 macOS 安装包并发布版本。
+当前版本为 `0.1.4`。安装版会在启动时及每六小时检查一次签名更新；Windows 安装版使用匹配的 EXE 或 MSI 更新。便携版需手动更新。发布下一个版本时推送版本标签（例如 `v0.1.5`），GitHub Actions 将构建 Windows 和 macOS 安装包并发布版本。
 
 ## 目录
 

@@ -35,7 +35,7 @@ export function AccentPicker({ label, value, customValue, onChange, tr }: {
   tr: (key: MessageKey) => string
 }) {
   const options: { value: AccentColor; label: MessageKey }[] = [
-    { value: 'blue', label: 'Blue' }, { value: 'violet', label: 'Violet' }, { value: 'teal', label: 'Teal' },
+    { value: 'orange', label: 'Orange' }, { value: 'blue', label: 'Blue' }, { value: 'violet', label: 'Violet' }, { value: 'teal', label: 'Teal' },
     { value: 'green', label: 'Green' }, { value: 'rose', label: 'Rose' },
   ]
   return <div className="accent-picker" role="group" aria-label={label}>

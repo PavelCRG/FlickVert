@@ -39,6 +39,7 @@ export default function App() {
   const [pickError, setPickError] = useState(false)
   const [resultOpenError, setResultOpenError] = useState(false)
   const [settingsImportError, setSettingsImportError] = useState(false)
+  const [startupError, setStartupError] = useState(false)
   const settingsImportInput = useRef<HTMLInputElement>(null)
   const [imageEdit, setImageEdit] = useState<{ inputPath: string; initialTool: ImageEditTool } | null>(null)
   const [videoTrimPath, setVideoTrimPath] = useState<string | null>(null)
@@ -115,6 +116,14 @@ export default function App() {
     if (!isTauri()) return
     void invoke('register_shortcut', { shortcut: preferences.shortcut }).then(() => setShortcutError(false)).catch(() => setShortcutError(true))
   }, [preferences.shortcut])
+
+  useEffect(() => {
+    if (!isTauri() || !/Win|Mac/.test(navigator.platform) || preferences.launchAtStartupConfigured) return
+    void invoke('set_startup_enabled', { enabled: preferences.launchAtStartup }).then(() => {
+      setStartupError(false)
+      updatePreferences({ launchAtStartupConfigured: true })
+    }).catch(() => setStartupError(true))
+  }, [])
 
   useEffect(() => {
     if (isTauri()) void invoke('configure_drag_modifiers', preferences.dragModifiers).then(() => setModifierError(false)).catch(() => setModifierError(true))
@@ -351,6 +360,8 @@ export default function App() {
         setSection={setSection}
         chooseOutputFolder={chooseOutputFolder}
         engines={engines}
+        startupError={startupError}
+        setStartupError={setStartupError}
         videoCodecs={videoCodecs}
         audioFormats={audioFormats}
         videoScalingAvailable={videoScalingAvailable}

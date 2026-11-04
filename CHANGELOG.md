@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.4
+
+- Added a consistent orange accent, with existing appearance and custom color preferences preserved.
+- Organized home, tools, settings, and app shell styles into separate files and improved compact-window readability.
+- Added optional background startup after sign-in while keeping the app available in the system tray.
+
 ## 0.1.3
 
 - Refined the sidebar update panel with clearer status, state icons, and a full-width update action.
