@@ -39,13 +39,12 @@ html:has(.quick-shell), body:has(.quick-shell), #root:has(.quick-shell) {
 }
 .quick-labels { position: absolute; inset: 0; pointer-events: none; }
 .quick-label {
-  position: absolute; width: 84px; min-height: 42px; display: flex;
-  flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  position: absolute; width: 48px; height: 48px; display: flex;
+  align-items: center; justify-content: center;
   transform: translate(-50%, -50%); color: color-mix(in srgb, CanvasText 86%, transparent);
   text-align: center; transition: color .13s ease;
 }
-.quick-label strong { max-width: 84px; font-size: 11px; line-height: 1.2; font-weight: 650; text-wrap: balance; }
-.quick-label .quick-glyph { width: 21px; height: 21px; color: color-mix(in srgb, CanvasText 62%, transparent); }
+.quick-label .quick-glyph { width: 27px; height: 27px; color: color-mix(in srgb, CanvasText 62%, transparent); }
 .quick-label.active { color: var(--wheel-accent); }
 .quick-label.active .quick-glyph { color: var(--wheel-accent); }
 .quick-label.disabled { opacity: .42; }

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.6
+
+- Simplified the quick wheel into a clean icon-first layout with accessible action names and format-specific icons.
+- Prevented outdated file inspection results from replacing the current selection after a newer drop or closing the popup.
+
 ## 0.1.5
 
 - Reshaped Home and the tools catalog around clearer, grouped actions and engine availability.

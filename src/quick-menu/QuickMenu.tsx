@@ -28,6 +28,15 @@ function outputLabel(extension: string) {
   return extension === 'jpg' ? 'JPEG' : extension.toUpperCase()
 }
 
+function formatGlyph(extension: string): AppIconName {
+  if (extension === 'pdf') return 'pdf'
+  if (['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'svg', 'avif', 'heic', 'heif', 'tif', 'tiff'].includes(extension)) return 'image'
+  if (['mp3', 'wav', 'aac', 'flac', 'ogg', 'm4a'].includes(extension)) return 'audio'
+  if (['mp4', 'mov', 'mkv', 'webm', 'avi'].includes(extension)) return 'film'
+  if (extension === 'zip') return 'archive'
+  return 'document'
+}
+
 function publishQueue(queue: QueueItem[]) {
   void emit('flickvert://operation-queue', queue.slice(-100).map((item) => ({ ...item }))).catch(() => {})
 }
@@ -51,8 +60,7 @@ function WheelChoices({ items, active, onActive }: { items: WheelChoice[]; activ
     </svg>
     <div className="quick-labels" aria-hidden="true">
       {items.map((item, index) => <span key={item.key} className={`quick-label${active === index ? ' active' : ''}${item.disabled ? ' disabled' : ''}`} style={wheelLabelPosition(index, items.length) as CSSProperties}>
-        {item.glyph && <AppIcon name={item.glyph} className="quick-glyph"/>}
-        <strong>{item.label}</strong>
+        <AppIcon name={item.glyph ?? 'document'} className="quick-glyph"/>
       </span>)}
     </div>
   </>
@@ -156,8 +164,9 @@ export default function QuickMenu() {
     const signature = JSON.stringify(paths)
     if (signature === inspectedPaths.current) return { received: filesRef.current, options: formatsRef.current }
     if (inspectingPaths.current?.signature === signature) return inspectingPaths.current.promise
-    const promise = (async () => {
+    const promise = Promise.resolve().then(async () => {
       const received = await invoke<NativeFile[]>('inspect_dropped_files', { paths })
+      if (inspectingPaths.current?.promise !== promise) return { received: [] as NativeFile[], options: [] as Format[] }
       if (!received.length) {
         filesRef.current = []; formatsRef.current = []; setFiles([]); setFormats([])
         inspectedPaths.current = signature
@@ -168,6 +177,7 @@ export default function QuickMenu() {
       setFiles(received)
       setFormats([])
       const common = await commonFormats(received, (inputPath) => invoke<string[]>('quick_formats', { inputPath }))
+      if (inspectingPaths.current?.promise !== promise) return { received: [] as NativeFile[], options: [] as Format[] }
       const options = common.map((extension) => ({ extension, label: outputLabel(extension) }))
       formatsRef.current = options
       setFormats(options)
@@ -180,7 +190,7 @@ export default function QuickMenu() {
       dropHandled.current = false
       inspectedPaths.current = signature
       return { received, options }
-    })()
+    })
     inspectingPaths.current = { signature, promise }
     try {
       return await promise
@@ -665,7 +675,7 @@ export default function QuickMenu() {
       else void invoke('quick_action', { actionId: action.id })
     } }))
     : wheelMode === 'convert'
-    ? formats.map((format) => ({ key: format.extension, label: format.label, disabled: false, onChoose: () => void convertFiles(filesRef.current, format) }))
+    ? formats.map((format) => ({ key: format.extension, label: format.label, glyph: formatGlyph(format.extension), disabled: false, onChoose: () => void convertFiles(filesRef.current, format) }))
     : actions.map((action) => {
       const imageTool = allToolActions.some((tool) => tool.id === action.id)
       const unavailableTool = imageTool && dragMode && !toolActionsFor(files, ffmpegAvailable, imagemagickAvailable, videoCodecs, pdfMergeAvailable, pdfSplitAvailable, pdfEditAvailable).some((tool) => tool.id === action.id)
