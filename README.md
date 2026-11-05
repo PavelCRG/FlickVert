@@ -1,10 +1,11 @@
 <div align="center">
   <img src="public/fv-file-orange.png" width="120" alt="FlickVert logo" />
   <h1>FlickVert</h1>
-  <p><strong>Local file conversion for Windows.</strong></p>
+  <p><strong>File work, one quick gesture away.</strong></p>
   <p><a href="README.ru.md">Русский</a> · <a href="README.zh-CN.md">简体中文</a></p>
 </div>
 
+<p align="center">Convert, edit, and organize locally on Windows.</p>
 <p align="center">Drag a file. Tap <kbd>Shift</kbd>. Choose a format.</p>
 
 <p align="center">

@@ -2,7 +2,7 @@
 
 # FlickVert
 
-适用于 Windows 的本地文件转换工具。
+文件操作，一步完成。本地转换、编辑和整理，适用于 Windows。
 
 <br clear="left" />
 <div align="center">
