@@ -62,3 +62,7 @@
 .conversion-catalog small {
     font-size: 11px;
 }
+
+@media (max-width: 900px) {
+    .tool-catalog { grid-template-columns: 1fr; }
+}

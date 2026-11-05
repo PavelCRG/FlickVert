@@ -12,7 +12,7 @@ import PdfSplitEditor from './pdf/PdfSplitEditor'
 import PdfPagesEditor from './pdf/PdfPagesEditor'
 import { sizePresets } from './settings/SettingsControls'
 import { SettingsView } from './app/SettingsView'
-import { AppSidebar, type Section, type SettingsPage } from './app/AppSidebar'
+import { AppSidebar, SettingsNavigation, type Section, type SettingsPage } from './app/AppSidebar'
 import { WindowChrome } from './app/WindowChrome'
 import { QuickStartPage } from './app/QuickStartPage'
 import { HomePage } from './app/HomePage'
@@ -305,7 +305,6 @@ export default function App() {
     <WindowChrome language={preferences.language}/>
     <AppSidebar
       section={section}
-      settingsPage={settingsPage}
       language={preferences.language}
       setSection={setSection}
       setSettingsPage={setSettingsPage}
@@ -343,46 +342,49 @@ export default function App() {
         tr={tr}
         onHome={dismissGuide}
         onChooseFiles={() => { dismissGuide(); void chooseFiles() }}
-      /> : <SettingsView
-        settingsPage={settingsPage}
-        preferences={preferences}
-        tr={tr}
-        pickError={pickError}
-        shortcutError={shortcutError}
-        operationShortcutError={operationShortcutError}
-        setOperationShortcutError={setOperationShortcutError}
-        modifierError={modifierError}
-        recordingShortcut={recordingShortcut}
-        recordingOperationShortcut={recordingOperationShortcut}
-        setRecordingShortcut={setRecordingShortcut}
-        setRecordingOperationShortcut={setRecordingOperationShortcut}
-        setShortcutError={setShortcutError}
-        updatePreferences={updatePreferences}
-        updateShortcut={updateShortcut}
-        updateOperationShortcut={updateOperationShortcut}
-        updateDragModifier={updateDragModifier}
-        setSection={setSection}
-        chooseOutputFolder={chooseOutputFolder}
-        engines={engines}
-        startupError={startupError}
-        setStartupError={setStartupError}
-        videoCodecs={videoCodecs}
-        audioFormats={audioFormats}
-        videoScalingAvailable={videoScalingAvailable}
-        selectedDimensionPreset={selectedDimensionPreset}
-        setSelectedDimensionPreset={setSelectedDimensionPreset}
-        applyDimensionPreset={applyDimensionPreset}
-        saveDimensionPreset={saveDimensionPreset}
-        removeDimensionPreset={removeDimensionPreset}
-        presetName={presetName}
-        setPresetName={setPresetName}
-        presetSaved={presetSaved}
-        setPresetSaved={setPresetSaved}
-        exportSettings={exportSettings}
-        importSettings={importSettings}
-        settingsImportInput={settingsImportInput}
-        settingsImportError={settingsImportError}
-      />}
+      /> : <div className="settings-layout">
+        <SettingsNavigation settingsPage={settingsPage} setSettingsPage={setSettingsPage} tr={tr}/>
+        <SettingsView
+          settingsPage={settingsPage}
+          preferences={preferences}
+          tr={tr}
+          pickError={pickError}
+          shortcutError={shortcutError}
+          operationShortcutError={operationShortcutError}
+          setOperationShortcutError={setOperationShortcutError}
+          modifierError={modifierError}
+          recordingShortcut={recordingShortcut}
+          recordingOperationShortcut={recordingOperationShortcut}
+          setRecordingShortcut={setRecordingShortcut}
+          setRecordingOperationShortcut={setRecordingOperationShortcut}
+          setShortcutError={setShortcutError}
+          updatePreferences={updatePreferences}
+          updateShortcut={updateShortcut}
+          updateOperationShortcut={updateOperationShortcut}
+          updateDragModifier={updateDragModifier}
+          setSection={setSection}
+          chooseOutputFolder={chooseOutputFolder}
+          engines={engines}
+          startupError={startupError}
+          setStartupError={setStartupError}
+          videoCodecs={videoCodecs}
+          audioFormats={audioFormats}
+          videoScalingAvailable={videoScalingAvailable}
+          selectedDimensionPreset={selectedDimensionPreset}
+          setSelectedDimensionPreset={setSelectedDimensionPreset}
+          applyDimensionPreset={applyDimensionPreset}
+          saveDimensionPreset={saveDimensionPreset}
+          removeDimensionPreset={removeDimensionPreset}
+          presetName={presetName}
+          setPresetName={setPresetName}
+          presetSaved={presetSaved}
+          setPresetSaved={setPresetSaved}
+          exportSettings={exportSettings}
+          importSettings={importSettings}
+          settingsImportInput={settingsImportInput}
+          settingsImportError={settingsImportError}
+        />
+      </div>}
     </main>
     {imageEdit && <ImageEditor key={imageEdit.inputPath} inputPath={imageEdit.inputPath} initialTool={imageEdit.initialTool} outputFolder={preferences.outputFolder} onClose={() => setImageEdit(null)}/>}
     {videoTrimPath && <VideoTrimEditor key={videoTrimPath} inputPath={videoTrimPath} language={preferences.language} outputFolder={preferences.outputFolder} videoCodec={preferences.videoCodec} videoPreset={preferences.videoPreset} onClose={() => setVideoTrimPath(null)}/>}

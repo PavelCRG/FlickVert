@@ -13,7 +13,7 @@ html:has(.quick-shell), body:has(.quick-shell), #root:has(.quick-shell) {
 .quick-shell[data-appearance="dark"] { color-scheme: dark; --wheel-accent: color-mix(in srgb, var(--wheel-accent-base) 66%, white); }
 .quick-shell[data-appearance="system"] { color-scheme: light dark; }
 .quick-orbit {
-  position: absolute; top: 8px; left: 8px; width: 384px; height: 384px;
+  position: absolute; top: 20px; left: 20px; width: 360px; height: 360px;
   border-radius: 50%; pointer-events: none;
 }
 .quick-orbit::before {
@@ -39,30 +39,36 @@ html:has(.quick-shell), body:has(.quick-shell), #root:has(.quick-shell) {
 }
 .quick-labels { position: absolute; inset: 0; pointer-events: none; }
 .quick-label {
-  position: absolute; width: 92px; min-height: 42px; display: flex;
+  position: absolute; width: 84px; min-height: 42px; display: flex;
   flex-direction: column; align-items: center; justify-content: center; gap: 3px;
   transform: translate(-50%, -50%); color: color-mix(in srgb, CanvasText 86%, transparent);
-  text-align: center; transition: color .13s ease, transform .16s cubic-bezier(.2, .75, .25, 1);
+  text-align: center; transition: color .13s ease;
 }
-.quick-label strong { max-width: 92px; font-size: 11px; line-height: 1.2; font-weight: 650; text-wrap: balance; }
+.quick-label strong { max-width: 84px; font-size: 11px; line-height: 1.2; font-weight: 650; text-wrap: balance; }
 .quick-label .quick-glyph { width: 21px; height: 21px; color: color-mix(in srgb, CanvasText 62%, transparent); }
-.quick-label.active { color: var(--wheel-accent); transform: translate(-50%, -50%) scale(1.06); }
+.quick-label.active { color: var(--wheel-accent); }
 .quick-label.active .quick-glyph { color: var(--wheel-accent); }
 .quick-label.disabled { opacity: .42; }
 .quick-center {
-  position: absolute; top: 50%; left: 50%; width: 132px; height: 132px;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
-  padding: 12px; transform: translate(-50%, -50%); border: 1px solid color-mix(in srgb, CanvasText 9%, transparent);
+  position: absolute; top: 50%; left: 50%; width: 96px; height: 96px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  padding: 9px; transform: translate(-50%, -50%); border: 1px solid color-mix(in srgb, CanvasText 11%, transparent);
   border-radius: 50%; background: color-mix(in srgb, Canvas 97%, transparent);
-  box-shadow: 0 4px 16px #18364b20; text-align: center; pointer-events: none;
+  box-shadow: 0 5px 18px #18364b24; text-align: center; pointer-events: none;
+  transition: width .16s ease, height .16s ease, background-color .16s ease;
 }
+.quick-center-icon { width: 26px; height: 26px; flex: none; color: var(--wheel-accent); stroke-width: 1.8; }
 .quick-center strong {
-  display: -webkit-box; max-width: 108px; overflow: hidden; color: CanvasText;
-  font-size: 15px; font-weight: 700; line-height: 1.2; text-overflow: ellipsis;
+  display: -webkit-box; max-width: 78px; overflow: hidden; color: CanvasText;
+  font-size: 14px; font-weight: 700; line-height: 1.2; text-overflow: ellipsis;
   -webkit-box-orient: vertical; -webkit-line-clamp: 2;
 }
-.quick-center small { max-width: 108px; overflow: hidden; color: color-mix(in srgb, CanvasText 58%, transparent); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-.quick-center .quick-preview-path { max-width: 116px; color: color-mix(in srgb, CanvasText 46%, transparent); font-size: 9px; }
+.quick-center small { max-width: 78px; overflow: hidden; color: color-mix(in srgb, CanvasText 58%, transparent); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.quick-center.has-preview { gap: 2px; }
+.quick-center.has-preview .quick-center-icon { width: 20px; height: 20px; }
+.quick-center.has-preview strong { font-size: 12px; }
+.quick-center.has-preview small { max-width: 78px; font-size: 8px; line-height: 1.15; }
+.quick-center.has-preview .quick-center-destination { color: color-mix(in srgb, var(--wheel-accent) 78%, CanvasText); }
 .zip-preview { position: absolute; inset: 10px; z-index: 5; display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 12px; border: 1px solid color-mix(in srgb, CanvasText 18%, transparent); border-radius: 12px; background: Canvas; box-shadow: 0 8px 30px #0003; color: CanvasText; pointer-events: auto; }
 .zip-preview h2 { margin: 0; font-size: 14px; }
 .zip-preview p { margin: 0; font-size: 10px; color: color-mix(in srgb, CanvasText 65%, transparent); }
@@ -83,13 +89,11 @@ html:has(.quick-shell), body:has(.quick-shell), #root:has(.quick-shell) {
 .zip-preview .zip-confirm { border-color: var(--wheel-accent); background: var(--wheel-accent); color: white; }
 .zip-preview button:disabled { opacity: .55; cursor: not-allowed; }
 .quick-empty .quick-orbit::before { display: none; }
-.quick-empty .quick-center { width: auto; height: auto; min-width: 136px; min-height: 42px; padding: 9px 14px; border-radius: 999px; }
-.quick-empty .quick-center strong { max-width: 180px; font-weight: 500; }
 .quick-shell.drag-mode .quick-orbit { transform-origin: center; animation: wheel-arrive .16s cubic-bezier(.2, .75, .25, 1) both; }
 @keyframes wheel-arrive { from { opacity: 0; scale: .96; } to { opacity: 1; scale: 1; } }
 @media (prefers-color-scheme: dark) {
   .quick-shell[data-appearance="system"] { --wheel-accent: color-mix(in srgb, var(--wheel-accent-base) 66%, white); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .quick-segment, .quick-label, .quick-shell.drag-mode .quick-orbit { transition: none !important; animation: none !important; }
+  .quick-segment, .quick-label, .quick-center, .quick-shell.drag-mode .quick-orbit { transition: none !important; animation: none !important; }
 }

@@ -143,6 +143,14 @@ const messages = {
   'Add FlickVert to file context menu': ['Add FlickVert to file context menu', 'Add FlickVert to file context menu'], 'Could not change context menu settings.': ['Could not change context menu settings.', 'Could not change context menu settings.'],
   'Operation shortcuts': ['Operation shortcuts', 'Operation shortcuts'], 'Not assigned': ['Not assigned', 'Not assigned'], 'Remove shortcut': ['Remove shortcut', 'Remove shortcut'], 'Operation shortcut conflicts or is unavailable.': ['Operation shortcut conflicts or is unavailable.', 'Operation shortcut conflicts or is unavailable.'],
   'Preferred Windows terminal': ['Preferred Windows terminal', 'Preferred Windows terminal'], 'Reset appearance settings': ['Reset appearance settings', 'Reset appearance settings'], 'Reset keyboard settings': ['Reset keyboard settings', 'Reset keyboard settings'], 'Reset': ['Reset', 'Reset'],
+  'Review the main gestures and shortcuts.': ['Review the main gestures and shortcuts.', 'Review the main gestures and shortcuts.'],
+  'Closing normally keeps FlickVert in the tray.': ['Closing normally keeps FlickVert in the tray.', 'Closing normally keeps FlickVert in the tray.'],
+  'Used when an action opens a terminal.': ['Used when an action opens a terminal.', 'Used when an action opens a terminal.'],
+  'Start automatically after you sign in.': ['Start automatically after you sign in.', 'Start automatically after you sign in.'],
+  'Open FlickVert actions from File Explorer.': ['Open FlickVert actions from File Explorer.', 'Open FlickVert actions from File Explorer.'],
+  'Follow your system theme or choose one.': ['Follow your system theme or choose one.', 'Follow your system theme or choose one.'],
+  'Choose a preset or set a custom color.': ['Choose a preset or set a custom color.', 'Choose a preset or set a custom color.'],
+  'Choose the language used across FlickVert.': ['Choose the language used across FlickVert.', 'Choose the language used across FlickVert.'],
 } as const
 
 export type MessageKey = keyof typeof messages
@@ -186,8 +194,26 @@ const russianOverrides: Partial<Record<MessageKey, string>> = {
   'Could not change context menu settings.': '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0438\u0437\u043c\u0435\u043d\u0438\u0442\u044c \u043d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438 \u043a\u043e\u043d\u0442\u0435\u043a\u0441\u0442\u043d\u043e\u0433\u043e \u043c\u0435\u043d\u044e.',
   'Operation shortcuts': '\u0421\u043e\u0447\u0435\u0442\u0430\u043d\u0438\u044f \u0434\u043b\u044f \u043e\u043f\u0435\u0440\u0430\u0446\u0438\u0439', 'Not assigned': '\u041d\u0435 \u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u043e', 'Remove shortcut': '\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u0441\u043e\u0447\u0435\u0442\u0430\u043d\u0438\u0435', 'Operation shortcut conflicts or is unavailable.': '\u0421\u043e\u0447\u0435\u0442\u0430\u043d\u0438\u0435 \u0437\u0430\u043d\u044f\u0442\u043e \u0438\u043b\u0438 \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u043d\u043e.',
 }
+Object.assign(russianOverrides, {
+  'Review the main gestures and shortcuts.': '\u041f\u043e\u0441\u043c\u043e\u0442\u0440\u0438\u0442\u0435 \u043e\u0441\u043d\u043e\u0432\u043d\u044b\u0435 \u0436\u0435\u0441\u0442\u044b \u0438 \u0441\u043e\u0447\u0435\u0442\u0430\u043d\u0438\u044f \u043a\u043b\u0430\u0432\u0438\u0448.',
+  'Closing normally keeps FlickVert in the tray.': '\u041f\u0440\u0438 \u043e\u0431\u044b\u0447\u043d\u043e\u043c \u0437\u0430\u043a\u0440\u044b\u0442\u0438\u0438 FlickVert \u043e\u0441\u0442\u0430\u0451\u0442\u0441\u044f \u0432 \u0441\u0438\u0441\u0442\u0435\u043c\u043d\u043e\u043c \u0442\u0440\u0435\u0435.',
+  'Used when an action opens a terminal.': '\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0435\u0442\u0441\u044f, \u043a\u043e\u0433\u0434\u0430 \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0435 \u043e\u0442\u043a\u0440\u044b\u0432\u0430\u0435\u0442 \u0442\u0435\u0440\u043c\u0438\u043d\u0430\u043b.',
+  'Start automatically after you sign in.': '\u0417\u0430\u043f\u0443\u0441\u043a\u0430\u0442\u044c \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0438 \u043f\u043e\u0441\u043b\u0435 \u0432\u0445\u043e\u0434\u0430 \u0432 \u0441\u0438\u0441\u0442\u0435\u043c\u0443.',
+  'Open FlickVert actions from File Explorer.': '\u041e\u0442\u043a\u0440\u044b\u0432\u0430\u0439\u0442\u0435 \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u044f FlickVert \u0438\u0437 \u041f\u0440\u043e\u0432\u043e\u0434\u043d\u0438\u043a\u0430.',
+  'Follow your system theme or choose one.': '\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0439\u0442\u0435 \u0441\u0438\u0441\u0442\u0435\u043c\u043d\u0443\u044e \u0442\u0435\u043c\u0443 \u0438\u043b\u0438 \u0432\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0441\u0432\u043e\u044e.',
+  'Choose a preset or set a custom color.': '\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0433\u043e\u0442\u043e\u0432\u044b\u0439 \u0446\u0432\u0435\u0442 \u0438\u043b\u0438 \u0437\u0430\u0434\u0430\u0439\u0442\u0435 \u0441\u0432\u043e\u0439.',
+  'Choose the language used across FlickVert.': '\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u044f\u0437\u044b\u043a \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0439\u0441\u0430 FlickVert.',
+})
 const chinese: Record<string, string> = {
   'Orange': '\u6a59\u8272',
+  'Review the main gestures and shortcuts.': '\u590d\u4e60\u4e3b\u8981\u624b\u52bf\u548c\u5feb\u6377\u952e\u3002',
+  'Closing normally keeps FlickVert in the tray.': '\u6b63\u5e38\u5173\u95ed\u540e\uff0cFlickVert \u4f1a\u7ee7\u7eed\u7559\u5728\u7cfb\u7edf\u6258\u76d8\u4e2d\u3002',
+  'Used when an action opens a terminal.': '\u6253\u5f00\u7ec8\u7aef\u65f6\u4f7f\u7528\u6b64\u9009\u9879\u3002',
+  'Start automatically after you sign in.': '\u767b\u5f55\u540e\u81ea\u52a8\u542f\u52a8\u3002',
+  'Open FlickVert actions from File Explorer.': '\u4ece\u6587\u4ef6\u8d44\u6e90\u7ba1\u7406\u5668\u4e2d\u6253\u5f00 FlickVert \u64cd\u4f5c\u3002',
+  'Follow your system theme or choose one.': '\u8ddf\u968f\u7cfb\u7edf\u4e3b\u9898\u6216\u81ea\u884c\u9009\u62e9\u3002',
+  'Choose a preset or set a custom color.': '\u9009\u62e9\u9884\u8bbe\u989c\u8272\u6216\u81ea\u5b9a\u4e49\u989c\u8272\u3002',
+  'Choose the language used across FlickVert.': '\u9009\u62e9 FlickVert \u7684\u754c\u9762\u8bed\u8a00\u3002',
   'Edit image': '\u7f16\u8f91\u56fe\u7247', 'Crop': '\u88c1\u526a', 'Redact': '\u6d82\u9ed1', 'Annotate': '\u6dfb\u52a0\u6ce8\u91ca', 'Background': '\u80cc\u666f', 'Adjust': '\u8c03\u6574', 'Cancel': '\u53d6\u6d88', 'Apply and save': '\u5e94\u7528\u5e76\u4fdd\u5b58', 'Loading image...': '\u6b63\u5728\u52a0\u8f7d\u56fe\u7247...', 'Drag to select an area': '\u62d6\u52a8\u9009\u62e9\u533a\u57df', 'Click image to place text': '\u70b9\u51fb\u56fe\u7247\u653e\u7f6e\u6587\u5b57', 'Fills transparent pixels': '\u586b\u5145\u900f\u660e\u50cf\u7d20', 'Text': '\u6587\u5b57', 'Text color': '\u6587\u5b57\u989c\u8272', 'Background color': '\u80cc\u666f\u989c\u8272', 'Brightness': '\u4eae\u5ea6', 'Contrast': '\u5bf9\u6bd4\u5ea6', 'Select an area first': '\u8bf7\u5148\u9009\u62e9\u533a\u57df', 'Enter a caption first': '\u8bf7\u5148\u8f93\u5165\u6ce8\u91ca', 'Could not edit image': '\u65e0\u6cd5\u7f16\u8f91\u56fe\u7247',
   'Remove metadata': '删除元数据',
   'Home': '主页',

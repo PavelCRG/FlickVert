@@ -1,6 +1,6 @@
 const size = 352
 const center = size / 2
-const innerRadius = 80
+const innerRadius = 70
 const outerRadius = 174
 
 export function wheelSectorAt(point: { x: number; y: number }, size: { width: number; height: number }, count: number) {
@@ -9,7 +9,7 @@ export function wheelSectorAt(point: { x: number; y: number }, size: { width: nu
   const dy = point.y - size.height / 2
   const radius = Math.hypot(dx, dy)
   const diameter = Math.min(size.width, size.height)
-  if (radius < diameter * 0.215 || radius > diameter * 0.47) return -1
+  if (radius < diameter * 0.18 || radius > diameter * 0.45) return -1
   const angle = (Math.atan2(dy, dx) + Math.PI / 2 + Math.PI * 2) % (Math.PI * 2)
   return Math.floor((angle + Math.PI / count) / (Math.PI * 2 / count)) % count
 }
@@ -23,14 +23,18 @@ export function wheelSlicePath(index: number, count: number) {
   if (!Number.isInteger(index) || !Number.isInteger(count) || count < 1 || index < 0 || index >= count) return ''
   const step = Math.PI * 2 / count
   const half = step / 2
-  const gap = Math.min(0.035, step * 0.12)
-  const start = -Math.PI / 2 + index * step - half + gap
-  const end = -Math.PI / 2 + index * step + half - gap
+  const start = -Math.PI / 2 + index * step - half
+  const end = -Math.PI / 2 + index * step + half
   const [ix1, iy1] = point(start, innerRadius)
   const [ox1, oy1] = point(start, outerRadius)
+  if (count === 1) {
+    const [ix2, iy2] = point(start + Math.PI, innerRadius)
+    const [ox2, oy2] = point(start + Math.PI, outerRadius)
+    return `M${ix1} ${iy1} L${ox1} ${oy1} A${outerRadius} ${outerRadius} 0 0 1 ${ox2} ${oy2} A${outerRadius} ${outerRadius} 0 0 1 ${ox1} ${oy1} L${ix1} ${iy1} A${innerRadius} ${innerRadius} 0 0 0 ${ix2} ${iy2} A${innerRadius} ${innerRadius} 0 0 0 ${ix1} ${iy1} Z`
+  }
   const [ox2, oy2] = point(end, outerRadius)
   const [ix2, iy2] = point(end, innerRadius)
-  const largeArc = step - gap * 2 > Math.PI ? 1 : 0
+  const largeArc = step > Math.PI ? 1 : 0
   return `M${ix1} ${iy1} L${ox1} ${oy1} A${outerRadius} ${outerRadius} 0 ${largeArc} 1 ${ox2} ${oy2} L${ix2} ${iy2} A${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${ix1} ${iy1} Z`
 }
 

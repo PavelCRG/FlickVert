@@ -12,6 +12,17 @@
   gap: 12px;
 }
 
+.setting-copy { min-width: 0; display: grid; gap: 3px; }
+.setting-copy > span { color: var(--text); }
+.setting-copy small { color: var(--muted); font-size: 10px; line-height: 1.35; }
+.setting-row > input[type="checkbox"] { width: 16px; height: 16px; flex: none; accent-color: var(--accent); cursor: pointer; }
+.catalog-note { margin: 5px 0 10px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.settings-group .catalog-note:last-child { margin-bottom: 0; }
+.shortcut-recorder kbd { padding-block: 6px; font-size: 10px; white-space: nowrap; }
+.custom-accent { white-space: nowrap; }
+.setting-subheading { margin: 18px 0 4px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; font-weight: 650; }
+.settings-group > h2 + .setting-subheading { margin-top: 0; padding-top: 0; border-top: 0; }
+
 @media (min-width: 1280px) {
   .settings-page {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -34,4 +45,10 @@
   .output-folder-setting {
     flex-wrap: wrap;
   }
+
+  .setting-row { gap: 10px; }
+  .setting-copy { flex: 1; }
+  .segmented-control button { min-width: 0; padding-inline: 7px; }
+  .shortcut-recorder { flex-wrap: wrap; justify-content: flex-end; }
+  .shortcut-dropdown { width: min(220px, 48vw); }
 }

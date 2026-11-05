@@ -7,21 +7,21 @@ const videos = '.3gp, .avi, .flv, .m2ts, .m4v, .mkv, .mov, .mp4, .mpeg, .mpg, .m
 const audio = '.aac, .aif, .aiff, .caf, .flac, .m4a, .m4b, .mka, .mp3, .oga, .ogg, .opus, .wav, .wma'
 const imageOutput = '.png, .jpg, .webp'
 const selected = 'Available when the matching file type is selected.' as const
-const unchanged = 'Choose the section to keep. The original file will remain unchanged.' as const
+const section = 'Choose the section to keep. The original file will remain unchanged.' as const
 const engine = 'Check the selected file and required engine.' as const
 
 export const operationDetails: Record<string, OperationDetail> = {
   'image-editor': { input: images, output: imageOutput, limitation: selected },
   'images-to-pdf': { input: images, output: '.pdf', limitation: selected },
-  resize: { input: images, output: imageOutput, limitation: unchanged },
-  rotate: { input: images, output: imageOutput, limitation: unchanged },
-  flip: { input: images, output: imageOutput, limitation: unchanged },
-  grayscale: { input: images, output: imageOutput, limitation: unchanged },
-  square: { input: images, output: imageOutput, limitation: unchanged },
+  resize: { input: images, output: imageOutput, limitation: selected },
+  rotate: { input: images, output: imageOutput, limitation: selected },
+  flip: { input: images, output: imageOutput, limitation: selected },
+  grayscale: { input: images, output: imageOutput, limitation: selected },
+  square: { input: images, output: imageOutput, limitation: selected },
   compress: { input: images, output: '.jpg', limitation: selected },
   metadata: { input: images, output: imageOutput, limitation: selected },
   'compress-video': { input: videos, output: '.mp4 (H.264) or .mkv (HEVC)', limitation: engine },
-  'trim-video': { input: videos, output: '.mp4 (H.264) or .mkv (HEVC)', limitation: unchanged },
+  'trim-video': { input: videos, output: '.mp4 (H.264) or .mkv (HEVC)', limitation: section },
   'mute-video': { input: videos, output: '.mp4', limitation: engine },
   'extract-audio': { input: videos, output: '.mp3, .m4a, .opus, .flac, .wav', limitation: engine },
   'video-thumbnail': { input: videos, output: '.jpg', limitation: selected },

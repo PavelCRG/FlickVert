@@ -12,8 +12,8 @@ export const sizePresets = [
   { id: 'square', name: 'Square', width: 1080, height: 1080 },
 ] as const
 
-export function SettingsRow({ label, children }: { label: string; children: ReactNode }) {
-  return <div className="setting-row"><span>{label}</span>{children}</div>
+export function SettingsRow({ label, description, children }: { label: string; description?: string; children: ReactNode }) {
+  return <div className="setting-row"><span className="setting-copy"><span>{label}</span>{description && <small>{description}</small>}</span>{children}</div>
 }
 
 export function SegmentedControl<Value extends string>({ label, value, options, onChange }: {

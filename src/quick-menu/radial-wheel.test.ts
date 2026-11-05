@@ -13,12 +13,26 @@ test('radial sectors are centered clockwise from the top and leave a clear hub',
   assert.ok(Math.abs(Number(topPoints[4]) - Number(topPoints[6])) < 0.02)
   assert.ok(Number(topPoints[4]) < 176)
   assert.ok(Number(rightPoints[3]) > 176 && Number(rightPoints[5]) > 176)
-  assert.match(top, /A80 80 0 0 0 /)
+  assert.match(top, /A70 70 0 0 0 /)
+})
+
+test('adjacent radial sectors share a boundary without a visible gap', () => {
+  const pathPoints = (path: string) => path.match(/^M[\d.]+ [\d.]+ L([\d.]+) ([\d.]+) A174 174 0 0 1 ([\d.]+) ([\d.]+)/)
+  const first = pathPoints(wheelSlicePath(0, 8))
+  const next = pathPoints(wheelSlicePath(1, 8))
+  assert.ok(first && next)
+  assert.ok(Math.hypot(Number(first[3]) - Number(next[1]), Number(first[4]) - Number(next[2])) < 0.02)
+})
+
+test('a single choice renders a complete ring', () => {
+  const path = wheelSlicePath(0, 1)
+  assert.equal((path.match(/A174 174/g) ?? []).length, 2)
+  assert.equal((path.match(/A70 70/g) ?? []).length, 2)
 })
 
 test('wheel labels sit halfway through each segment', () => {
-  assert.deepEqual(wheelLabelPosition(0, 4), { left: '50%', top: '13.92%' })
-  assert.deepEqual(wheelLabelPosition(1, 4), { left: '86.08%', top: '50%' })
+  assert.deepEqual(wheelLabelPosition(0, 4), { left: '50%', top: '15.34%' })
+  assert.deepEqual(wheelLabelPosition(1, 4), { left: '84.66%', top: '50%' })
 })
 
 test('pointer selects clockwise sectors at native and scaled window sizes', () => {
@@ -30,6 +44,8 @@ test('pointer selects clockwise sectors at native and scaled window sizes', () =
 test('quick wheel hit area matches its 400px window', () => {
   const size = { width: 400, height: 400 }
   assert.equal(wheelSectorAt({ x: 200, y: 20 }, size, 4), 0)
+  assert.equal(wheelSectorAt({ x: 200, y: 25 }, size, 4), 0)
+  assert.equal(wheelSectorAt({ x: 200, y: 129 }, size, 4), -1)
   assert.equal(wheelSectorAt({ x: 200, y: 9 }, size, 4), -1)
   assert.equal(wheelSectorAt({ x: 200, y: 200 }, size, 4), -1)
 })

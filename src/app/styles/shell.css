@@ -4,7 +4,7 @@
 
 .sidebar {
   width: 244px;
-  padding: 22px 16px 18px;
+  padding: 16px 12px 14px;
 }
 
 .side-label {
@@ -17,15 +17,12 @@
   font-size: 13px;
 }
 
-.settings-nav .nav-item {
-  min-height: 37px;
-  font-size: 12px;
-}
-
 .page {
   max-width: 1080px;
   padding: 38px 48px 42px;
 }
+
+.welcome-page { max-width: 720px; }
 
 .settings-header h1,
 .simple-page h1 {
@@ -76,10 +73,6 @@
 
 .update-state {
   font-size: 11px;
-}
-
-.sidebar .update-group>.update-heading h2 {
-  font-size: 12px;
 }
 
 .privacy strong {

@@ -2,14 +2,26 @@
 
 ## Current state
 
-- The roadmap is active. Finish the remaining items before creating the next GitHub Release; do not reset, clean, or force-push.
-- Source of truth: `docs/superpowers/plans/2026-11-03-flickvert-100-improvements.md`.
-- Current `main` and `origin/main` are at `bf247b359095a3d567c68a7979beed06c088caf6` (`fix: retry mounted macOS DMG safely`), authored as `PavelCRG <pavelslepcov864@gmail.com>`. The latest verified GitHub Release is `v0.1.3`; the next release should be `v0.1.4` after roadmap verification.
-- Preserve the existing untracked user artifacts. `.signing/` is ignored; never stage or reveal signing material. GitHub CLI reports an invalid keyring token, although Git Credential Manager can push.
+- User approved a Windows-only release sequence: publish the existing `v0.1.4` tag first, then publish current work as `v0.1.5`. Do not start `v0.1.5` until `v0.1.4` has a successful GitHub Release.
+- Apple/macOS builds and signing are paused by user request. The active CI/release workflow and current download documentation target Windows x64. Cross-platform application source remains available.
+- Current edits include the user's UI/product work, Windows-only release pipeline, Windows update manifest, updated release docs, and version `0.1.5`. Preserve every change; never reset, clean, or force-push.
+- Git identity for publishing: `PavelCRG <pavelslepcov864@gmail.com>`. User explicitly authorized publishing in this session.
+- `v0.1.4` already exists as a tag but has no GitHub Release. Use the workflow's manual `release_tag` input to build that tag and create its release from the current workflow. Then tag/publish `v0.1.5` from main.
 
 ## Plan status audit
 
-In the current plan, all items are checked except 90, 92, 94, and 100. Items 1–19 were audited and verified against the current code; do not reopen them without new evidence. Continue with item 90.
+- Roadmap items 1–93 and 95–99 are marked complete from prior verified work.
+- Item 94 (Apple signing/notarization) is deferred at the user's direction while Apple releases are paused.
+- Item 100 remains open until Windows `v0.1.4` and then `v0.1.5` builds/release checks both complete.
+## Current verification (2026-11-05)
+
+- The worktree has uncommitted user changes. Preserve them; do not reset, clean, commit, or push without the user's explicit approval to publish.
+- At `3d42643`, `npm test` passed 102/102, `npm run build` passed, and `cargo test --locked --manifest-path src-tauri/Cargo.toml` passed 81 tests with one manual large-file test ignored. The 256 MiB ZIP sample passed separately.
+- GitHub Actions run `41842547243` for `3d42643` completed successfully on retry attempt 2: Windows install/reinstall/uninstall and portable packaging passed; macOS Intel and Apple Silicon builds passed. Attempt 1 had a transient Windows uninstall registration failure.
+- Release tag run `41838578247` failed the macOS jobs before bundling because the six `APPLE_*` credentials are absent. The tagged workflow checks code signatures, Gatekeeper, and stapled notarization tickets on both architectures once those secrets exist.
+- `v0.1.4` was tagged at the release-preparation commit before `3d42643`; it does not contain the launcher-choice commit or the current uncommitted UI changes. Do not publish that tag as if it represented the current worktree.
+- Item 100 remains open: the user approved two sequential releases (`v0.1.4`, then `v0.1.5`). Before publishing each, provide its concrete change list and verify all release gates; do not start `v0.1.5` before `v0.1.4` is published.
+- `v0.1.5` is for current main and approved local changes. Git identity was verified as `PavelCRG <pavelslepcov864@gmail.com>` on 2026-11-05.
 
 ## Current verification (2026-11-03)
 
@@ -17,9 +29,9 @@ In the current plan, all items are checked except 90, 92, 94, and 100. Items 1�
 - Windows installer test passed using the published `v0.1.3` installer followed by the current installer, then uninstall. It verified one uninstall registration and preservation of user-data and selected-file sentinels. Both installers identify as `0.1.3`, so verify a true `v0.1.3` → `v0.1.4` transition before closing item 92.
 - GitHub Actions for commit `4a929b7`: Windows and Apple Silicon passed; Intel macOS failed during DMG packaging. The full log shows Tauri mounts `bundle/macos/rw.<pid>.FlickVert_<version>_x64.dmg`; the previous retry incorrectly searched `bundle/dmg` for the final image, which did not exist yet.
 - Commit `bf247b3` contains the version/architecture-specific DMG retry fix under `bundle/macos`. The DMG mock test passed for Intel and Apple Silicon before the commit; GitHub Actions results for `bf247b3` were not checked in this session.
-- Item 90 is still open. A historical headless production-preview sample measured Home ~950 ms, Tools ~29 ms, and `qpdf` search ~6.4 ms; its procedure is not reproducible from the repo and it does not cover the native wheel. The old Windows instance with separate `main` and `quick` WebView2 profiles measured ~732 MB summed working set and ~372 MB private memory across the host and 12 WebView2 processes. The code now points both windows at the existing `webview-main` profile, preserving its localStorage and leaving `webview-quick` untouched. An isolated-profile smoke run of the new build measured ~438 MB working set and ~237 MB private memory across the host and 7 WebView2 processes (one sample on this machine). A fresh-profile launch reached a visible main window in 2.75 s (one sample). The ignored `creates_zip_for_256_mib_input` sample compressed 256 MiB in 3.36 s; the Rust test process peaked at 5.6 MB working set and 1.4 MB private memory, excluding the resident app/WebView2. The earlier launch readings (1.79 s, then 0.73/0.78 s) were contaminated by an already-running installed instance. These are single-machine samples, not p95 budgets; repeat the main/wheel/search timings and measure full app memory during a large-file operation before closing item 90.
-- Item 94 is still open. Only `TAURI_SIGNING_PRIVATE_KEY` and its password exist in GitHub Actions Secrets; Apple signing/notarization secrets are absent. The user was asked to add the six `APPLE_*` secrets without sharing values in chat.
-- Item 100 is still open. No new GitHub Release/tag has been created.
+- Item 90 is complete in the roadmap. `docs/performance-budget.md` records reproducible cold-start, quick-open p50/p95, catalog-search p50/p95, and ZIP large-file measurements; the 256 MiB ZIP sample was rerun successfully on 2026-11-05. It explicitly excludes the resident application/WebView2 from the ZIP worker memory measurement.
+- Item 94 is still open. The exact Apple secret requirements and secure setup steps are in `docs/release-signing.md`. Values must be added directly to GitHub Actions Secrets; never share or commit them.
+- Item 100 is still open. No new GitHub Release/tag has been created, and publication awaits the user's approval after the final change list.
 - The repository was clean immediately after syncing `bf247b3`. Preserve any new local changes. Do not stage `.playwright-*`, `.research`, `.tmp-icons`, the inspection screenshot, or the unrelated 2026-11-01 plans/spec.
 
 ## Latest phase completed
@@ -43,7 +55,7 @@ Historical verification for items 51–53: `npm test` passed 70 tests, `npm run 
 ```text
 Continue the FlickVert improvement roadmap from the current repository. First read docs/superpowers/HANDOFF.md and docs/superpowers/plans/2026-11-03-flickvert-100-improvements.md, then inspect `git status` and preserve every existing local change. Do not reset, clean, or replace files wholesale.
 
-Important: current unchecked items are 90, 92, 94, and 100. Items 1–19 have already been audited. Continue with item 90, preserve the current work in progress, and create the next release only after all four remaining items are verified.
+Important: only items 94 and 100 are unchecked in the current roadmap. Item 94 needs the six Apple signing/notarization secrets documented in `docs/release-signing.md`; item 100 also needs explicit user approval before publication. Preserve the current work in progress.
 
 Work in small, reviewable phases. Before editing, inspect every relevant caller, UI path, config, and test. Add or update focused tests for behavior changes, run the relevant project tests and build, review `git diff --check`, and mark a plan item `[x]` only after its acceptance criteria are verified. Keep UI behavior and copy consistent with FlickVert's existing components and translations. Preserve local processing and user files.
 

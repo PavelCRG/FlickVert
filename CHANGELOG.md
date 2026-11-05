@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.5
+
+- Reshaped Home and the tools catalog around clearer, grouped actions and engine availability.
+- Reorganized Settings into focused pages and refined the quick wheel's labels, layout, and update notices.
+- Made Windows the active release target; macOS packaging is paused.
+
 ## 0.1.4
 
 - Added a consistent orange accent, with existing appearance and custom color preferences preserved.

@@ -36,7 +36,7 @@ const icons: Record<AppIconName, ReactNode> = {
   move: <><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10H3z"/><path d="M8 13h8m-3-3 3 3-3 3"/></>,
   folder: <><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="m9 14 2 2 4-4"/></>,
   terminal: <><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3m6 0h4"/></>,
-  convert: <><path d="M4 7h13l-3-3m6 13H7l3 3"/><path d="M17 4v3m-7 10v3"/></>,
+  convert: <><path d="M4 7h15m-4-4 4 4-4 4"/><path d="M20 17H5m4-4-4 4 4 4"/></>,
   'shield-check': <><path d="m12 3 8 3v5.5c0 5-3.4 8.3-8 10.5-4.6-2.2-8-5.5-8-10.5V6z"/><path d="m8.5 11.5 2.3 2.3 4.8-5"/></>,
   minimize: <path d="M4 12h16"/>,
   maximize: <rect x="5" y="5" width="14" height="14" rx="1"/>,

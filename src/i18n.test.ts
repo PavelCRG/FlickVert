@@ -36,6 +36,23 @@ test('context menu integration labels and errors are translated in every languag
   }
 })
 
+test('settings help text is translated in every language', () => {
+  for (const key of [
+    'Review the main gestures and shortcuts.',
+    'Closing normally keeps FlickVert in the tray.',
+    'Used when an action opens a terminal.',
+    'Start automatically after you sign in.',
+    'Open FlickVert actions from File Explorer.',
+    'Follow your system theme or choose one.',
+    'Choose a preset or set a custom color.',
+    'Choose the language used across FlickVert.',
+  ] as const) {
+    assert.equal(t('en', key), key)
+    assert.notEqual(t('ru', key), key)
+    assert.notEqual(t('zh', key), key)
+  }
+})
+
 test('operation shortcut controls are translated in every language', () => {
   for (const key of ['Operation shortcuts', 'Not assigned', 'Remove shortcut', 'Operation shortcut conflicts or is unavailable.'] as const) {
     assert.equal(t('en', key), key)

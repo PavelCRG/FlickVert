@@ -17,13 +17,15 @@ export async function syncReleaseVersion(root, tag) {
   const cargoToml = await read('src-tauri/Cargo.toml')
   const cargoLock = await read('src-tauri/Cargo.lock')
   const appSidebar = await read('src/app/AppSidebar.tsx')
+  const settingsView = await read('src/app/SettingsView.tsx')
   const readmePaths = ['README.md', 'README.ru.md', 'README.zh-CN.md']
   const readmes = await Promise.all(readmePaths.map(read))
   const cargoPackage = /(\[package\][\s\S]*?\r?\nname = "flickvert"\r?\nversion = ")[^"]+(\")/
   const cargoLockPackage = /(\[\[package\]\]\r?\nname = "flickvert"\r?\nversion = ")[^"]+(\")/
   const appVersion = /(<div className="version">FlickVert <span>)[^<]+(<\/span><\/div>)/
+  const aboutVersion = /(settingsPage === 'about' && <section className="settings-group"><h2>FlickVert )[^<]+(<\/h2>)/
   const readmeVersions = [/Current release: `[^`]+`\./, /Текущий релиз — `[^`]+`\./, /当前版本为 `[^`]+`。/]
-  if (!packageLock.packages?.[''] || !cargoPackage.test(cargoToml) || !cargoLockPackage.test(cargoLock) || !appVersion.test(appSidebar) || readmes.some((readme, index) => !readmeVersions[index].test(readme))) {
+  if (!packageLock.packages?.[''] || !cargoPackage.test(cargoToml) || !cargoLockPackage.test(cargoLock) || !appVersion.test(appSidebar) || !aboutVersion.test(settingsView) || readmes.some((readme, index) => !readmeVersions[index].test(readme))) {
     throw new Error('Could not find every FlickVert version field')
   }
 
@@ -38,6 +40,7 @@ export async function syncReleaseVersion(root, tag) {
     write('src-tauri/Cargo.lock', cargoLock.replace(cargoLockPackage, `$1${version}$2`)),
     write('src-tauri/tauri.conf.json', `${JSON.stringify(tauriConfig, null, 2)}\n`),
     write('src/app/AppSidebar.tsx', appSidebar.replace(appVersion, `$1${version}$2`)),
+    write('src/app/SettingsView.tsx', settingsView.replace(aboutVersion, `$1${version}$2`)),
     ...readmes.map((readme, index) => write(readmePaths[index], readme.replace(readmeVersions[index], (match) => match.replace(/`[^`]+`/, '`' + version + '`')))),
   ])
 }
