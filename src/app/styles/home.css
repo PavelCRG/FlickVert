@@ -1,14 +1,15 @@
 .dashboard-page {
-  gap: 16px;
+  gap: 14px;
 }
 
 .dashboard-page .settings-header {
-  min-height: 82px;
+  min-height: 72px;
 }
 
 .dashboard-start {
-  padding: 20px 22px;
-  border-radius: 12px;
+  min-height: 82px;
+  padding: 18px 20px;
+  border-radius: 11px;
 }
 
 .dashboard-start h2 {
@@ -20,21 +21,34 @@
 }
 
 .dashboard-grid {
-  gap: 11px;
+  gap: 10px;
 }
 
 .dashboard-card {
-  min-height: 98px;
-  grid-template-columns: 38px minmax(0, 1fr);
+  min-height: 92px;
+  grid-template-columns: 38px minmax(0, 1fr) 16px;
   gap: 5px 12px;
-  padding: 15px;
-  border-radius: 11px;
+  padding: 14px;
+  border-radius: 10px;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 3%, transparent);
 }
 
 .dashboard-card-icon {
   width: 36px;
   height: 36px;
+  border-radius: 9px;
 }
+
+.dashboard-card-arrow {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  width: 15px;
+  height: 15px;
+  color: var(--faint);
+  transition: color .16s ease, transform .16s ease;
+}
+
+.dashboard-card:hover .dashboard-card-arrow { color: var(--accent); transform: translateX(2px); }
 
 .dashboard-card strong {
   font-size: 13px;
@@ -46,9 +60,24 @@
 
 .dashboard-shortcut {
   min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
   padding: 9px 13px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .16s ease, background-color .16s ease, transform .16s ease;
 }
 
+.dashboard-shortcut:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); background: color-mix(in srgb, var(--accent-soft) 24%, var(--surface)); }
+.dashboard-shortcut:active { transform: translateY(1px); }
+.dashboard-shortcut > svg:first-child { width: 17px; height: 17px; color: var(--accent); }
+.dashboard-shortcut > span:first-of-type { margin-right: auto; color: var(--muted); }
+.dashboard-shortcut > span:last-child { display: inline-flex; align-items: center; gap: 6px; color: var(--accent); }
+.dashboard-shortcut > span:last-child svg { width: 14px; height: 14px; }
 .dashboard-shortcut span:first-child {
   font-size: 12px;
 }
@@ -63,7 +92,7 @@
   grid-template-columns: minmax(120px, 1fr) minmax(135px, .9fr) minmax(130px, auto);
   align-items: center;
   gap: 10px;
-  min-height: 36px;
+  min-height: 34px;
   border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
 }
 
@@ -89,6 +118,7 @@
   }
 
   .dashboard-card small { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; line-height: 1.35; }
+  .dashboard-card { grid-template-columns: 36px minmax(0, 1fr) 14px; }
   .engine-status > div { grid-template-columns: minmax(0, 1fr) auto; padding-block: 6px; }
   .engine-status > div > span:nth-child(2) { justify-self: end; }
   .engine-install { grid-column: 1 / -1; justify-content: flex-start; padding-left: 8px; }

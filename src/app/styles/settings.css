@@ -6,7 +6,18 @@
 .modifier-select {
   min-height: 38px;
   border-radius: 8px;
+  transition: border-color .14s ease, background-color .14s ease, box-shadow .14s ease;
 }
+
+.modifier-select:hover:not(:disabled), .dimension-preset-save input:hover { border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); }
+.modifier-select:focus-visible, .dimension-preset-save input:focus-visible { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent); }
+
+.settings-page .setting-row > input[type="checkbox"] { width: 18px; height: 18px; border-radius: 5px; accent-color: var(--accent); }
+.settings-page .segmented-control { padding: 3px; border-radius: 9px; }
+.settings-page .segmented-control button { min-height: 32px; border-radius: 7px; }
+.settings-page .segmented-control button.selected { box-shadow: 0 1px 3px color-mix(in srgb, var(--text) 12%, transparent); }
+.settings-page .settings-group { border-radius: 11px; transition: border-color .16s ease, box-shadow .16s ease; }
+.settings-page .settings-group:hover { border-color: color-mix(in srgb, var(--line) 72%, var(--accent)); }
 
 .operation-shortcuts .setting-row {
   gap: 12px;

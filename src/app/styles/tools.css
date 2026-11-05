@@ -27,7 +27,12 @@
     gap: 6px 10px;
     padding: 10px;
     border-radius: 10px;
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 3%, transparent);
+    transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease, transform .16s ease;
 }
+
+.catalog-row:hover { border-color: color-mix(in srgb, var(--accent) 34%, var(--line)); background: color-mix(in srgb, var(--accent-soft) 18%, var(--surface)); box-shadow: 0 3px 9px color-mix(in srgb, var(--text) 6%, transparent); transform: translateY(-1px); }
+.catalog-row:focus-within { border-color: color-mix(in srgb, var(--accent) 48%, var(--line)); }
 
 .catalog-row strong {
     font-size: 12px;
@@ -42,11 +47,15 @@
     font-size: 11px;
 }
 
+.catalog-icon { width: 30px; height: 30px; border-radius: 8px; }
+.catalog-icon svg { width: 17px; height: 17px; }
+
 .catalog-choose-files {
-    min-height: 30px;
-    padding-inline: 9px;
-    font-size: 11px;
+    min-height: 0;
+    padding: 0;
 }
+
+.catalog-choose-files:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); background: var(--accent-soft); color: var(--accent); }
 
 .conversion-catalog>div {
     grid-template-columns: 170px minmax(0, 1fr);

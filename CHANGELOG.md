@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.8
+
+- Refined the home page, tools catalog, and settings with clearer spacing, compact icon actions, and subtle transitions.
+- Made settings pages use the available width and improved keyboard shortcut visibility on Home.
+
 ## 0.1.7
 
 - Fixed Windows modifier tracking so releasing one side of Shift, Ctrl, or Alt does not cancel the other side while it remains held.
