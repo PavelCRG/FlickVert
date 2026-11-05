@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.7
+
+- Fixed Windows modifier tracking so releasing one side of Shift, Ctrl, or Alt does not cancel the other side while it remains held.
+
 ## 0.1.6
 
 - Simplified the quick wheel into a clean icon-first layout with accessible action names and format-specific icons.

@@ -22,7 +22,7 @@
 
 Windows 需要 Microsoft Edge WebView2 Runtime。其他转换引擎需单独安装。
 
-当前版本为 `0.1.6`。安装版会在启动时及每六小时检查一次签名更新；Windows 安装版使用匹配的 EXE 或 MSI 更新。便携版需手动更新。后续版本将通过 GitHub Actions 构建 Windows 安装包。
+当前版本为 `0.1.7`。安装版会在启动时及每六小时检查一次签名更新；Windows 安装版使用匹配的 EXE 或 MSI 更新。便携版需手动更新。后续版本将通过 GitHub Actions 构建 Windows 安装包。
 
 ## 目录
 

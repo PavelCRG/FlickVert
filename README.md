@@ -26,7 +26,7 @@ $installer = Join-Path $env:TEMP 'FlickVert-Setup.exe'; Invoke-WebRequest 'https
 
 Windows requires the Microsoft Edge WebView2 Runtime. Optional conversion engines are installed separately.
 
-Current release: `0.1.6`.
+Current release: `0.1.7`.
 
 After installing a release that includes the updater, FlickVert checks for signed updates at startup and every six hours while running. Use **Updates** in the sidebar to check again and install an available update. On Windows, the app selects the matching EXE or MSI update automatically. The portable build must be updated manually from GitHub Releases.
 

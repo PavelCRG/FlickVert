@@ -51,6 +51,24 @@ static MODIFIER_MODES: OnceLock<Mutex<[WheelMode; 3]>> = OnceLock::new();
 #[derive(Clone, Copy)]
 enum ModifierKey { Shift, Control, Alt }
 
+#[derive(Default)]
+struct PhysicalModifiers {
+    pressed: [[bool; 2]; 3],
+}
+
+impl PhysicalModifiers {
+    fn update(&mut self, key: ModifierKey, right: bool, down: bool) -> Option<InputEvent> {
+        let index = match key { ModifierKey::Shift => 0, ModifierKey::Control => 1, ModifierKey::Alt => 2 };
+        let was_down = self.pressed[index].iter().any(|pressed| *pressed);
+        self.pressed[index][usize::from(right)] = down;
+        match (was_down, self.pressed[index].iter().any(|pressed| *pressed)) {
+            (false, true) => Some(InputEvent::ModifierDown(mode_for_modifier(key))),
+            (true, false) => Some(InputEvent::ModifierUp(mode_for_modifier(key))),
+            _ => None,
+        }
+    }
+}
+
 pub fn start(app: AppHandle) {
     let _ = APP.set(app);
     let _ = GESTURE.set(Mutex::new(Gesture::default()));
@@ -183,8 +201,8 @@ fn handle(event: InputEvent) {
 
 #[cfg(windows)]
 mod windows {
-    use super::{handle, mode_for_modifier, InputEvent, ModifierKey};
-    use std::{ffi::c_void, mem, ptr, thread};
+    use super::{handle, InputEvent, ModifierKey, PhysicalModifiers};
+    use std::{ffi::c_void, mem, ptr, sync::{Mutex, OnceLock}, thread};
 
     type Hook = *mut c_void;
     type HookProc = Option<unsafe extern "system" fn(i32, usize, isize) -> isize>;
@@ -243,6 +261,9 @@ mod windows {
     const VK_LMENU: u32 = 0xa4;
     const VK_RMENU: u32 = 0xa5;
     const VK_ESCAPE: u32 = 0x1b;
+    const LLKHF_EXTENDED: u32 = 0x01;
+    const MAPVK_VSC_TO_VK_EX: u32 = 3;
+    static PHYSICAL_MODIFIERS: OnceLock<Mutex<PhysicalModifiers>> = OnceLock::new();
 
     #[link(name = "user32")]
     extern "system" {
@@ -251,6 +272,7 @@ mod windows {
         fn GetMessageW(message: *mut Message, window: *mut c_void, min: u32, max: u32) -> i32;
         fn TranslateMessage(message: *const Message) -> i32;
         fn DispatchMessageW(message: *const Message) -> isize;
+        fn MapVirtualKeyW(code: u32, map_type: u32) -> u32;
     }
 
     #[link(name = "kernel32")]
@@ -298,30 +320,44 @@ mod windows {
     unsafe extern "system" fn keyboard_proc(code: i32, message: usize, data: isize) -> isize {
         if code >= 0 {
             let input = &*(data as *const KeyData);
-            match (message as u32, input.key) {
-                (WM_KEYDOWN | WM_SYSKEYDOWN, VK_SHIFT | VK_LSHIFT | VK_RSHIFT) => {
-                    handle(InputEvent::ModifierDown(mode_for_modifier(ModifierKey::Shift)))
+            let key = match input.key {
+                VK_SHIFT | VK_CONTROL | VK_MENU => {
+                    let scan_code = input.scan | if input.flags & LLKHF_EXTENDED != 0 { 0xe000 } else { 0 };
+                    MapVirtualKeyW(scan_code, MAPVK_VSC_TO_VK_EX)
                 }
-                (WM_KEYUP | WM_SYSKEYUP, VK_SHIFT | VK_LSHIFT | VK_RSHIFT) => {
-                    handle(InputEvent::ModifierUp(mode_for_modifier(ModifierKey::Shift)))
+                _ => input.key,
+            };
+            match (message as u32, key) {
+                (WM_KEYDOWN | WM_SYSKEYDOWN, VK_LSHIFT | VK_RSHIFT) => {
+                    update_modifier(ModifierKey::Shift, key == VK_RSHIFT, true)
                 }
-                (WM_KEYDOWN | WM_SYSKEYDOWN, VK_CONTROL | VK_LCONTROL | VK_RCONTROL) => {
-                    handle(InputEvent::ModifierDown(mode_for_modifier(ModifierKey::Control)))
+                (WM_KEYUP | WM_SYSKEYUP, VK_LSHIFT | VK_RSHIFT) => {
+                    update_modifier(ModifierKey::Shift, key == VK_RSHIFT, false)
                 }
-                (WM_KEYUP | WM_SYSKEYUP, VK_CONTROL | VK_LCONTROL | VK_RCONTROL) => {
-                    handle(InputEvent::ModifierUp(mode_for_modifier(ModifierKey::Control)))
+                (WM_KEYDOWN | WM_SYSKEYDOWN, VK_LCONTROL | VK_RCONTROL) => {
+                    update_modifier(ModifierKey::Control, key == VK_RCONTROL, true)
                 }
-                (WM_KEYDOWN | WM_SYSKEYDOWN, VK_MENU | VK_LMENU | VK_RMENU) => {
-                    handle(InputEvent::ModifierDown(mode_for_modifier(ModifierKey::Alt)))
+                (WM_KEYUP | WM_SYSKEYUP, VK_LCONTROL | VK_RCONTROL) => {
+                    update_modifier(ModifierKey::Control, key == VK_RCONTROL, false)
                 }
-                (WM_KEYUP | WM_SYSKEYUP, VK_MENU | VK_LMENU | VK_RMENU) => {
-                    handle(InputEvent::ModifierUp(mode_for_modifier(ModifierKey::Alt)))
+                (WM_KEYDOWN | WM_SYSKEYDOWN, VK_LMENU | VK_RMENU) => {
+                    update_modifier(ModifierKey::Alt, key == VK_RMENU, true)
+                }
+                (WM_KEYUP | WM_SYSKEYUP, VK_LMENU | VK_RMENU) => {
+                    update_modifier(ModifierKey::Alt, key == VK_RMENU, false)
                 }
                 (WM_KEYDOWN | WM_SYSKEYDOWN, VK_ESCAPE) => handle(InputEvent::Escape),
                 _ => {}
             }
         }
         CallNextHookEx(ptr::null_mut(), code, message, data)
+    }
+
+    fn update_modifier(key: ModifierKey, right: bool, down: bool) {
+        let modifiers = PHYSICAL_MODIFIERS.get_or_init(|| Mutex::new(PhysicalModifiers::default()));
+        if let Ok(mut modifiers) = modifiers.lock() {
+            if let Some(event) = modifiers.update(key, right, down) { handle(event); }
+        }
     }
 }
 
@@ -500,6 +536,21 @@ mod tests {
             gesture.transition(InputEvent::Move(20.0, 10.0)),
             Some(Action::Open(WheelMode::Tools))
         ));
+    }
+
+    #[test]
+    fn releasing_one_side_of_a_held_modifier_keeps_the_other_side_active() {
+        let mut keys = PhysicalModifiers::default();
+        let mut gesture = Gesture::default();
+        gesture.transition(keys.update(ModifierKey::Shift, false, true).unwrap());
+        assert!(keys.update(ModifierKey::Shift, true, true).is_none());
+        gesture.transition(InputEvent::LeftDown(10.0, 10.0));
+        assert!(matches!(
+            gesture.transition(InputEvent::Move(20.0, 10.0)),
+            Some(Action::Open(WheelMode::Convert))
+        ));
+        assert!(keys.update(ModifierKey::Shift, false, false).is_none());
+        assert!(keys.update(ModifierKey::Shift, true, false).is_some());
     }
 
     #[test]
