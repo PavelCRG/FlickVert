@@ -19,7 +19,7 @@ export function QuickStartPage({ preferences, tr, onHome, onChooseFiles }: {
     </div>
     <div className="welcome-details">
       <div><span>{tr('Your configured shortcut:')}</span><kbd>{preferences.shortcut.split('+').map((key) => key === 'CTRL' ? 'Ctrl' : key === 'ALT' ? 'Alt' : key === 'SHIFT' ? 'Shift' : 'Space').join(' + ')}</kbd></div>
-      <p>{tr('Your files stay here')} {tr('Processed on this device')}. {tr('Optional engines only enable the formats they support.')}</p>
+      <p>{tr('Optional engines only enable the formats they support.')}</p>
       <p>{tr('Closing the window keeps FlickVert running in the tray. Use Quit in the tray menu to exit.')}</p>
     </div>
     <div className="welcome-actions">

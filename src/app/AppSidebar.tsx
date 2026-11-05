@@ -36,7 +36,6 @@ export function AppSidebar({ section, language, setSection, setSettingsPage, tr 
     </nav>
     <div className="sidebar-bottom">
       <UpdateNotice language={language}/>
-      <div className="privacy"><span className="privacy-icon-wrap"><AppIcon name="shield-check" className="privacy-icon"/></span><span><strong>{tr('Your files stay here')}</strong><small>{tr('Processed on this device')}</small></span></div>
       <div className="version">FlickVert <span>0.1.8</span></div>
     </div>
   </aside>

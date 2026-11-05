@@ -87,7 +87,7 @@ export default function UpdateNotice({ language }: { language: Language }) {
       ? <button className="primary-button update-button" onClick={() => void relaunch()}><AppIcon name="restart"/>{labels.restart}</button>
       : <button className="secondary-button update-button" disabled={status === 'checking' || status === 'downloading'} onClick={() => void checkUpdate()}><AppIcon name="refresh"/>{labels.check}</button>
   return <details className="update-compact">
-    <summary aria-label={`${labels.title}: ${message}`} title={`${labels.title}: ${message}`}><AppIcon name="refresh"/><span>{labels.title}</span><i className={`update-indicator update-indicator-${status}`} aria-hidden="true"/></summary>
+    <summary aria-label={`${labels.title}: ${message}`} title={`${labels.title}: ${message}`}><span className="update-icon"><AppIcon name="refresh"/></span><span>{labels.title}</span><i className={`update-indicator update-indicator-${status}`} aria-hidden="true"/></summary>
     <div className="update-compact-panel">
       <div className={`update-state update-state-${status}`} aria-live="polite"><span className="update-state-icon" aria-hidden="true">{status === 'current' ? <AppIcon name="check"/> : status === 'error' ? <AppIcon name="alert"/> : <span/>}</span><span>{message}</span></div>
       {action}

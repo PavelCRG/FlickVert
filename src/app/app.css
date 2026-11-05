@@ -12,6 +12,7 @@
   --accent-soft: color-mix(in srgb, var(--accent-base, #d96c24) 13%, var(--surface));
   --good: #27845f;
   --bad: #bd3e4d;
+  color-scheme: light;
   font-size: 13px;
   display: grid;
   grid-template-columns: 244px minmax(0, 1fr);
@@ -42,6 +43,7 @@
   --accent: color-mix(in srgb, var(--accent-base, #d96c24) 66%, white);
   --accent-soft: color-mix(in srgb, var(--accent-base, #d96c24) 24%, var(--surface));
   --good: #68c89b; --bad: #ff9299;
+  color-scheme: dark;
 }
 @media (prefers-color-scheme: dark) {
   .app.system {
@@ -51,6 +53,7 @@
     --accent: color-mix(in srgb, var(--accent-base, #d96c24) 66%, white);
     --accent-soft: color-mix(in srgb, var(--accent-base, #d96c24) 24%, var(--surface));
     --good: #68c89b; --bad: #ff9299;
+    color-scheme: dark;
   }
 }
 .sidebar { width: 100%; min-height: 0; padding: 14px 12px; overflow-y: auto; scrollbar-width: none; }
@@ -68,6 +71,12 @@
 .shortcut-recorder { display: flex; align-items: center; gap: 8px; }
 .shortcut-recorder kbd { min-width: 120px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); color: var(--text); font: inherit; text-align: center; }
 .modifier-select { min-width: 126px; min-height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--text); }
+.app select { min-height: 36px; padding: 0 34px 0 11px; appearance: none; accent-color: var(--accent); border: 1px solid var(--line); border-radius: 8px; background-color: var(--surface); background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 14px) 50%, calc(100% - 10px) 50%; background-size: 4px 4px; background-repeat: no-repeat; color: var(--text); cursor: pointer; transition: border-color .14s ease, box-shadow .14s ease, background-color .14s ease; }
+.app select:hover:not(:disabled) { border-color: color-mix(in srgb, var(--accent) 38%, var(--line)); }
+.app select:focus-visible { border-color: var(--accent); outline: 0; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent); }
+.app select:disabled { cursor: default; opacity: .6; }
+.app select option, .app select optgroup { background: var(--surface); color: var(--text); }
+.app select option:checked { background: var(--accent); color: #fff; }
 .dashboard-page { display: grid; align-content: start; gap: 14px; }
 .dashboard-page .settings-header { min-height: 96px; margin-bottom: 0; }
 .dashboard-page .welcome-eyebrow { margin: 0 0 5px; color: var(--accent); font-size: 10px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
@@ -104,8 +113,6 @@
 .nav-item { min-height: 40px; gap: 11px; border-radius: 7px; padding-inline: 11px; font-size: 12px; }
 .nav-item.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 .nav-item.active svg { color: var(--accent); }
-.privacy-icon { width: 17px; height: 17px; flex: none; fill: none; stroke: var(--good); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
-.privacy small { font-size: 10px; line-height: 1.4; }
 .main { height: auto; min-height: 0; scrollbar-width: none; }
 .main::-webkit-scrollbar { display: none; }
 .main:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
@@ -184,7 +191,8 @@
 .update-compact > summary::-webkit-details-marker { display: none; }
 .update-compact > summary:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); background: var(--surface-2); color: var(--text); }
 .update-compact > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.update-compact > summary svg { width: 15px; height: 15px; color: var(--accent); }
+.update-compact > summary .update-icon { width: 24px; height: 24px; display: grid; flex: none; place-items: center; border-radius: 7px; background: var(--accent-soft); color: var(--accent); }
+.update-compact > summary .update-icon svg { width: 14px; height: 14px; }
 .update-compact > summary span { flex: 1; }
 .update-indicator { width: 7px; height: 7px; flex: none; border-radius: 50%; background: var(--faint); }
 .update-indicator-current { background: var(--good); }
