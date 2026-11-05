@@ -2,17 +2,16 @@
 
 ## Current state
 
-- User approved a Windows-only release sequence: publish the existing `v0.1.4` tag first, then publish current work as `v0.1.5`. Do not start `v0.1.5` until `v0.1.4` has a successful GitHub Release.
-- Apple/macOS builds and signing are paused by user request. The active CI/release workflow and current download documentation target Windows x64. Cross-platform application source remains available.
-- Current edits include the user's UI/product work, Windows-only release pipeline, Windows update manifest, updated release docs, and version `0.1.5`. Preserve every change; never reset, clean, or force-push.
-- Git identity for publishing: `PavelCRG <pavelslepcov864@gmail.com>`. User explicitly authorized publishing in this session.
-- `v0.1.4` already exists as a tag but has no GitHub Release. Use the workflow's manual `release_tag` input to build that tag and create its release from the current workflow. Then tag/publish `v0.1.5` from main.
+- User approved and both Windows-only releases are published: [v0.1.4](https://github.com/PavelCRG/FlickVert/releases/tag/v0.1.4) followed by [v0.1.5](https://github.com/PavelCRG/FlickVert/releases/tag/v0.1.5).
+- Apple/macOS builds and signing are paused at the user's direction. CI and current download documentation target Windows x64; cross-platform application source remains available.
+- Release commit: `8d40fbb` (`PavelCRG <pavelslepcov864@gmail.com>`), tag `v0.1.5`. A later documentation-only update may be pushed to main without moving the release tag.
+- The release includes the user's UI/product work, Windows-only release pipeline, Windows updater manifest, and version `0.1.5`.
+- Two local changes appeared after the release commit (`src/app/app.css`, `src/app/styles/shell.css`, `.playwright-cli/`). Preserve them and do not stage or remove without review.
 
 ## Plan status audit
 
-- Roadmap items 1–93 and 95–99 are marked complete from prior verified work.
+- Roadmap items 1–93 and 95–100 are complete from prior verified work and the Windows releases.
 - Item 94 (Apple signing/notarization) is deferred at the user's direction while Apple releases are paused.
-- Item 100 remains open until Windows `v0.1.4` and then `v0.1.5` builds/release checks both complete.
 ## Current verification (2026-11-05)
 
 - The worktree has uncommitted user changes. Preserve them; do not reset, clean, commit, or push without the user's explicit approval to publish.
