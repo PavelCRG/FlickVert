@@ -21,9 +21,8 @@ test('syncs a patch tag across app metadata without changing dependency versions
   await writeFile(join(root, 'src-tauri/tauri.conf.json'), JSON.stringify({ version: '0.1.0' }))
   await writeFile(join(root, 'src/app/AppSidebar.tsx'), '<div className="version">FlickVert <span>0.1.0</span></div>')
   await writeFile(join(root, 'src/app/SettingsView.tsx'), "{settingsPage === 'about' && <section className=\"settings-group\"><h2>FlickVert 0.1.0</h2></section>}")
-  await writeFile(join(root, 'README.md'), 'Current release: `0.1.0`.')
-  await writeFile(join(root, 'README.ru.md'), 'Текущий релиз — `0.1.0`.')
-  await writeFile(join(root, 'README.zh-CN.md'), '当前版本为 `0.1.0`。')
+  const readmes = ['See the latest release page.', 'См. страницу последнего релиза.', '查看最新版本页面。']
+  await Promise.all(['README.md', 'README.ru.md', 'README.zh-CN.md'].map((path, index) => writeFile(join(root, path), readmes[index])))
 
   await syncReleaseVersion(root, 'v0.1.1')
 
@@ -36,9 +35,7 @@ test('syncs a patch tag across app metadata without changing dependency versions
   assert.equal(JSON.parse(await readFile(join(root, 'src-tauri/tauri.conf.json'), 'utf8')).version, '0.1.1')
   assert.equal(await readFile(join(root, 'src/app/AppSidebar.tsx'), 'utf8'), '<div className="version">FlickVert <span>0.1.1</span></div>')
   assert.equal(await readFile(join(root, 'src/app/SettingsView.tsx'), 'utf8'), "{settingsPage === 'about' && <section className=\"settings-group\"><h2>FlickVert 0.1.1</h2></section>}")
-  assert.equal(await readFile(join(root, 'README.md'), 'utf8'), 'Current release: `0.1.1`.')
-  assert.equal(await readFile(join(root, 'README.ru.md'), 'utf8'), 'Текущий релиз — `0.1.1`.')
-  assert.equal(await readFile(join(root, 'README.zh-CN.md'), 'utf8'), '当前版本为 `0.1.1`。')
+  assert.deepEqual(await Promise.all(['README.md', 'README.ru.md', 'README.zh-CN.md'].map((path) => readFile(join(root, path), 'utf8'))), readmes)
 })
 
 test('rejects tags that are not stable vMAJOR.MINOR.PATCH releases', async () => {

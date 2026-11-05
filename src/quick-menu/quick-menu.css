@@ -44,6 +44,10 @@ html:has(.quick-shell), body:has(.quick-shell), #root:has(.quick-shell) {
   transform: translate(-50%, -50%); color: color-mix(in srgb, CanvasText 86%, transparent);
   text-align: center; transition: color .13s ease;
 }
+.quick-label.format-label { height: 46px; flex-direction: column; gap: 1px; }
+.quick-label.format-label .quick-glyph { width: 17px; height: 17px; }
+.quick-format-name { color: color-mix(in srgb, CanvasText 78%, transparent); font-size: 9px; font-weight: 700; line-height: 1; white-space: nowrap; }
+.quick-label.active .quick-format-name { color: var(--wheel-accent); }
 .quick-label .quick-glyph { width: 27px; height: 27px; color: color-mix(in srgb, CanvasText 62%, transparent); }
 .quick-label.active { color: var(--wheel-accent); }
 .quick-label.active .quick-glyph { color: var(--wheel-accent); }
@@ -57,6 +61,9 @@ html:has(.quick-shell), body:has(.quick-shell), #root:has(.quick-shell) {
   transition: width .16s ease, height .16s ease, background-color .16s ease;
 }
 .quick-center-icon { width: 26px; height: 26px; flex: none; color: var(--wheel-accent); stroke-width: 1.8; }
+.quick-center.is-working { border-color: color-mix(in srgb, var(--wheel-accent) 42%, transparent); box-shadow: 0 5px 22px color-mix(in srgb, var(--wheel-accent) 18%, transparent); }
+.quick-loader { width: 23px; height: 23px; flex: none; border: 2px solid color-mix(in srgb, var(--wheel-accent) 18%, transparent); border-top-color: var(--wheel-accent); border-radius: 50%; animation: quick-spin .8s linear infinite; }
+@keyframes quick-spin { to { transform: rotate(360deg); } }
 .quick-center strong {
   display: -webkit-box; max-width: 78px; overflow: hidden; color: CanvasText;
   font-size: 14px; font-weight: 700; line-height: 1.2; text-overflow: ellipsis;
@@ -95,4 +102,5 @@ html:has(.quick-shell), body:has(.quick-shell), #root:has(.quick-shell) {
 }
 @media (prefers-reduced-motion: reduce) {
   .quick-segment, .quick-label, .quick-center, .quick-shell.drag-mode .quick-orbit { transition: none !important; animation: none !important; }
+  .quick-loader { animation: none; border-color: var(--wheel-accent); border-bottom-color: transparent; }
 }

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.9
+
+- Added visible output format labels to the conversion wheel.
+- Added a clear loading indicator for longer conversions, file actions, and archive operations.
+
 ## 0.1.8
 
 - Refined the home page, tools catalog, and settings with clearer spacing, compact icon actions, and subtle transitions.
