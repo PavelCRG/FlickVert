@@ -3,7 +3,6 @@
 }
 
 .sidebar {
-  width: 244px;
   padding: 16px 12px 14px;
 }
 
@@ -91,11 +90,6 @@
 }
 
 @media (max-width: 760px) {
-  .sidebar {
-    width: 204px;
-    padding-inline: 12px;
-  }
-
   .page {
     padding: 24px 18px 30px;
   }
