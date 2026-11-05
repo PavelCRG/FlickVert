@@ -1,4 +1,4 @@
-<img align="left" src="public/fv-file-orange.png" width="120" alt="Логотип FlickVert" />
+<img align="left" src="public/fv-file-orange.png" width="120" alt="FlickVert logo" />
 
 # FlickVert
 
@@ -9,13 +9,11 @@
   <p><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a></p>
 </div>
 
-FlickVert помогает работать с файлами прямо из Проводника. Начните перетаскивать файл и нажмите Shift — рядом с указателем появится круглое меню. Наведите файл на нужный формат или действие и отпустите кнопку мыши. Главная показывает возможности приложения, а настройки разбиты по разделам.
+Перетащите файл. Нажмите Shift. Выберите формат.
 
 <p align="center">
-  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.msi"><strong>Установщик Windows (MSI)</strong></a> ·
-  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.exe">Установщик Windows (EXE)</a> ·
-  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Portable.zip">Портативная версия Windows (ZIP)</a> ·
-  <a href="https://github.com/PavelCRG/FlickVert/releases/latest">Все загрузки</a>
+  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.exe"><strong>Скачать для Windows</strong></a> ·
+  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Portable.zip">Portable ZIP</a>
 </p>
 
 ## Скачать и установить

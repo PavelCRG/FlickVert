@@ -1,19 +1,18 @@
 <div align="center">
-  <img src="public/fv-file-orange.png" width="190" alt="FlickVert logo" />
+  <img src="public/fv-file-orange.png" width="120" alt="FlickVert logo" />
   <h1>FlickVert</h1>
-  <p><strong>File conversion, right where you need it.</strong></p>
-  <p>A fast, local-first file toolkit for Windows.</p>
+  <p><strong>Local file conversion for Windows.</strong></p>
   <p><a href="README.ru.md">Русский</a> · <a href="README.zh-CN.md">简体中文</a></p>
 </div>
 
-<p align="center">Drag a file, tap <kbd>Shift</kbd>, and drop it on a format. Convert, edit, and organize files without leaving File Explorer.</p>
+<p align="center">Drag a file. Tap <kbd>Shift</kbd>. Choose a format.</p>
 
 <p align="center">
   <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.exe"><strong>Download for Windows</strong></a> ·
-  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Portable.zip">Portable ZIP</a> ·
-  <a href="https://github.com/PavelCRG/FlickVert/releases/latest">All downloads</a>
+  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Portable.zip">Portable ZIP</a>
 </p>
 <p align="center"><sub>Windows 10/11 · Free · Files stay on your device</sub></p>
+
 ## Download and install
 
 On **Windows 10/11 x64**, download and open the Setup EXE above. The MSI is also available on the [releases page](https://github.com/PavelCRG/FlickVert/releases/latest). To run without installing, download the Portable ZIP and open `FlickVert.exe` inside it. Windows may show a SmartScreen warning because the installer is not Authenticode-signed.

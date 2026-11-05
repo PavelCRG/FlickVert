@@ -1,4 +1,4 @@
-<img align="left" src="public/fv-file-orange.png" width="120" alt="FlickVert 标志" />
+<img align="left" src="public/fv-file-orange.png" width="120" alt="FlickVert logo" />
 
 # FlickVert
 
@@ -6,22 +6,14 @@
 
 <br clear="left" />
 <div align="center">
-  <p>
-    <a href="#快速开始"><img alt="快速开始" src="https://img.shields.io/badge/%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B-%E6%8B%96%E6%94%BE%E5%B9%B6%E8%BD%AC%E6%8D%A2-285FE8?style=for-the-badge"></a>
-    <a href="#支持的格式"><img alt="支持的格式" src="https://img.shields.io/badge/%E6%A0%BC%E5%BC%8F-%E6%9F%A5%E7%9C%8B%E6%94%AF%E6%8C%81%E6%83%85%E5%86%B5-59616D?style=for-the-badge"></a>
-    <a href="#从源码构建"><img alt="从源码构建" src="https://img.shields.io/badge/%E6%9E%84%E5%BB%BA-%E4%BB%8E%E6%BA%90%E7%A0%81-59616D?style=for-the-badge"></a>
-  </p>
   <p><a href="README.md">English</a> · <a href="README.ru.md">Русский</a></p>
 </div>
-<p>在 <strong>Tools → Edit image</strong> 中可以裁剪图片、涂黑区域、添加注释或背景，并调整亮度和对比度。结果以 PNG 格式保存在原图旁边。</p>
 
-FlickVert 可与文件资源管理器配合使用。拖动文件并按 Shift，指针旁会出现圆形菜单。将文件放到格式或操作上即可执行。主页概览支持的功能，设置按类别分开。
+拖动文件。按 Shift。选择格式。
 
 <p align="center">
-  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.msi"><strong>Windows 安装包 (MSI)</strong></a> ·
-  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.exe">Windows 安装包 (EXE)</a> ·
-  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Portable.zip">Windows 便携版 (ZIP)</a> ·
-  <a href="https://github.com/PavelCRG/FlickVert/releases/latest">所有下载</a>
+  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.exe"><strong>下载 Windows 安装版</strong></a> ·
+  <a href="https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Portable.zip">便携版 ZIP</a>
 </p>
 
 ## 下载和安装
