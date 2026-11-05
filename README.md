@@ -1,7 +1,7 @@
 <div align="center">
   <img src="public/fv-file-orange.png" width="120" alt="FlickVert logo" />
   <h1>FlickVert</h1>
-  <p><strong>File work, one quick gesture away.</strong></p>
+  <p><strong>Your file toolkit, one gesture away.</strong></p>
   <p><a href="README.ru.md">Русский</a> · <a href="README.zh-CN.md">简体中文</a></p>
 </div>
 
