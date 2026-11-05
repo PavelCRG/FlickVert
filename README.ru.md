@@ -20,9 +20,17 @@
 
 В **Windows 10/11 x64** нажмите ссылку на установщик EXE вверху страницы и откройте скачанный файл. Там же доступны MSI и портативный ZIP. Для портативной версии распакуйте архив и запустите `FlickVert.exe`.
 
+Установщик позволяет выбрать папку установки. Установка доступна и через PowerShell:
+
+```powershell
+$installer = Join-Path $env:TEMP 'FlickVert-Setup.exe'; Invoke-WebRequest 'https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.exe' -OutFile $installer; Start-Process $installer -Wait; Remove-Item $installer
+```
+
+Windows может показать предупреждение SmartScreen: установщик пока не подписан сертификатом Authenticode.
+
 Windows требует Microsoft Edge WebView2 Runtime. Дополнительные движки конвертации устанавливаются отдельно.
 
-Текущий релиз — `0.1.8`. Установленная версия проверяет подписанные обновления при запуске и каждые шесть часов. Windows Setup распространяется в EXE и MSI; портативную версию нужно обновлять вручную. Новые релизы собираются для Windows.
+Текущая версия и контрольные суммы доступны на [странице релизов](https://github.com/PavelCRG/FlickVert/releases/latest). Установленная версия проверяет подписанные обновления при запуске и каждые шесть часов. Windows Setup распространяется в EXE и MSI; портативную версию нужно обновлять вручную. Релизы собираются для Windows.
 
 ## Содержание
 

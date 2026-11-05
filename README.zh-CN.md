@@ -20,9 +20,17 @@
 
 在 **Windows 10/11 x64** 上点击页面顶部的 EXE 安装包并打开下载文件。页面也提供 MSI 和便携 ZIP。便携版解压后运行 `FlickVert.exe` 即可。
 
+安装程序允许选择安装目录。也可以在 PowerShell 中安装：
+
+```powershell
+$installer = Join-Path $env:TEMP 'FlickVert-Setup.exe'; Invoke-WebRequest 'https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.exe' -OutFile $installer; Start-Process $installer -Wait; Remove-Item $installer
+```
+
+由于安装程序尚未使用 Authenticode 证书签名，Windows 可能会显示 SmartScreen 警告。
+
 Windows 需要 Microsoft Edge WebView2 Runtime。其他转换引擎需单独安装。
 
-当前版本为 `0.1.8`。安装版会在启动时及每六小时检查一次签名更新；Windows 安装版使用匹配的 EXE 或 MSI 更新。便携版需手动更新。后续版本将通过 GitHub Actions 构建 Windows 安装包。
+当前版本、校验和及发行说明请查看[最新版本页面](https://github.com/PavelCRG/FlickVert/releases/latest)。安装版会在启动时及每六小时检查一次签名更新；Windows 安装版使用匹配的 EXE 或 MSI 更新。便携版需手动更新。Windows 安装包由 GitHub Actions 构建。
 
 ## 目录
 
@@ -73,7 +81,7 @@ Windows 需要 Microsoft Edge WebView2 Runtime。其他转换引擎需单独安�
 | 相机 RAW 图片 | 取决于 ImageMagick | 需要单独安装 ImageMagick。 |
 | 压缩包 | 创建和解压 ZIP | 可将文件夹打包；结果保存在所选文件旁边；会拒绝不安全路径和链接。 |
 
-**尚未实现：** 扫描版 PDF 的 OCR、PDF 转 PAGES/PPTX/XLSX、区域遮盖与注释及背景编辑、TAR/GZIP/RAR、交互式媒体裁剪/拆分/合并。快捷键本身不会读取资源管理器中的选中项目。
+**尚不支持：** 扫描版 PDF 的 OCR、PDF 转 PAGES/PPTX/XLSX、TAR/GZIP/RAR。全局快捷键不会读取资源管理器中当前选中的文件；请从资源管理器拖动文件，或打开转盘后再将文件拖入。
 
 ## 文件保存位置
 
