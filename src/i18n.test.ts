@@ -36,6 +36,22 @@ test('context menu integration labels and errors are translated in every languag
   }
 })
 
+test('PowerShell location command copy labels are translated in every language', () => {
+  for (const key of ['Copy PowerShell cd command', 'PowerShell cd command copied'] as const) {
+    assert.equal(t('en', key), key)
+    assert.notEqual(t('ru', key), key)
+    assert.notEqual(t('zh', key), key)
+  }
+})
+
+test('TAR and GZIP actions are translated in every language', () => {
+  for (const key of ['Create TAR', 'Create TAR.GZ', 'Compress with GZIP', 'Extract archive'] as const) {
+    assert.equal(t('en', key), key)
+    assert.notEqual(t('ru', key), key)
+    assert.notEqual(t('zh', key), key)
+  }
+})
+
 test('settings help text is translated in every language', () => {
   for (const key of [
     'Review the main gestures and shortcuts.',

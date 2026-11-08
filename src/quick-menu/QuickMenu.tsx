@@ -33,7 +33,7 @@ function formatGlyph(extension: string): AppIconName {
   if (['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'svg', 'avif', 'heic', 'heif', 'tif', 'tiff'].includes(extension)) return 'image'
   if (['mp3', 'wav', 'aac', 'flac', 'ogg', 'm4a'].includes(extension)) return 'audio'
   if (['mp4', 'mov', 'mkv', 'webm', 'avi'].includes(extension)) return 'film'
-  if (extension === 'zip') return 'archive'
+  if (['zip', 'tar', 'tgz', 'gz'].includes(extension)) return 'archive'
   return 'document'
 }
 
@@ -597,21 +597,33 @@ export default function QuickMenu() {
       if (canRunSelectedTool(actionId, allToolActions.map((action) => action.id), filesRef.current.length)) {
         await runTool(actionId, filesRef.current)
         return
-      } else if (actionId === 'create-zip') {
+      } else if (['create-zip', 'create-tar', 'create-targz'].includes(actionId)) {
         const items = filesRef.current
         const settings = loadSettings()
         setStatus(tr('Processing...'))
-        const output = await invoke<string>('create_zip_archive', { inputPaths: items.map((file) => file.path), destinationFolder: settings.outputFolder, compressionLevel: settings.zipCompressionLevel })
+        const output = actionId === 'create-zip'
+          ? await invoke<string>('create_zip_archive', { inputPaths: items.map((file) => file.path), destinationFolder: settings.outputFolder, compressionLevel: settings.zipCompressionLevel })
+          : await invoke<string>('create_tar_archive', { inputPaths: items.map((file) => file.path), destinationFolder: settings.outputFolder, gzip: actionId === 'create-targz' })
         setStatus(`${tr('Archive created')}: ${output.split(/[\\/]/).pop()}`)
-      } else if (actionId === 'extract-zip') {
+      } else if (actionId === 'create-gzip') {
         const file = filesRef.current[0]
         if (!file) return
         setStatus(tr('Processing...'))
-        const archive = await invoke<ZipPreview>('preview_zip_archive', { inputPath: file.path })
-        setZipPreview(archive)
-        setSelectedZipPaths(archive.entries.filter((entry) => !entry.directory).map((entry) => entry.path))
-        setStatus('')
-        return
+        const output = await invoke<string>('create_gzip_archive', { inputPath: file.path, destinationFolder: loadSettings().outputFolder })
+        setStatus(`${tr('Archive created')}: ${output.split(/[\\/]/).pop()}`)
+      } else if (actionId === 'extract-archive') {
+        const file = filesRef.current[0]
+        if (!file) return
+        setStatus(tr('Processing...'))
+        if (file.extension === 'zip') {
+          const archive = await invoke<ZipPreview>('preview_zip_archive', { inputPath: file.path })
+          setZipPreview(archive)
+          setSelectedZipPaths(archive.entries.filter((entry) => !entry.directory).map((entry) => entry.path))
+          setStatus('')
+          return
+        }
+        const output = await invoke<string>('extract_archive', { inputPath: file.path, destinationFolder: loadSettings().outputFolder })
+        setStatus(`${tr('Archive extracted')}: ${output.split(/[\\/]/).pop()}`)
       } else if (actionId === 'copy-to-folder' || actionId === 'move-to-folder') {
         const items = filesRef.current
         if (!items.length) return
@@ -626,7 +638,7 @@ export default function QuickMenu() {
         if (actionId === 'reveal') await invoke('reveal_dropped_file', { inputPath: path })
         else if (actionId === 'copy-path') await invoke('copy_dropped_file_path', { inputPath: path })
         else await invoke('copy_powershell_path', { inputPath: path })
-        setStatus(tr(actionId === 'reveal' ? 'Show in folder' : actionId === 'copy-path' ? 'Path copied' : 'PowerShell path copied'))
+        setStatus(tr(actionId === 'reveal' ? 'Show in folder' : actionId === 'copy-path' ? 'Path copied' : 'PowerShell cd command copied'))
       } else if (actionId === 'open-terminal') {
         const path = filesRef.current[0]?.path
         if (!path) return
@@ -635,7 +647,7 @@ export default function QuickMenu() {
       } else {
         await invoke('quick_action', { actionId })
       }
-      if (['create-zip', 'extract-zip', 'copy-to-folder', 'move-to-folder', 'reveal', 'copy-path', 'copy-powershell-path', 'open-terminal'].includes(actionId)) window.setTimeout(hide, 650)
+      if (['create-zip', 'create-tar', 'create-targz', 'create-gzip', 'extract-archive', 'copy-to-folder', 'move-to-folder', 'reveal', 'copy-path', 'copy-powershell-path', 'open-terminal'].includes(actionId)) window.setTimeout(hide, 650)
       else await getCurrentWindow().hide()
     } catch (error) {
       showActionError(error)

@@ -1013,8 +1013,10 @@ dependencies = [
 name = "flickvert"
 version = "0.1.10"
 dependencies = [
+ "flate2",
  "serde",
  "serde_json",
+ "tar",
  "tauri",
  "tauri-build",
  "tauri-plugin-global-shortcut",

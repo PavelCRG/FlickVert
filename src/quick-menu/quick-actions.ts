@@ -35,7 +35,7 @@ export const audioToolActions = [
   { id: 'normalize-audio', label: 'Normalize audio', glyph: 'wave' },
 ] as const satisfies readonly QuickAction[]
 
-export const archiveToolActions = [{ id: 'extract-zip', label: 'Extract ZIP', glyph: 'archive' }] as const satisfies readonly QuickAction[]
+export const archiveToolActions = [{ id: 'extract-archive', label: 'Extract archive', glyph: 'archive' }] as const satisfies readonly QuickAction[]
 export const pdfMergeActions = [{ id: 'merge-pdf', label: 'Merge PDFs', glyph: 'pdf-merge' }] as const satisfies readonly QuickAction[]
 export const pdfSplitActions = [{ id: 'split-pdf', label: 'Split PDF', glyph: 'pdf-split' }] as const satisfies readonly QuickAction[]
 export const pdfPageActions = [{ id: 'edit-pdf-pages', label: 'Arrange PDF pages', glyph: 'pdf-pages' }] as const satisfies readonly QuickAction[]
@@ -43,12 +43,15 @@ export const allToolActions: QuickAction[] = [...imageToolActions, ...videoToolA
 
 export const fileActions = [
   { id: 'create-zip', label: 'Create ZIP', glyph: 'archive' },
-  { id: 'extract-zip', label: 'Extract ZIP', glyph: 'archive' },
+  { id: 'create-tar', label: 'Create TAR', glyph: 'archive' },
+  { id: 'create-targz', label: 'Create TAR.GZ', glyph: 'archive' },
+  { id: 'create-gzip', label: 'Compress with GZIP', glyph: 'archive' },
+  { id: 'extract-archive', label: 'Extract archive', glyph: 'archive' },
   { id: 'copy-to-folder', label: 'Copy to FlickVert', glyph: 'copy' },
   { id: 'move-to-folder', label: 'Move to FlickVert', glyph: 'move' },
   { id: 'reveal', label: 'Show in folder', glyph: 'folder' },
   { id: 'copy-path', label: 'Copy path', glyph: 'copy' },
-  { id: 'copy-powershell-path', label: 'Copy path for PowerShell', glyph: 'terminal' },
+  { id: 'copy-powershell-path', label: 'Copy PowerShell cd command', glyph: 'terminal' },
   { id: 'open-terminal', label: 'Open Terminal', glyph: 'terminal' },
 ] as const satisfies readonly QuickAction[]
 
@@ -62,7 +65,7 @@ const imageExtensions = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'svg']
 const extendedImageExtensions = [...imageExtensions, 'heic', 'heif', 'avif', 'tif', 'tiff']
 
 export function toolActionsFor(files: FileInfo[], ffmpegAvailable: boolean, imagemagickAvailable: boolean, videoCodecs: string[] = [], pdfMergeAvailable = false, pdfSplitAvailable = false, pdfEditAvailable = false): QuickAction[] {
-  if (files.length === 1 && files[0].extension === 'zip') return [...archiveToolActions]
+  if (files.length === 1 && ['zip', 'tar', 'tgz', 'gz'].includes(files[0].extension)) return [...archiveToolActions]
   if (files.length === 1 && files[0].extension === 'pdf') return [...(pdfEditAvailable ? pdfPageActions : []), ...(pdfSplitAvailable ? pdfSplitActions : [])]
   if (pdfMergeAvailable && files.length > 1 && files.every((file) => file.extension === 'pdf')) return [...pdfMergeActions]
   if (files.length && files.every((file) => imageExtensions.includes(file.extension))) return files.some((file) => file.extension === 'svg') ? imageToolActions.filter((action) => action.id !== 'image-editor') : [...imageToolActions]
@@ -97,10 +100,11 @@ export function canRunWheelTool(actionId: string, fileCount: number, totalBytes:
   return true
 }
 
-export function canRunFileAction(actionId: string, files: { extension: string }[]) {
+export function canRunFileAction(actionId: string, files: { extension: string; name?: string }[]) {
   if (!files.length) return false
-  if (actionId === 'create-zip' || actionId === 'copy-to-folder' || actionId === 'move-to-folder') return true
-  if (actionId === 'extract-zip') return files.length === 1 && files[0].extension === 'zip'
+  if (['create-zip', 'create-tar', 'create-targz', 'copy-to-folder', 'move-to-folder'].includes(actionId)) return true
+  if (actionId === 'create-gzip') return files.length === 1
+  if (actionId === 'extract-archive') return files.length === 1 && (['zip', 'tar', 'tgz', 'gz'].includes(files[0].extension))
   return ['reveal', 'copy-path', 'copy-powershell-path', 'open-terminal'].includes(actionId) && files.length === 1
 }
 

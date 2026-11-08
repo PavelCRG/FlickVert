@@ -69,8 +69,13 @@ test('wheel disables image actions with invalid selection size or PDF limits', (
 
 test('wheel only runs file actions that support the selected file set', () => {
   assert.equal(canRunFileAction('create-zip', [{ extension: 'png' }, { extension: 'zip' }]), true)
-  assert.equal(canRunFileAction('extract-zip', [{ extension: 'zip' }]), true)
-  assert.equal(canRunFileAction('extract-zip', [{ extension: 'png' }]), false)
+  assert.equal(canRunFileAction('create-tar', [{ extension: 'txt' }]), true)
+  assert.equal(canRunFileAction('create-targz', [{ extension: 'txt' }]), true)
+  assert.equal(canRunFileAction('create-gzip', [{ extension: 'txt' }]), true)
+  assert.equal(canRunFileAction('create-gzip', [{ extension: 'txt' }, { extension: 'md' }]), false)
+  assert.equal(canRunFileAction('extract-archive', [{ extension: 'zip' }]), true)
+  assert.equal(canRunFileAction('extract-archive', [{ extension: 'tar' }]), true)
+  assert.equal(canRunFileAction('extract-archive', [{ extension: 'png' }]), false)
   assert.equal(canRunFileAction('reveal', [{ extension: 'png' }, { extension: 'jpg' }]), false)
   assert.equal(canRunFileAction('move-to-folder', []), false)
 })
@@ -162,7 +167,7 @@ test('video thumbnail time must point inside the source duration', () => {
 test('operation shortcut catalog contains unique wheel operations', () => {
   const ids = operationShortcutActions.map((action) => action.id)
   assert.equal(new Set(ids).size, ids.length)
-  assert.ok(ids.includes('extract-zip'))
+  assert.ok(ids.includes('extract-archive'))
   assert.ok(ids.includes('edit-pdf-pages'))
   assert.ok(ids.includes('copy-path'))
 })

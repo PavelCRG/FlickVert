@@ -267,7 +267,7 @@ fn file_mime(extension: &str) -> Option<&'static str> {
         "srt" => Some("application/x-subrip"),
         "vtt" => Some("text/vtt"),
         "docx" | "doc" | "odt" | "rtf" | "md" | "markdown" | "html" | "htm" | "epub" | "txt"
-        | "rst" | "tex" | "xls" | "xlsx" | "ods" | "ppt" | "pptx" | "odp" | "csv" => {
+        | "rst" | "tex" | "xls" | "xlsx" | "ods" | "ppt" | "pptx" | "odp" | "csv" | "tsv" => {
             Some("application/octet-stream")
         }
         _ => None,
@@ -655,7 +655,7 @@ fn convert_file(
             ),
             operations::Engine::LibreOffice => (
                 operations::find_executable("soffice").ok_or_else(|| operation_error("engine"))?,
-                operations::libreoffice_convert_args(&input, &work_dir, &output_extension),
+                operations::spreadsheet_convert_args(&input, &work_dir, &output_extension),
             ),
             operations::Engine::Poppler => unreachable!(),
         };
@@ -1400,6 +1400,56 @@ fn extract_zip_archive(
         .map(|path| path.map(|path| path.to_string_lossy().into_owned()).unwrap_or_default())
 }
 
+#[tauri::command(async)]
+fn create_tar_archive(app: AppHandle, input_paths: Vec<String>, destination_folder: Option<String>, gzip: bool, dropped: tauri::State<'_, DroppedFiles>) -> Result<String, String> {
+    if input_paths.is_empty() || input_paths.len() > 10_000 { return Err("Select between 1 and 10,000 files to archive".into()); }
+    let inputs = input_paths.into_iter().map(|path| selected_dropped_path(&path, &dropped)).collect::<Result<Vec<_>, _>>()?;
+    let stem = if inputs.len() == 1 { inputs[0].file_stem().and_then(|value| value.to_str()).unwrap_or("archive") } else { "archive" };
+    let extension = if gzip { "tar.gz" } else { "tar" };
+    let work_root = app.path().app_cache_dir().map_err(|error| error.to_string())?.join("archive-work");
+    fs::create_dir_all(&work_root).map_err(|error| error.to_string())?;
+    let work_dir = work_root.join(format!("{}-{}", std::process::id(), MEDIA_TEMP_ID.fetch_add(1, Ordering::Relaxed)));
+    fs::create_dir(&work_dir).map_err(|error| error.to_string())?;
+    let _guard = TemporaryDirectory(work_dir.clone());
+    let temporary = work_dir.join(format!("archive.{extension}"));
+    archive::create_tar(&inputs, &temporary, gzip)?;
+    let destination = destination_for(&inputs[0], destination_folder.as_deref())?;
+    files::write_output_file(&destination, &format!("{stem}.{extension}"), &temporary).map(|path| path.to_string_lossy().into_owned()).map_err(|error| error.to_string())
+}
+
+#[tauri::command(async)]
+fn create_gzip_archive(app: AppHandle, input_path: String, destination_folder: Option<String>, dropped: tauri::State<'_, DroppedFiles>) -> Result<String, String> {
+    let input = selected_dropped_file(&input_path, &dropped)?;
+    let stem = input.file_name().and_then(|name| name.to_str()).ok_or("Input file name not found")?;
+    let work_root = app.path().app_cache_dir().map_err(|error| error.to_string())?.join("archive-work");
+    fs::create_dir_all(&work_root).map_err(|error| error.to_string())?;
+    let work_dir = work_root.join(format!("{}-{}", std::process::id(), MEDIA_TEMP_ID.fetch_add(1, Ordering::Relaxed)));
+    fs::create_dir(&work_dir).map_err(|error| error.to_string())?;
+    let _guard = TemporaryDirectory(work_dir.clone());
+    let temporary = work_dir.join("compressed.gz");
+    archive::create_gzip(&input, &temporary)?;
+    let destination = destination_for(&input, destination_folder.as_deref())?;
+    files::write_output_file(&destination, &format!("{stem}.gz"), &temporary).map(|path| path.to_string_lossy().into_owned()).map_err(|error| error.to_string())
+}
+
+#[tauri::command(async)]
+fn extract_archive(destination_folder: Option<String>, input_path: String, dropped: tauri::State<'_, DroppedFiles>) -> Result<String, String> {
+    let input = selected_dropped_file(&input_path, &dropped)?;
+    let name = input.file_name().and_then(|name| name.to_str()).ok_or("Archive file name not found")?;
+    let lower = name.to_ascii_lowercase();
+    let destination = destination_for(&input, destination_folder.as_deref())?;
+    let output = if lower.ends_with(".zip") {
+        archive::extract_zip(&input, &destination, input.file_stem().and_then(|value| value.to_str()).unwrap_or("archive"), None, false)?.ok_or("Archive extraction skipped")?
+    } else if lower.ends_with(".tar.gz") || lower.ends_with(".tgz") || lower.ends_with(".tar") {
+        let output_name = if lower.ends_with(".tar.gz") { &name[..name.len() - 7] } else if lower.ends_with(".tgz") { &name[..name.len() - 4] } else { &name[..name.len() - 4] };
+        archive::extract_tar(&input, &destination, output_name)?
+    } else if lower.ends_with(".gz") {
+        let output_name = &name[..name.len() - 3];
+        archive::extract_gzip(&input, &destination, output_name)?
+    } else { return Err("Supported archives are ZIP, TAR, TAR.GZ, TGZ, and GZIP".into()); };
+    Ok(output.to_string_lossy().into_owned())
+}
+
 #[tauri::command]
 fn preview_zip_archive(input_path: String, dropped: tauri::State<'_, DroppedFiles>) -> Result<archive::ZipPreview, String> {
     let input = selected_dropped_file(&input_path, &dropped)?;
@@ -1726,11 +1776,13 @@ fn copy_powershell_path(
     dropped: tauri::State<'_, DroppedFiles>,
 ) -> Result<(), String> {
     let path = selected_dropped_path(&input_path, &dropped)?;
+    let directory = operations::selected_item_directory(&path).ok_or("File has no parent folder")?;
+    if !directory.is_dir() {
+        return Err("The selected folder no longer exists".into());
+    }
     #[cfg(windows)]
     {
-        copy_path_to_clipboard(&operations::powershell_path_literal(
-            &path.to_string_lossy(),
-        ))
+        copy_path_to_clipboard(&operations::powershell_location_command(&directory.to_string_lossy()))
     }
     #[cfg(not(windows))]
     {
@@ -1746,11 +1798,7 @@ fn open_terminal(
     dropped: tauri::State<'_, DroppedFiles>,
 ) -> Result<(), String> {
     let path = selected_dropped_path(&input_path, &dropped)?;
-    let directory = if path.is_dir() {
-        path.as_path()
-    } else {
-        path.parent().ok_or("File has no parent folder")?
-    };
+    let directory = operations::selected_item_directory(&path).ok_or("File has no parent folder")?;
     if !directory.is_dir() {
         return Err("The selected folder no longer exists".into());
     }
@@ -2195,6 +2243,9 @@ fn main() {
             process_image_tool,
             process_media_tool,
             create_zip_archive,
+            create_tar_archive,
+            create_gzip_archive,
+            extract_archive,
             merge_pdf_files,
             split_pdf_pages,
             edit_pdf_pages,

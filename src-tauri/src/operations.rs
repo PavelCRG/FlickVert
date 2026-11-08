@@ -149,15 +149,15 @@ const GIF_VIDEO: Operation = Operation {
 const OFFICE_PDF: Operation = Operation {
     engine: Engine::LibreOffice,
     input_extensions: &[
-        "doc", "docx", "odt", "rtf", "xls", "xlsx", "ods", "ppt", "pptx", "odp", "csv", "html",
+        "doc", "docx", "odt", "rtf", "xls", "xlsx", "ods", "ppt", "pptx", "odp", "csv", "tsv", "html",
         "htm", "txt",
     ],
     output_extensions: &["pdf"],
 };
 const SPREADSHEET: Operation = Operation {
     engine: Engine::LibreOffice,
-    input_extensions: &["xls", "xlsx", "ods", "csv"],
-    output_extensions: &["xlsx", "ods", "csv"],
+    input_extensions: &["xls", "xlsx", "ods", "csv", "tsv"],
+    output_extensions: &["xlsx", "ods", "csv", "tsv"],
 };
 const SLIDE_IMAGES: Operation = Operation {
     engine: Engine::LibreOffice,
@@ -580,12 +580,25 @@ pub fn libreoffice_convert_args(input: &Path, output_dir: &Path, format: &str) -
         .collect()
 }
 
+pub fn spreadsheet_convert_args(input: &Path, output_dir: &Path, format: &str) -> Vec<OsString> {
+    let format = if format == "tsv" { "tsv:Text - txt - csv (StarCalc):9,34,76,1" } else { format };
+    libreoffice_convert_args(input, output_dir, format)
+}
+
 pub fn windows_terminal_args(directory: &Path) -> [OsString; 2] {
     [OsString::from("-d"), directory.as_os_str().to_owned()]
 }
 
+pub fn selected_item_directory(path: &Path) -> Option<&Path> {
+    if path.is_dir() { Some(path) } else { path.parent() }
+}
+
 pub fn powershell_path_literal(path: &str) -> String {
     format!("'{}'", path.replace('\'', "''"))
+}
+
+pub fn powershell_location_command(path: &str) -> String {
+    format!("Set-Location -LiteralPath {}", powershell_path_literal(path))
 }
 
 pub fn ffmpeg_args(input: &Path, output: &Path) -> Vec<OsString> {
@@ -1248,6 +1261,41 @@ mod tests {
             powershell_path_literal("C:\\Users\\Павел\\It's (work) & done\\clip.mp4"),
             "'C:\\Users\\Павел\\It''s (work) & done\\clip.mp4'"
         );
+    }
+
+    #[test]
+    fn powershell_location_command_is_directly_runnable_for_complex_paths() {
+        assert_eq!(
+            powershell_location_command("D:\\desktop app\\O'Brien & Сын"),
+            "Set-Location -LiteralPath 'D:\\desktop app\\O''Brien & Сын'"
+        );
+    }
+
+    #[test]
+    fn tsv_conversion_is_offered_only_when_libreoffice_is_available() {
+        let engines = Engines { libreoffice: true, ..Engines::default() };
+        assert!(operation_for("tsv", "xlsx", engines).is_some());
+        assert!(operation_for("xlsx", "tsv", engines).is_some());
+        assert!(operation_for("tsv", "xlsx", Engines::default()).is_none());
+        assert_eq!(spreadsheet_convert_args(Path::new("input.xlsx"), Path::new("out"), "tsv")[2], "tsv:Text - txt - csv (StarCalc):9,34,76,1");
+    }
+
+    #[test]
+    fn selected_directory_uses_itself_and_selected_file_uses_its_parent() {
+        let unique = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("FlickVert PowerShell {} {unique} &", std::process::id()));
+        let directory = root.join("folder with spaces");
+        std::fs::create_dir_all(&directory).unwrap();
+        let file = directory.join("clip.txt");
+        std::fs::write(&file, b"file").unwrap();
+
+        assert_eq!(selected_item_directory(&directory), Some(directory.as_path()));
+        assert_eq!(selected_item_directory(&file), Some(directory.as_path()));
+
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

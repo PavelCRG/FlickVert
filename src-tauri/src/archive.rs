@@ -1,15 +1,39 @@
 use std::{
     collections::HashSet,
     fs::{self, File, OpenOptions},
-    io,
+    io::{self, Read},
     path::{Component, Path, PathBuf},
 };
 use zip::{write::SimpleFileOptions, CompressionMethod, ZipArchive, ZipWriter};
+use flate2::{read::MultiGzDecoder, write::GzEncoder, Compression};
+use tar::Builder;
 use unicode_normalization::UnicodeNormalization;
 
 const MAX_ENTRIES: usize = 20_000;
 const MAX_FILE_SIZE: u64 = 512 * 1024 * 1024;
 const MAX_TOTAL_SIZE: u64 = 2 * 1024 * 1024 * 1024;
+
+#[cfg(test)]
+mod new_format_tests {
+    use super::*;
+
+    #[test]
+    fn tar_and_gzip_round_trip_files() {
+        let root = std::env::temp_dir().join(format!("flickvert-tar-{}-{}", std::process::id(), std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+        fs::create_dir_all(&root).unwrap();
+        let source = root.join("hello world.txt");
+        fs::write(&source, b"hello archive").unwrap();
+        let tar_path = root.join("source.tar");
+        create_tar(&[source.clone()], &tar_path, false).unwrap();
+        let extracted = extract_tar(&tar_path, &root, "source").unwrap();
+        assert_eq!(fs::read(extracted.join("hello world.txt")).unwrap(), b"hello archive");
+        let gzip = root.join("hello.txt.gz");
+        create_gzip(&source, &gzip).unwrap();
+        let uncompressed = extract_gzip(&gzip, &root, "hello.txt").unwrap();
+        assert_eq!(fs::read(uncompressed).unwrap(), b"hello archive");
+        fs::remove_dir_all(root).unwrap();
+    }
+}
 
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -63,6 +87,122 @@ pub fn create_zip(inputs: &[PathBuf], output: &Path, level: u32) -> Result<(), S
         .map_err(|error| error.to_string())?
         .sync_all()
         .map_err(|error| error.to_string())
+}
+
+pub fn create_tar(inputs: &[PathBuf], output: &Path, gzip: bool) -> Result<(), String> {
+    if inputs.is_empty() { return Err("Select at least one item to archive".into()); }
+    let file = File::create(output).map_err(|error| error.to_string())?;
+    if gzip {
+        let encoder = GzEncoder::new(file, Compression::default());
+        let mut builder = Builder::new(encoder);
+        let (mut names, mut count, mut total) = (HashSet::new(), 0, 0);
+        for input in inputs { let name = input.file_name().ok_or("Input file name not found")?.to_string_lossy().into_owned(); add_to_tar(input, &name, &mut builder, &mut names, &mut count, &mut total)?; }
+        builder.into_inner().map_err(|error| error.to_string())?.finish().map_err(|error| error.to_string())?.sync_all().map_err(|error| error.to_string())
+    } else {
+        let mut builder = Builder::new(file);
+        let (mut names, mut count, mut total) = (HashSet::new(), 0, 0);
+        for input in inputs { let name = input.file_name().ok_or("Input file name not found")?.to_string_lossy().into_owned(); add_to_tar(input, &name, &mut builder, &mut names, &mut count, &mut total)?; }
+        builder.into_inner().map_err(|error| error.to_string())?.sync_all().map_err(|error| error.to_string())
+    }
+}
+
+fn add_to_tar<W: io::Write>(path: &Path, name: &str, builder: &mut Builder<W>, names: &mut HashSet<String>, count: &mut usize, total: &mut u64) -> Result<(), String> {
+    let metadata = fs::symlink_metadata(path).map_err(|error| error.to_string())?;
+    if metadata.file_type().is_symlink() || (!metadata.is_file() && !metadata.is_dir()) { return Err("TAR creation does not include links or special files".into()); }
+    let safe = safe_entry_path(name)?;
+    if !names.insert(path_key(&safe.to_string_lossy())) { return Err("Selected files have duplicate archive names".into()); }
+    *count += 1;
+    if *count > MAX_ENTRIES { return Err("TAR archive exceeds the 20,000 entry limit".into()); }
+    if metadata.is_dir() {
+        builder.append_dir(name, path).map_err(|error| error.to_string())?;
+        for child in fs::read_dir(path).map_err(|error| error.to_string())? {
+            let child = child.map_err(|error| error.to_string())?;
+            add_to_tar(&child.path(), &format!("{}/{}", name.trim_end_matches(['/', '\\']), child.file_name().to_string_lossy()), builder, names, count, total)?;
+        }
+    } else {
+        if metadata.len() > MAX_FILE_SIZE { return Err("TAR file exceeds the 512 MB limit".into()); }
+        *total = total.checked_add(metadata.len()).filter(|size| *size <= MAX_TOTAL_SIZE).ok_or("TAR archive exceeds the 2 GB limit")?;
+        builder.append_path_with_name(path, name).map_err(|error| error.to_string())?;
+    }
+    Ok(())
+}
+
+pub fn extract_tar(input: &Path, parent: &Path, output_name: &str) -> Result<PathBuf, String> {
+    let file = File::open(input).map_err(|error| error.to_string())?;
+    if input.file_name().and_then(|name| name.to_str()).is_some_and(|name| name.to_ascii_lowercase().ends_with(".gz") || name.to_ascii_lowercase().ends_with(".tgz")) {
+        extract_tar_reader(MultiGzDecoder::new(file), input, parent, output_name)
+    } else {
+        extract_tar_reader(file, input, parent, output_name)
+    }
+}
+
+fn extract_tar_reader<R: Read>(reader: R, input: &Path, parent: &Path, output_name: &str) -> Result<PathBuf, String> {
+    let compressed_size = fs::metadata(input).map_err(|error| error.to_string())?.len();
+    let mut archive = tar::Archive::new(reader);
+    fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    let destination = unique_directory(parent, output_name)?;
+    let result = (|| {
+        let mut count = 0;
+        let mut total = 0u64;
+        let mut names = HashSet::new();
+        for entry in archive.entries().map_err(|error| error.to_string())? {
+            count += 1;
+            if count > MAX_ENTRIES { return Err("TAR archive exceeds the 20,000 entry limit".into()); }
+            let mut entry = entry.map_err(|error| error.to_string())?;
+            let kind = entry.header().entry_type();
+            if !kind.is_file() && !kind.is_dir() { return Err("TAR archive contains a link or special file".into()); }
+            let name = entry.path().map_err(|error| error.to_string())?.to_string_lossy().into_owned();
+            let relative = safe_entry_path(&name)?;
+            if duplicate_path(&relative.to_string_lossy(), &mut names) { return Err("TAR archive contains duplicate paths".into()); }
+            let directory = kind.is_dir();
+            let size = entry.header().size().map_err(|error| error.to_string())?;
+            if size > MAX_FILE_SIZE { return Err("TAR entry exceeds the 512 MB extraction limit".into()); }
+            total = total.checked_add(size).filter(|size| *size <= MAX_TOTAL_SIZE).ok_or("TAR archive exceeds the 2 GB extraction limit")?;
+            if total > 1024 * 1024 && total > compressed_size.saturating_mul(1000) { return Err("TAR archive has an unsafe compression ratio".into()); }
+            let path = destination.join(relative);
+            if !path.starts_with(&destination) { return Err("TAR path escapes its destination".into()); }
+            if directory { fs::create_dir_all(path).map_err(|error| error.to_string())?; continue; }
+            fs::create_dir_all(path.parent().ok_or("Invalid TAR entry path")?).map_err(|error| error.to_string())?;
+            let mut output = OpenOptions::new().write(true).create_new(true).open(path).map_err(|error| error.to_string())?;
+            let copied = io::copy(&mut (&mut entry).take(size + 1), &mut output).map_err(|error| error.to_string())?;
+            if copied != size { return Err("TAR entry size does not match its header".into()); }
+            output.sync_all().map_err(|error| error.to_string())?;
+        }
+        if count == 0 { return Err("TAR archive is empty".into()); }
+        Ok(destination.clone())
+    })();
+    if result.is_err() { let _ = fs::remove_dir_all(&destination); }
+    result
+}
+
+pub fn create_gzip(input: &Path, output: &Path) -> Result<(), String> {
+    let metadata = fs::symlink_metadata(input).map_err(|error| error.to_string())?;
+    if metadata.file_type().is_symlink() || !metadata.is_file() { return Err("GZIP supports regular files only".into()); }
+    if metadata.len() > MAX_FILE_SIZE { return Err("GZIP input exceeds the 512 MB limit".into()); }
+    let mut source = File::open(input).map_err(|error| error.to_string())?;
+    let mut encoder = GzEncoder::new(File::create(output).map_err(|error| error.to_string())?, Compression::default());
+    io::copy(&mut source, &mut encoder).map_err(|error| error.to_string())?;
+    encoder.finish().map_err(|error| error.to_string())?.sync_all().map_err(|error| error.to_string())
+}
+
+pub fn extract_gzip(input: &Path, parent: &Path, output_name: &str) -> Result<PathBuf, String> {
+    let compressed = fs::metadata(input).map_err(|error| error.to_string())?.len();
+    let mut decoder = MultiGzDecoder::new(File::open(input).map_err(|error| error.to_string())?);
+    fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    for _ in 0..100 {
+        let output = crate::files::unique_output_path(parent, output_name).map_err(|error| error.to_string())?;
+        let mut file = match OpenOptions::new().write(true).create_new(true).open(&output) { Ok(file) => file, Err(error) if error.kind() == io::ErrorKind::AlreadyExists => continue, Err(error) => return Err(error.to_string()) };
+        let result = (|| {
+            let size = io::copy(&mut decoder.by_ref().take(MAX_FILE_SIZE + 1), &mut file).map_err(|error| error.to_string())?;
+            if size > MAX_FILE_SIZE { return Err("GZIP output exceeds the 512 MB limit".into()); }
+            if size > 1024 * 1024 && size > compressed.saturating_mul(1000) { return Err("GZIP archive has an unsafe compression ratio".into()); }
+            file.sync_all().map_err(|error| error.to_string())?;
+            Ok(output.clone())
+        })();
+        if result.is_err() { let _ = fs::remove_file(output); }
+        return result;
+    }
+    Err("Could not allocate a unique output name".into())
 }
 
 fn add_to_zip(
