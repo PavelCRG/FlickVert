@@ -39,16 +39,18 @@ html:has(.quick-shell), body:has(.quick-shell), #root:has(.quick-shell) {
 }
 .quick-labels { position: absolute; inset: 0; pointer-events: none; }
 .quick-label {
-  position: absolute; width: 48px; height: 48px; display: flex;
-  align-items: center; justify-content: center;
+  position: absolute; width: 52px; height: 54px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2px;
   transform: translate(-50%, -50%); color: color-mix(in srgb, CanvasText 86%, transparent);
-  text-align: center; transition: color .13s ease;
+  text-align: center; transition: color 160ms cubic-bezier(.23, 1, .32, 1);
 }
-.quick-label.format-label { height: 46px; flex-direction: column; gap: 1px; }
-.quick-label.format-label .quick-glyph { width: 17px; height: 17px; }
-.quick-format-name { color: color-mix(in srgb, CanvasText 78%, transparent); font-size: 9px; font-weight: 700; line-height: 1; white-space: nowrap; }
-.quick-label.active .quick-format-name { color: var(--wheel-accent); }
-.quick-label .quick-glyph { width: 27px; height: 27px; color: color-mix(in srgb, CanvasText 62%, transparent); }
+.quick-choice-name {
+  display: -webkit-box; max-width: 52px; overflow: hidden;
+  color: color-mix(in srgb, CanvasText 78%, transparent); font-size: 9px; font-weight: 650;
+  line-height: 1.05; overflow-wrap: anywhere; text-overflow: ellipsis; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+}
+.quick-label.active .quick-choice-name { color: var(--wheel-accent); }
+.quick-label .quick-glyph { width: 21px; height: 21px; flex: none; color: color-mix(in srgb, CanvasText 62%, transparent); }
 .quick-label.active { color: var(--wheel-accent); }
 .quick-label.active .quick-glyph { color: var(--wheel-accent); }
 .quick-label.disabled { opacity: .42; }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.10
+
+- Added clear labels to every quick-wheel choice, including tools and file actions.
+
 ## 0.1.9
 
 - Added visible output format labels to the conversion wheel.

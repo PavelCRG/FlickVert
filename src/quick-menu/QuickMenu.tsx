@@ -41,7 +41,7 @@ function publishQueue(queue: QueueItem[]) {
   void emit('flickvert://operation-queue', queue.slice(-100).map((item) => ({ ...item }))).catch(() => {})
 }
 
-function WheelChoices({ items, active, onActive, showLabels }: { items: WheelChoice[]; active: number; onActive: (index: number) => void; showLabels: boolean }) {
+function WheelChoices({ items, active, onActive }: { items: WheelChoice[]; active: number; onActive: (index: number) => void }) {
   return <>
     <svg className="quick-segments" viewBox="0 0 352 352" role="group" aria-label="Available actions">
       {items.map((item, index) => <path
@@ -59,9 +59,9 @@ function WheelChoices({ items, active, onActive, showLabels }: { items: WheelCho
       ><title>{item.disabledReason ? `${item.label}: ${item.disabledReason}` : item.label}</title></path>)}
     </svg>
     <div className="quick-labels" aria-hidden="true">
-      {items.map((item, index) => <span key={item.key} className={`quick-label${showLabels ? ' format-label' : ''}${active === index ? ' active' : ''}${item.disabled ? ' disabled' : ''}`} style={wheelLabelPosition(index, items.length) as CSSProperties}>
+      {items.map((item, index) => <span key={item.key} className={`quick-label${active === index ? ' active' : ''}${item.disabled ? ' disabled' : ''}`} style={wheelLabelPosition(index, items.length) as CSSProperties}>
         <AppIcon name={item.glyph ?? 'document'} className="quick-glyph"/>
-        {showLabels && <small className="quick-format-name">{item.label}</small>}
+        <small className="quick-choice-name">{item.label}</small>
       </span>)}
     </div>
   </>
@@ -728,7 +728,7 @@ export default function QuickMenu() {
   const pdfResolution = preview && files.some((file) => file.extension === 'pdf') && ['jpg', 'png'].includes(activeChoice?.key ?? '')
   return <main className={`quick-shell${dragMode ? ' drag-mode' : ''}${emptyWheel ? ' quick-empty' : ''}`} data-appearance={settings.appearance} style={{ '--wheel-accent-base': accentColor(settings) } as CSSProperties} aria-label="FlickVert quick actions">
     <div className={`quick-orbit${emptyWheel ? ' no-choices' : ''}`} aria-label={tr(wheelMode === 'convert' ? 'Select output format' : wheelMode === 'tools' ? 'Tools' : 'Actions')}>
-      <WheelChoices items={choices} active={active} onActive={setActive} showLabels={wheelMode === 'convert' && files.length > 0}/>
+      <WheelChoices items={choices} active={active} onActive={setActive}/>
       <div className={`quick-center${preview ? ' has-preview' : ''}${showLoader ? ' is-working' : ''}`} aria-live="polite" title={[centerTitle, centerDetail, previewDestination, pdfResolution ? `${tr('PDF page resolution')}: ${settings.pdfDpi} DPI` : ''].filter(Boolean).join('\n')}>{showLoader ? <span className="quick-loader" aria-hidden="true"/> : <AppIcon name={activeChoice?.glyph ?? 'convert'} className="quick-center-icon"/>}{centerTitle && <strong>{centerTitle}</strong>}{centerDetail && <small>{centerDetail}</small>}{previewDestination && <small className="quick-center-destination">{previewDestination}</small>}{pdfResolution && <small className="quick-center-destination">{settings.pdfDpi} DPI</small>}</div>
     </div>
     {zipPreview && <section className="zip-preview" role="dialog" aria-modal="true" aria-labelledby="zip-preview-title"><h2 id="zip-preview-title">{tr('Archive preview')}</h2><p>{zipPreview.fileCount} {tr('files')} · {tr('Total size')}: {zipPreview.totalSize} B · {tr('Selected items')}: {selectedZipPaths.length}</p>{zipPreview.conflicts.length > 0 && <p className="zip-conflicts" role="alert">{tr('Archive contains conflicting names; extraction is disabled.')}: {zipPreview.conflicts.join(', ')}</p>}<fieldset className="zip-conflict-choice"><legend>{tr('If the output folder already exists')}</legend><label><input type="radio" name="zip-conflict" checked={!skipExistingZip} onChange={() => setSkipExistingZip(false)}/>{tr('Extract into a safely named new folder')}</label><label><input type="radio" name="zip-conflict" checked={skipExistingZip} onChange={() => setSkipExistingZip(true)}/>{tr('Skip extraction')}</label></fieldset><div className="zip-select-actions"><button type="button" onClick={() => setSelectedZipPaths(zipPreview.entries.filter((entry) => !entry.directory).map((entry) => entry.path))}>{tr('Select all')}</button><button type="button" onClick={() => setSelectedZipPaths([])}>{tr('Clear selection')}</button></div><ul>{zipPreview.entries.map((entry, index) => <li key={`${entry.path}-${index}`}><label><input type="checkbox" checked={zipEntryChecked(entry)} onChange={(event) => toggleZipEntry(entry, event.target.checked)}/><span>{entry.directory ? '[Folder] ' : ''}{entry.path}</span></label><small>{entry.size} B</small></li>)}</ul><footer><button type="button" className="zip-cancel" onClick={() => { setZipPreview(null); setSelectedZipPaths([]) }}>{tr('Close')}</button><button type="button" className="zip-confirm" disabled={zipPreview.conflicts.length > 0 || selectedZipPaths.length === 0} onClick={() => void confirmZipExtraction()}>{tr('Extract archive')}</button></footer></section>}
