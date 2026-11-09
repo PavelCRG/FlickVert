@@ -630,7 +630,7 @@
 }
 
 .main > .page, .main > .settings-layout {
-  animation: page-enter .18s cubic-bezier(.2, .75, .25, 1) both;
+  animation: page-enter .24s cubic-bezier(.22, .8, .25, 1) both;
 }
 
 @keyframes page-enter {
