@@ -1,12 +1,12 @@
 {
   "name": "flickvert",
   "private": true,
-  "version": "0.1.10",
+  "version": "0.1.11",
   "type": "module",
   "scripts": {
     "dev": "npm run build && tauri dev",
-    "build": "tsc -b && node scripts/prepare-dist.mjs && esbuild src/main.tsx --bundle --outdir=dist/assets --jsx=automatic --platform=browser --target=safari16 --minify",
-    "test": "node --experimental-strip-types --test --test-isolation=none src/settings.test.ts src/i18n.test.ts src/conversion/images.test.ts src/conversion/pdf-page-layout.test.ts src/conversion/concurrent.test.ts src/image-editor/image-editor.test.ts src/quick-menu/quick-actions.test.ts src/quick-menu/radial-wheel.test.ts src/updates/update-notification.test.ts src/video-export-preview.test.ts src/pdf-merge.test.ts src/pdf-split.test.ts src/pdf-pages.test.ts src/app/tool-family.test.ts src/app/operation-details.test.ts src/app/engine-guides.test.ts scripts/create-update-manifest.test.mjs scripts/sync-release-version.test.mjs",
+    "build": "tsc -b && node scripts/prepare-dist.mjs && esbuild frontend/main.tsx --bundle --outdir=dist/assets --jsx=automatic --platform=browser --target=safari16 --minify",
+    "test": "node --experimental-strip-types --test --test-isolation=none frontend/settings.test.ts frontend/i18n.test.ts frontend/conversion/images.test.ts frontend/conversion/pdf-page-layout.test.ts frontend/conversion/concurrent.test.ts frontend/image-editor/image-editor.test.ts frontend/quick-menu/quick-actions.test.ts frontend/quick-menu/radial-wheel.test.ts frontend/updates/update-notification.test.ts frontend/video-export-preview.test.ts frontend/pdf-merge.test.ts frontend/pdf-split.test.ts frontend/pdf-pages.test.ts frontend/app/tool-family.test.ts frontend/app/operation-details.test.ts frontend/app/engine-guides.test.ts scripts/create-update-manifest.test.mjs scripts/sync-release-version.test.mjs",
     "preview": "vite preview",
     "tauri": "tauri"
   },

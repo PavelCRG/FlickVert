@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.11
+
+- Reflowed the base styles into readable rules and made the window usable at smaller sizes.
+- Kept file-specific actions gated by compatible selections and preserved keyboard-accessible controls.
+
 ## 0.1.10
 
 - Added clear labels to every quick-wheel choice, including tools and file actions.

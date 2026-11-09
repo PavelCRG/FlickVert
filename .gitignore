@@ -1,4 +1,7 @@
 node_modules/
+.agents/
+.playwright-cli/
+.worktrees/
 .signing/
 dist/
 src-tauri/target/

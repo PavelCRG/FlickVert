@@ -13,14 +13,14 @@ test('syncs a patch tag across app metadata without changing dependency versions
     await rm(root, { recursive: true, force: true })
   })
   await mkdir(join(root, 'src-tauri'))
-  await mkdir(join(root, 'src/app'), { recursive: true })
+  await mkdir(join(root, 'frontend/app'), { recursive: true })
   await writeFile(join(root, 'package.json'), JSON.stringify({ version: '0.1.0' }))
   await writeFile(join(root, 'package-lock.json'), JSON.stringify({ version: '0.1.0', packages: { '': { version: '0.1.0' }, 'node_modules/example': { version: '9.8.7' } } }))
   await writeFile(join(root, 'src-tauri/Cargo.toml'), '[package]\nname = "flickvert"\nversion = "0.1.0"\n')
   await writeFile(join(root, 'src-tauri/Cargo.lock'), '[[package]]\nname = "flickvert"\nversion = "0.1.0"\n\n[[package]]\nname = "example"\nversion = "9.8.7"\n')
   await writeFile(join(root, 'src-tauri/tauri.conf.json'), JSON.stringify({ version: '0.1.0' }))
-  await writeFile(join(root, 'src/app/AppSidebar.tsx'), '<div className="version">FlickVert <span>0.1.0</span></div>')
-  await writeFile(join(root, 'src/app/SettingsView.tsx'), "{settingsPage === 'about' && <section className=\"settings-group\"><h2>FlickVert 0.1.0</h2></section>}")
+  await writeFile(join(root, 'frontend/app/AppSidebar.tsx'), '<div className="version">FlickVert <span>0.1.0</span></div>')
+  await writeFile(join(root, 'frontend/app/SettingsView.tsx'), "{settingsPage === 'about' && <section className=\"settings-group\"><h2>FlickVert 0.1.0</h2></section>}")
   const readmes = ['See the latest release page.', 'См. страницу последнего релиза.', '查看最新版本页面。']
   await Promise.all(['README.md', 'README.ru.md', 'README.zh-CN.md'].map((path, index) => writeFile(join(root, path), readmes[index])))
 
@@ -33,8 +33,8 @@ test('syncs a patch tag across app metadata without changing dependency versions
   assert.match(await readFile(join(root, 'src-tauri/Cargo.toml'), 'utf8'), /version = "0\.1\.1"/)
   assert.match(await readFile(join(root, 'src-tauri/Cargo.lock'), 'utf8'), /name = "flickvert"\nversion = "0\.1\.1"/)
   assert.equal(JSON.parse(await readFile(join(root, 'src-tauri/tauri.conf.json'), 'utf8')).version, '0.1.1')
-  assert.equal(await readFile(join(root, 'src/app/AppSidebar.tsx'), 'utf8'), '<div className="version">FlickVert <span>0.1.1</span></div>')
-  assert.equal(await readFile(join(root, 'src/app/SettingsView.tsx'), 'utf8'), "{settingsPage === 'about' && <section className=\"settings-group\"><h2>FlickVert 0.1.1</h2></section>}")
+  assert.equal(await readFile(join(root, 'frontend/app/AppSidebar.tsx'), 'utf8'), '<div className="version">FlickVert <span>0.1.1</span></div>')
+  assert.equal(await readFile(join(root, 'frontend/app/SettingsView.tsx'), 'utf8'), "{settingsPage === 'about' && <section className=\"settings-group\"><h2>FlickVert 0.1.1</h2></section>}")
   assert.deepEqual(await Promise.all(['README.md', 'README.ru.md', 'README.zh-CN.md'].map((path) => readFile(join(root, path), 'utf8'))), readmes)
 })
 

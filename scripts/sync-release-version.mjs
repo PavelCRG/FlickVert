@@ -16,8 +16,8 @@ export async function syncReleaseVersion(root, tag) {
   const tauriConfig = JSON.parse(await read('src-tauri/tauri.conf.json'))
   const cargoToml = await read('src-tauri/Cargo.toml')
   const cargoLock = await read('src-tauri/Cargo.lock')
-  const appSidebar = await read('src/app/AppSidebar.tsx')
-  const settingsView = await read('src/app/SettingsView.tsx')
+  const appSidebar = await read('frontend/app/AppSidebar.tsx')
+  const settingsView = await read('frontend/app/SettingsView.tsx')
   const cargoPackage = /(\[package\][\s\S]*?\r?\nname = "flickvert"\r?\nversion = ")[^"]+(\")/
   const cargoLockPackage = /(\[\[package\]\]\r?\nname = "flickvert"\r?\nversion = ")[^"]+(\")/
   const appVersion = /(<div className="version">FlickVert <span>)[^<]+(<\/span><\/div>)/
@@ -36,8 +36,8 @@ export async function syncReleaseVersion(root, tag) {
     write('src-tauri/Cargo.toml', cargoToml.replace(cargoPackage, `$1${version}$2`)),
     write('src-tauri/Cargo.lock', cargoLock.replace(cargoLockPackage, `$1${version}$2`)),
     write('src-tauri/tauri.conf.json', `${JSON.stringify(tauriConfig, null, 2)}\n`),
-    write('src/app/AppSidebar.tsx', appSidebar.replace(appVersion, `$1${version}$2`)),
-    write('src/app/SettingsView.tsx', settingsView.replace(aboutVersion, `$1${version}$2`)),
+    write('frontend/app/AppSidebar.tsx', appSidebar.replace(appVersion, `$1${version}$2`)),
+    write('frontend/app/SettingsView.tsx', settingsView.replace(aboutVersion, `$1${version}$2`)),
   ])
 }
 
