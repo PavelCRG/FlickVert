@@ -67,6 +67,47 @@ mod tests {
     }
 
     #[test]
+    fn converts_svg_to_raster_without_an_external_engine() {
+        let root = test_dir();
+        let input = root.join("input.svg");
+        let output = root.join("output.png");
+        fs::write(
+            &input,
+            r##"<svg xmlns="http://www.w3.org/2000/svg" width="4" height="2"><rect width="4" height="2" fill="#ff0000"/></svg>"##,
+        )
+        .unwrap();
+
+        convert_image(&input, &output, "png", 88, None, None).unwrap();
+
+        let image = image::open(output).unwrap().to_rgba8();
+        assert_eq!((image.width(), image.height()), (4, 2));
+        assert_eq!(image.get_pixel(1, 1).0, [255, 0, 0, 255]);
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn svg_conversion_does_not_read_referenced_local_files() {
+        let root = test_dir();
+        let input = root.join("input.svg");
+        let secret = root.join("secret.png");
+        let output = root.join("output.png");
+        ImageBuffer::from_pixel(2, 2, Rgba([255u8, 0, 0, 255]))
+            .save(&secret)
+            .unwrap();
+        fs::write(
+            &input,
+            r#"<svg xmlns="http://www.w3.org/2000/svg" width="2" height="2"><image href="secret.png" width="2" height="2"/></svg>"#,
+        )
+        .unwrap();
+
+        convert_image(&input, &output, "png", 88, None, None).unwrap();
+
+        let image = image::open(output).unwrap().to_rgba8();
+        assert_eq!(image.get_pixel(0, 0).0, [0, 0, 0, 0]);
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn converts_heic_without_external_codec_processes() {
         let root = test_dir();
         let input = root.join("input.png");
@@ -122,6 +163,7 @@ use std::{fs::File, io::BufWriter, path::Path, sync::Once};
 
 static HEIC_HOOKS: Once = Once::new();
 const MAX_IMAGE_PIXELS: u64 = 100_000_000;
+const MAX_SVG_INPUT_BYTES: u64 = 16 * 1024 * 1024;
 
 pub fn convert_image(
     input: &Path,
@@ -145,28 +187,77 @@ pub fn convert_image(
         .and_then(|value| value.to_str())
         .unwrap_or("")
         .to_ascii_lowercase();
-    if !matches!(input_extension.as_str(), "heic" | "heif") {
-        let (image_width, image_height) = ImageReader::open(input)
+    let mut image = if input_extension == "svg" {
+        let size = std::fs::metadata(input)
+            .map_err(|error| error.to_string())?
+            .len();
+        if size > MAX_SVG_INPUT_BYTES {
+            return Err("SVG exceeds the 16 MiB input limit".into());
+        }
+        let data = std::fs::read(input).map_err(|error| error.to_string())?;
+        let mut options = resvg::usvg::Options::default();
+        options.image_href_resolver = resvg::usvg::ImageHrefResolver {
+            resolve_data: resvg::usvg::ImageHrefResolver::default_data_resolver(),
+            resolve_string: Box::new(|_, _| None),
+        };
+        let tree =
+            resvg::usvg::Tree::from_data(&data, &options).map_err(|error| error.to_string())?;
+        let source_size = tree.size();
+        if source_size.width() <= 0.0 || source_size.height() <= 0.0 {
+            return Err("SVG has invalid dimensions".into());
+        }
+        let max_width = width.unwrap_or(source_size.width().ceil() as u32);
+        let max_height = height.unwrap_or(source_size.height().ceil() as u32);
+        if max_width == 0 || max_height == 0 {
+            return Err("invalid image dimensions".into());
+        }
+        let scale = (max_width as f32 / source_size.width())
+            .min(max_height as f32 / source_size.height())
+            .min(1.0);
+        let render_width = (source_size.width() * scale).round().max(1.0) as u32;
+        let render_height = (source_size.height() * scale).round().max(1.0) as u32;
+        if render_width > 32_768
+            || render_height > 32_768
+            || !image_dimensions_allowed(render_width, render_height)
+        {
+            return Err("SVG exceeds the image dimension limit".into());
+        }
+        let mut pixmap = resvg::tiny_skia::Pixmap::new(render_width, render_height)
+            .ok_or("could not allocate SVG output image")?;
+        resvg::render(
+            &tree,
+            resvg::tiny_skia::Transform::from_scale(
+                render_width as f32 / source_size.width(),
+                render_height as f32 / source_size.height(),
+            ),
+            &mut pixmap.as_mut(),
+        );
+        image::load_from_memory(&pixmap.encode_png().map_err(|error| error.to_string())?)
+            .map_err(|error| error.to_string())?
+    } else {
+        if !matches!(input_extension.as_str(), "heic" | "heif") {
+            let (image_width, image_height) = ImageReader::open(input)
+                .map_err(|error| format!("open input: {error}"))?
+                .with_guessed_format()
+                .map_err(|error| format!("detect input format: {error}"))?
+                .into_dimensions()
+                .map_err(|error| format!("read image dimensions: {error}"))?;
+            if !image_dimensions_allowed(image_width, image_height) {
+                return Err("image exceeds the pixel limit".into());
+            }
+        }
+        let mut reader = ImageReader::open(input)
             .map_err(|error| format!("open input: {error}"))?
             .with_guessed_format()
-            .map_err(|error| format!("detect input format: {error}"))?
-            .into_dimensions()
-            .map_err(|error| format!("read image dimensions: {error}"))?;
-        if !image_dimensions_allowed(image_width, image_height) {
-            return Err("image exceeds the pixel limit".into());
-        }
-    }
-    let mut reader = ImageReader::open(input)
-        .map_err(|error| format!("open input: {error}"))?
-        .with_guessed_format()
-        .map_err(|error| format!("detect input format: {error}"))?;
-    let mut limits = image::Limits::default();
-    limits.max_image_width = Some(32_768);
-    limits.max_image_height = Some(32_768);
-    reader.limits(limits);
-    let mut image = reader
-        .decode()
-        .map_err(|error| format!("decode input: {error}"))?;
+            .map_err(|error| format!("detect input format: {error}"))?;
+        let mut limits = image::Limits::default();
+        limits.max_image_width = Some(32_768);
+        limits.max_image_height = Some(32_768);
+        reader.limits(limits);
+        reader
+            .decode()
+            .map_err(|error| format!("decode input: {error}"))?
+    };
     if width == Some(0) || height == Some(0) {
         return Err("invalid image dimensions".into());
     }

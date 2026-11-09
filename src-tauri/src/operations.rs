@@ -126,7 +126,7 @@ const RAW: Operation = Operation {
 const IMAGE: Operation = Operation {
     engine: Engine::BuiltIn,
     input_extensions: &[
-        "png", "jpg", "jpeg", "webp", "gif", "bmp", "heic", "heif", "tif", "tiff",
+        "png", "jpg", "jpeg", "webp", "gif", "bmp", "heic", "heif", "tif", "tiff", "svg",
     ],
     output_extensions: &["png", "jpg", "webp", "bmp", "tiff", "avif", "heic", "pdf"],
 };
@@ -199,7 +199,7 @@ const PDF_DOCUMENT: Operation = Operation {
     output_extensions: &["docx", "epub"],
 };
 
-const QUICK_IMAGE_INPUTS: &[&str] = &["png", "jpg", "jpeg", "webp", "gif", "bmp"];
+const QUICK_IMAGE_INPUTS: &[&str] = &["png", "jpg", "jpeg", "webp", "gif", "bmp", "svg"];
 const QUICK_IMAGE_OUTPUTS: &[&str] = &["png", "jpg", "webp", "bmp", "tiff", "avif", "heic", "pdf"];
 
 pub fn quick_image_formats(extension: &str) -> Option<Vec<String>> {
@@ -1383,7 +1383,18 @@ mod tests {
             Engine::BuiltIn
         );
         assert_eq!(operation_for("png", "jpg", engines).unwrap().engine, Engine::BuiltIn);
-        assert!(operation_for("svg", "png", engines).is_none());
+        assert_eq!(operation_for("svg", "png", engines).unwrap().engine, Engine::BuiltIn);
+    }
+
+    #[test]
+    fn svg_rasterization_is_built_in_without_image_magick() {
+        for output in ["png", "jpg", "webp", "tiff", "bmp", "pdf"] {
+            assert_eq!(
+                operation_for("svg", output, Engines::default()).unwrap().engine,
+                Engine::BuiltIn,
+                "{output}"
+            );
+        }
     }
 
     #[test]
