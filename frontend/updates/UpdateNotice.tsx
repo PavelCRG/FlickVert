@@ -3,15 +3,17 @@ import { invoke, isTauri } from '@tauri-apps/api/core'
 import { check, type Update } from '@tauri-apps/plugin-updater'
 import { isPermissionGranted, requestPermission, sendNotification } from '@tauri-apps/plugin-notification'
 import { relaunch } from '@tauri-apps/plugin-process'
+import { openUrl } from '@tauri-apps/plugin-opener'
 import type { Language } from '../settings'
 import { AppIcon } from '../icons/AppIcon'
 import { shouldNotifyUpdate } from './update-notification'
 
 const copy = {
-  en: { title: 'Updates', check: 'Check for updates', checking: 'Checking for updates…', current: 'FlickVert is up to date.', available: 'A new version is available', notification: (version: string) => `FlickVert ${version} is available. Open FlickVert to update.`, manual: 'For portable builds, download the latest version from GitHub Releases.', install: 'Download and install', downloading: 'Downloading update…', error: 'Could not check or install the update. Try again later.', restart: 'Restart to finish updating' },
-  ru: { title: 'Обновления', check: 'Проверить обновления', checking: 'Проверяем обновления…', current: 'Установлена последняя версия FlickVert.', available: 'Доступна новая версия', notification: (version: string) => `Доступна FlickVert ${version}. Откройте приложение, чтобы обновить его.`, manual: 'Для портативной версии скачайте обновление со страницы релизов GitHub.', install: 'Скачать и установить', downloading: 'Скачиваем обновление…', error: 'Не удалось проверить или установить обновление. Попробуйте позже.', restart: 'Перезапустить для завершения' },
-  zh: { title: '更新', check: '检查更新', checking: '正在检查更新…', current: 'FlickVert 已是最新版本。', available: '有新版本可用', notification: (version: string) => `FlickVert ${version} 已发布。打开应用以更新。`, manual: '便携版请从 GitHub Releases 下载最新版本。', install: '下载并安装', downloading: '正在下载更新…', error: '无法检查或安装更新，请稍后重试。', restart: '重新启动以完成更新' },
+  en: { title: 'Updates', check: 'Check for updates', checking: 'Checking for updates…', current: 'FlickVert is up to date.', available: 'A new version is available', notification: (version: string) => 'FlickVert ' + version + ' is available. Open FlickVert to update.', manual: 'Download from GitHub Releases', install: 'Download and install', downloading: 'Downloading update…', error: 'Could not check or install the update. Try again later.', restart: 'Restart to finish updating' },
+  ru: { title: 'Обновления', check: 'Проверить обновления', checking: 'Проверяем обновления…', current: 'Установлена последняя версия FlickVert.', available: 'Доступна новая версия', notification: (version: string) => 'Доступна FlickVert ' + version + '. Откройте приложение, чтобы обновить его.', manual: 'Скачать с GitHub Releases', install: 'Скачать и установить', downloading: 'Скачиваем обновление…', error: 'Не удалось проверить или установить обновление. Попробуйте позже.', restart: 'Перезапустить для завершения' },
+  zh: { title: '更新', check: '检查更新', checking: '正在检查更新…', current: 'FlickVert 已是最新版本。', available: '有新版本可用', notification: (version: string) => 'FlickVert ' + version + ' 已发布。打开应用即可更新。', manual: '从 GitHub Releases 下载', install: '下载并安装', downloading: '正在下载更新…', error: '无法检查或安装更新，请稍后重试。', restart: '重启以完成更新' },
 } as const
+const releasesUrl = 'https://github.com/PavelCRG/FlickVert/releases/latest'
 
 export default function UpdateNotice({ language }: { language: Language }) {
   const labels = copy[language]
@@ -80,14 +82,21 @@ export default function UpdateNotice({ language }: { language: Language }) {
     finally { busy.current = false }
   }
 
-  const message = status === 'available' ? `${labels.available}: ${version}` : status === 'manual' ? `${labels.available}: ${version}. ${labels.manual}` : status === 'downloading' && progress !== null ? `${labels.downloading} ${progress}%` : labels[status]
+  function openReleases() {
+    if (isTauri()) void openUrl(releasesUrl)
+    else window.open(releasesUrl, '_blank', 'noopener,noreferrer')
+  }
+
+  const message = status === 'available' || status === 'manual' ? `${labels.available}: ${version}` : status === 'downloading' && progress !== null ? `${labels.downloading} ${progress}%` : labels[status]
   const action = status === 'available'
     ? <button className="primary-button update-button" onClick={() => void install()}><AppIcon name="download"/>{labels.install}</button>
     : status === 'restart'
       ? <button className="primary-button update-button" onClick={() => void relaunch()}><AppIcon name="restart"/>{labels.restart}</button>
+      : status === 'manual'
+        ? <button className="secondary-button update-button" onClick={openReleases}><AppIcon name="external-link"/>{labels.manual}</button>
       : <button className="secondary-button update-button" disabled={status === 'checking' || status === 'downloading'} onClick={() => void checkUpdate()}><AppIcon name="refresh"/>{labels.check}</button>
   return <details className="update-compact">
-    <summary aria-label={`${labels.title}: ${message}`} title={`${labels.title}: ${message}`}><span className="update-icon"><AppIcon name="refresh"/></span><span>{labels.title}</span><i className={`update-indicator update-indicator-${status}`} aria-hidden="true"/></summary>
+    <summary aria-label={`${labels.title}: ${message}`} title={`${labels.title}: ${message}`}><span className={`update-icon update-icon-${status}`}>{status === 'current' ? <AppIcon name="check"/> : status === 'available' || status === 'manual' ? <AppIcon name="download"/> : status === 'restart' ? <AppIcon name="restart"/> : status === 'error' ? <AppIcon name="alert"/> : <AppIcon name="refresh"/>}</span><span>{labels.title}</span><i className={`update-indicator update-indicator-${status}`} aria-hidden="true"/></summary>
     <div className="update-compact-panel">
       <div className={`update-state update-state-${status}`} aria-live="polite"><span className="update-state-icon" aria-hidden="true">{status === 'current' ? <AppIcon name="check"/> : status === 'error' ? <AppIcon name="alert"/> : <span/>}</span><span>{message}</span></div>
       {action}

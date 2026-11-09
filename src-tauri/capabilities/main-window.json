@@ -19,7 +19,8 @@
         { "url": "https://imagemagick.org/download/" },
         { "url": "https://www.libreoffice.org/download/" },
         { "url": "https://poppler.freedesktop.org/" },
-        { "url": "https://github.com/qpdf/qpdf/releases" }
+        { "url": "https://github.com/qpdf/qpdf/releases" },
+        { "url": "https://github.com/PavelCRG/FlickVert/releases/latest" }
       ]
     }
   ]

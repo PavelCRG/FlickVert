@@ -5,7 +5,7 @@ export type AppIconName =
   | 'resize' | 'rotate' | 'flip' | 'tone' | 'crop' | 'compress' | 'tag' | 'mute' | 'music' | 'film' | 'wave'
   | 'archive' | 'copy' | 'move' | 'folder' | 'terminal' | 'convert' | 'shield-check'
   | 'minimize' | 'maximize' | 'close' | 'chevron-down' | 'check' | 'refresh' | 'alert' | 'download' | 'restart' | 'file-plus'
-  | 'palette' | 'keyboard' | 'sliders' | 'info' | 'arrow-right' | 'search' | 'star'
+  | 'palette' | 'keyboard' | 'sliders' | 'info' | 'arrow-right' | 'external-link' | 'search' | 'star'
 
 const icons: Record<AppIconName, ReactNode> = {
   home: <path d="m3 10 9-7 9 7v9a2 2 0 0 1-2 2h-5v-6h-4v6H5a2 2 0 0 1-2-2z"/>,
@@ -53,6 +53,7 @@ const icons: Record<AppIconName, ReactNode> = {
   sliders: <><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="7" cy="18" r="2"/></>,
   info: <><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></>,
   'arrow-right': <path d="M4 12h16m-6-6 6 6-6 6"/>,
+  'external-link': <><path d="M14 4h6v6m0-6-10 10"/><path d="M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5"/></>,
   search: <><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></>,
   star: <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z"/>,
 }

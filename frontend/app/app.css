@@ -1152,6 +1152,9 @@
   stroke-width: 1.8;
 }
 
+.update-compact > summary .update-icon-current { color: var(--good); }
+.update-compact > summary .update-icon-error { color: var(--bad); }
+
 .update-compact > summary:hover .update-icon {
   border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
   background: var(--accent-soft);
@@ -1267,6 +1270,9 @@
   align-items: center;
   justify-content: center;
   gap: 7px;
+  line-height: 1.35;
+  text-align: center;
+  white-space: normal;
 }
 
 .update-button svg {
