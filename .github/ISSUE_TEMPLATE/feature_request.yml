@@ -1,0 +1,29 @@
+name: Feature request / Предложить функцию
+description: Suggest an improvement to FlickVert
+title: "[Feature] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the problem or workflow first. Reports in English or Russian are welcome.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to do? / Что хотелось бы сделать?
+      description: What is difficult or missing in your current workflow?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Suggested solution / Предлагаемое решение
+      description: Describe the change that would help.
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives / Альтернативы
+      description: What do you use today, if anything?
+    validations:
+      required: false

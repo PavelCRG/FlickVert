@@ -1,5 +1,6 @@
 node_modules/
 .agents/
+.local-history/
 .playwright-cli/
 .worktrees/
 .signing/
