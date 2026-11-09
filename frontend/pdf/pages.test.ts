@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { movePdfPage, rotatePdfPage, validPdfPageOrder, pdfPagesOutputPath } from './pdf-pages.ts'
+import { movePdfPage, rotatePdfPage, validPdfPageOrder, pdfPagesOutputPath } from './pages.ts'
 
 test('PDF pages can be reordered without changing the original array', () => {
   const pages = [1, 2, 3, 4]

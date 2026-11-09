@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { videoExportPreview } from './video-export-preview.ts'
+import { videoExportPreview } from './preview.ts'
 
 test('video export preview predicts codec, container, and each batch output path', () => {
   assert.deepEqual(videoExportPreview(['C:\\Clips\\first.take.mp4', 'D:\\Other\\second.mov'], 'hevc'), {

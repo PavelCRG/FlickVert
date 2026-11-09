@@ -3,7 +3,7 @@ import { strict as assert } from 'node:assert'
 import { canRunFileAction, canRunSelectedTool, canRunWheelTool, canUseNativeImagePath, commonFormats, conversionConcurrency, launcherActions, operationShortcutActions, selectedToolUnavailableReason, toolActionsFor } from './quick-actions.ts'
 import { operationErrorKind } from './operation-errors.ts'
 import { conversionPreview } from './conversion-preview.ts'
-import { validateVideoFrameTime, validateVideoTrimRange } from '../video-trim.ts'
+import { validateVideoFrameTime, validateVideoTrimRange } from '../video-trim/ranges.ts'
 
 test('conversion preview shows the target name and destination before starting', () => {
   assert.deepEqual(conversionPreview([{ name: 'photo.original.jpg', path: 'C:\\Photos\\photo.original.jpg' }], 'webp'), {

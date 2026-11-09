@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { parsePdfPageSelection, pdfSplitOutputPaths } from './pdf-split.ts'
+import { parsePdfPageSelection, pdfSplitOutputPaths } from './split.ts'
 
 test('PDF page selection accepts individual pages and inclusive ranges', () => {
   assert.deepEqual(parsePdfPageSelection('1, 3-5,8', 10), [1, 3, 4, 5, 8])

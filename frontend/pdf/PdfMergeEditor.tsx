@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { t, type MessageKey } from '../i18n'
 import { operationErrorKind, operationErrorMessages } from '../quick-menu/operation-errors'
-import { movePdfFile, pdfMergeOutputPath } from '../pdf-merge'
+import { movePdfFile, pdfMergeOutputPath } from './merge'
 
 type Props = { inputPaths: string[]; language: 'en' | 'ru' | 'zh'; outputFolder?: string; onClose: () => void }
 

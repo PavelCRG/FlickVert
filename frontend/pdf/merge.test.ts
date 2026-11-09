@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { movePdfFile, pdfMergeOutputPath } from './pdf-merge.ts'
+import { movePdfFile, pdfMergeOutputPath } from './merge.ts'
 
 test('PDF merge order can move adjacent files without changing the source list', () => {
   const files = ['one.pdf', 'two.pdf', 'three.pdf']

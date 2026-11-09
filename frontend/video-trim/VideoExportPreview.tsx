@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { t, type MessageKey } from '../i18n'
 import { operationErrorKind, operationErrorMessages } from '../quick-menu/operation-errors'
-import { videoExportPreview, type VideoExportCodec } from '../video-export-preview'
+import { videoExportPreview, type VideoExportCodec } from './preview'
 
 type Props = { inputPaths: string[]; language: 'en' | 'ru' | 'zh'; outputFolder?: string; codec: VideoExportCodec; preset: string; height?: number; onClose: () => void }
 const formatTime = (microseconds: number) => {

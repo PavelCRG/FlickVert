@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { t, type MessageKey } from '../i18n'
 import { operationErrorKind, operationErrorMessages } from '../quick-menu/operation-errors'
-import { parsePdfPageSelection, pdfSplitOutputPaths } from '../pdf-split'
+import { parsePdfPageSelection, pdfSplitOutputPaths } from './split'
 
 type Props = { inputPath: string; language: 'en' | 'ru' | 'zh'; outputFolder?: string; onClose: () => void }
 
