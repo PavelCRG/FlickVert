@@ -27,6 +27,8 @@ csv = "1.4.0"
 rust_xlsxwriter = { version = "0.102.0", default-features = false, features = ["constant_memory"] }
 calamine = "0.38.0"
 lopdf = { version = "=0.47.0", default-features = false }
+pulldown-cmark = { version = "=0.13.6", default-features = false, features = ["html"] }
+html2text = { version = "=0.17.4", default-features = false }
 
 [profile.release]
 panic = "abort"

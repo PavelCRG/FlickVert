@@ -96,6 +96,9 @@ pub(crate) fn convert_file(
                     &output_extension,
                 )
                 .map_err(|_| operation_error("conversion"))?;
+            } else if operations::is_native_document_conversion(&extension, &output_extension) {
+                document_conversion::convert_document(&input, &output_temp, &output_extension)
+                    .map_err(|_| operation_error("conversion"))?;
             } else if operations::is_pdf_text_conversion(&extension, &output_extension) {
                 pdf_conversion::pdf_to_text(&input, &output_temp, &output_extension)
                     .map_err(|_| operation_error("conversion"))?;

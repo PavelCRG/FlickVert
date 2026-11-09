@@ -173,6 +173,16 @@ const PDF_TEXT: Operation = Operation {
     input_extensions: &["pdf"],
     output_extensions: &["txt", "md"],
 };
+const MARKDOWN: Operation = Operation {
+    engine: Engine::BuiltIn,
+    input_extensions: &["md", "markdown", "txt"],
+    output_extensions: &["md", "markdown", "txt", "html", "htm"],
+};
+const HTML_TEXT: Operation = Operation {
+    engine: Engine::BuiltIn,
+    input_extensions: &["html", "htm"],
+    output_extensions: &["txt", "md", "markdown"],
+};
 const SLIDE_IMAGES: Operation = Operation {
     engine: Engine::LibreOffice,
     input_extensions: &["ppt", "pptx", "odp"],
@@ -232,6 +242,15 @@ pub fn is_pdf_text_conversion(input_extension: &str, output_extension: &str) -> 
         && PDF_TEXT.output_extensions.contains(&output_extension.to_ascii_lowercase().as_str())
 }
 
+pub fn is_native_document_conversion(input_extension: &str, output_extension: &str) -> bool {
+    let input = input_extension.to_ascii_lowercase();
+    let output = output_extension.to_ascii_lowercase();
+    [&MARKDOWN, &HTML_TEXT].iter().any(|operation| {
+        operation.input_extensions.contains(&input.as_str())
+            && operation.output_extensions.contains(&output.as_str())
+    })
+}
+
 pub fn operations_for(extension: &str, engines: Engines) -> Vec<Operation> {
     let extension = extension.to_ascii_lowercase();
     catalog_operations(engines)
@@ -245,12 +264,14 @@ pub fn operations_for(extension: &str, engines: Engines) -> Vec<Operation> {
 
 fn catalog_operations(
     engines: Engines,
-) -> [(&'static Operation, &'static str, &'static str, bool); 17] {
+) -> [(&'static Operation, &'static str, &'static str, bool); 19] {
     [
         (&IMAGE, "Images and PDFs", "Built in", true),
         (&DELIMITED, "Documents", "Built in", true),
         (&SPREADSHEET_READ, "Documents", "Built in", true),
         (&PDF_TEXT, "PDF documents", "Built in", true),
+        (&MARKDOWN, "Documents", "Built in", true),
+        (&HTML_TEXT, "Documents", "Built in", true),
         (&AUDIO, "Audio and video", "FFmpeg", engines.ffmpeg),
         (&VIDEO, "Audio and video", "FFmpeg", engines.ffmpeg),
         (&SUBTITLE, "Audio and video", "FFmpeg", engines.ffmpeg),
@@ -302,6 +323,8 @@ pub fn conversion_catalog(engines: Engines) -> Vec<ConversionCatalogItem> {
                 Some("Built-in XLSX only; one sheet, 2,000,000 cells, and 128 MiB maximum.")
             } else if std::ptr::eq(operation, &PDF_TEXT) {
                 Some("Extracts selectable text only; 128 MiB and 10,000 pages maximum.")
+            } else if std::ptr::eq(operation, &MARKDOWN) || std::ptr::eq(operation, &HTML_TEXT) {
+                Some("UTF-8 Markdown/TXT/HTML text conversions; 4 MiB HTML and 16 MiB other input limits; raw HTML and Office layout are not preserved; 128 MiB output limit.")
             } else {
                 None
             },
@@ -1222,6 +1245,16 @@ mod tests {
         assert_eq!(operation_for("tsv", "xlsx", Engines::default()).unwrap().engine, Engine::BuiltIn);
         assert!(operation_for("xlsx", "ods", Engines::default()).is_none());
         assert_eq!(spreadsheet_convert_args(Path::new("input.xlsx"), Path::new("out"), "tsv")[2], "tsv:Text - txt - csv (StarCalc):9,34,76,1");
+    }
+
+    #[test]
+    fn plain_text_and_markdown_conversions_are_built_in() {
+        assert_eq!(operation_for("md", "html", Engines::default()).unwrap().engine, Engine::BuiltIn);
+        assert_eq!(operation_for("markdown", "txt", Engines::default()).unwrap().engine, Engine::BuiltIn);
+        assert_eq!(operation_for("txt", "html", Engines::default()).unwrap().engine, Engine::BuiltIn);
+        assert_eq!(operation_for("html", "txt", Engines::default()).unwrap().engine, Engine::BuiltIn);
+        assert_eq!(operation_for("html", "md", Engines::default()).unwrap().engine, Engine::BuiltIn);
+        assert_eq!(operation_for("md", "docx", Engines { pandoc: true, ..Engines::default() }).unwrap().engine, Engine::Pandoc);
     }
 
     #[test]

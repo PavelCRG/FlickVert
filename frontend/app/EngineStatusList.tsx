@@ -1,12 +1,7 @@
 import type { MessageKey } from '../i18n'
 import type { Engines } from './types'
-import { EngineInstallNote } from './EngineInstallNote'
 
 const labels: Record<keyof Engines, string> = {
-  ffmpeg: 'FFmpeg', pandoc: 'Pandoc', imagemagick: 'ImageMagick', libreoffice: 'LibreOffice',
-  poppler: 'Poppler',
-}
-const installNames: Record<keyof Engines, string> = {
   ffmpeg: 'FFmpeg', pandoc: 'Pandoc', imagemagick: 'ImageMagick', libreoffice: 'LibreOffice',
   poppler: 'Poppler',
 }
@@ -20,6 +15,5 @@ export function EngineStatusList({ engines, order = defaultOrder, tr }: {
   return <div className="engine-status">{order.map((engine) => <div key={engine}>
     <span className="engine-name">{labels[engine]}</span>
     <span className={engines[engine] ? 'engine-found' : ''}>{tr(engines[engine] ? 'Detected' : 'Not detected on PATH')}</span>
-    <span className="engine-install">{!engines[engine] && <EngineInstallNote engine={installNames[engine]} tr={tr}/>}</span>
   </div>)}</div>
 }

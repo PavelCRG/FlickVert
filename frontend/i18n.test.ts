@@ -83,6 +83,13 @@ test('native PDF text extraction limitation is translated in every language', ()
   assert.notEqual(t('zh', key), key)
 })
 
+test('native Markdown conversion limitation is translated in every language', () => {
+  const key = 'UTF-8 Markdown/TXT/HTML text conversions; 4 MiB HTML and 16 MiB other input limits; raw HTML and Office layout are not preserved; 128 MiB output limit.'
+  assert.equal(t('en', key), key)
+  assert.notEqual(t('ru', key), key)
+  assert.notEqual(t('zh', key), key)
+})
+
 test('operation shortcut controls are translated in every language', () => {
   for (const key of ['Operation shortcuts', 'Not assigned', 'Remove shortcut', 'Operation shortcut conflicts or is unavailable.'] as const) {
     assert.equal(t('en', key), key)
@@ -95,12 +102,6 @@ test('empty tool search can be cleared in every language', () => {
   assert.equal(t('en', 'Clear search'), 'Clear search')
   assert.equal(t('ru', 'Clear search'), 'Очистить поиск')
   assert.equal(t('zh', 'Clear search'), '清除搜索')
-})
-
-test('manual engine installation links are labeled in every language', () => {
-  assert.equal(t('en', 'Manual installation'), 'Manual installation')
-  assert.equal(t('ru', 'Manual installation'), 'Установка вручную')
-  assert.equal(t('zh', 'Manual installation'), '手动安装')
 })
 
 test('tool family filters are labeled in every language', () => {

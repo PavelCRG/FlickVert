@@ -4,6 +4,7 @@ mod app;
 mod archive;
 mod commands;
 mod delimited_conversion;
+mod document_conversion;
 mod files;
 mod file_signatures;
 mod image_conversion;
