@@ -3,12 +3,10 @@ import { AppIcon } from '../icons/AppIcon'
 import { operationErrorMessages } from '../quick-menu/operation-errors'
 import type { MessageKey } from '../i18n'
 import type { AppSettings } from '../settings'
-import { EngineStatusList } from './EngineStatusList'
-import type { Engines, OperationQueueItem } from './types'
+import type { OperationQueueItem } from './types'
 
-export function HomePage({ preferences, engines, queue, setQueue, pickError, resultOpenError, setResultOpenError, tr, onChooseFiles, onExploreTools, onOpenCategory, onOpenKeyboard, onRevealOutput }: {
+export function HomePage({ preferences, queue, setQueue, pickError, resultOpenError, setResultOpenError, tr, onChooseFiles, onExploreTools, onOpenCategory, onOpenKeyboard, onRevealOutput }: {
   preferences: AppSettings
-  engines: Engines
   queue: OperationQueueItem[]
   setQueue: (queue: OperationQueueItem[]) => void
   pickError: boolean
@@ -42,6 +40,6 @@ export function HomePage({ preferences, engines, queue, setQueue, pickError, res
       </div>)}</div>
     </section>}
     <button className="dashboard-shortcut" onClick={onOpenKeyboard}><AppIcon name="keyboard"/><span>{tr('Quick shortcut')}</span><kbd>{preferences.shortcut.split('+').map((key) => key === 'CTRL' ? 'Ctrl' : key === 'ALT' ? 'Alt' : key === 'SHIFT' ? 'Shift' : key === 'SPACE' ? 'Space' : key).join(' + ')}</kbd><span>{tr('Change shortcut')} <AppIcon name="arrow-right"/></span></button>
-    <section className="settings-group dashboard-engines"><h2>{tr('Conversion engines')}</h2><EngineStatusList engines={engines} tr={tr}/></section>
+    <section className="dashboard-ready"><span className="dashboard-ready-icon"><AppIcon name="check"/></span><div><h2>{tr('Everyday conversions are built in')}</h2><p>{tr('Images, PDFs, text and spreadsheets work without extra downloads.')}</p></div><button className="secondary-button" onClick={() => onOpenCategory('optional-engines')}>{tr('Explore optional engines')}</button></section>
   </div>
 }

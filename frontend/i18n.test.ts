@@ -244,3 +244,10 @@ test('settings section reset labels are translated', () => {
     assert.notEqual(t('zh', key), key)
   }
 })
+
+test('first-run guidance and optional-engine explanations are translated', () => {
+  for (const key of ['Choose a file to get started', 'Pick a compatible action', 'Save your result', 'Explore optional engines', 'Everyday conversions are built in', 'Optional engines', 'Core conversions are built in. Install an engine only if a format requires it.', 'Installed', 'Optional', 'Not installed'] as const) {
+    assert.notEqual(t('ru', key), key)
+    assert.notEqual(t('zh', key), key)
+  }
+})

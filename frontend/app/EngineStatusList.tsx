@@ -14,6 +14,6 @@ export function EngineStatusList({ engines, order = defaultOrder, tr }: {
 }) {
   return <div className="engine-status">{order.map((engine) => <div key={engine}>
     <span className="engine-name">{labels[engine]}</span>
-    <span className={engines[engine] ? 'engine-found' : ''}>{tr(engines[engine] ? 'Detected' : 'Not detected on PATH')}</span>
+    <span className={engines[engine] ? 'engine-found' : ''}>{tr(engines[engine] ? 'Installed' : 'Optional')}</span>
   </div>)}</div>
 }
