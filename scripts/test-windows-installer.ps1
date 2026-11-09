@@ -1,4 +1,4 @@
-param([Parameter(Mandatory)][string]$Installer, [string]$PreviousInstaller)
+param([Parameter(Mandatory)][string]$Installer, [string]$PreviousInstaller, [string]$InstallDirectory)
 $ErrorActionPreference = 'Stop'
 $uninstallRoot = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall'
 $findApp = {
@@ -13,6 +13,16 @@ $getUninstaller = {
   $match.Groups[1].Value
 }
 if (& $findApp) { throw 'The Windows installer test expects a clean runner.' }
+$expectedInstallDirectory = if ($InstallDirectory) { [IO.Path]::GetFullPath($InstallDirectory).TrimEnd('\') } else { $null }
+if ($expectedInstallDirectory) {
+  $runnerTemp = [IO.Path]::GetFullPath($env:RUNNER_TEMP).TrimEnd('\') + '\'
+  if (-not $expectedInstallDirectory.StartsWith($runnerTemp, [StringComparison]::OrdinalIgnoreCase)) {
+    throw 'The test install directory must be a new child of RUNNER_TEMP.'
+  }
+  if (Test-Path -LiteralPath $expectedInstallDirectory) {
+    throw 'The installer test refuses to use an existing install directory.'
+  }
+}
 $appData = Join-Path $env:APPDATA 'app.flickvert.desktop.v2'
 $userFile = Join-Path $appData 'installer-test-sentinel'
 $selectedFile = Join-Path $env:TEMP 'flickvert-installer-selected-file.txt'
@@ -24,11 +34,19 @@ try {
   Set-Content -LiteralPath $selectedFile -Value 'keep'
   $installers = if ($PreviousInstaller) { @($PreviousInstaller, $Installer, $Installer) } else { @($Installer, $Installer) }
   foreach ($attempt in 0..($installers.Count - 1)) {
-    $process = Start-Process -FilePath $installers[$attempt] -ArgumentList '/S' -Wait -PassThru
+    $arguments = @('/S')
+    if ($expectedInstallDirectory) { $arguments += "/D=$expectedInstallDirectory" }
+    $process = Start-Process -FilePath $installers[$attempt] -ArgumentList $arguments -Wait -PassThru
     if ($process.ExitCode -ne 0) { throw "Silent install attempt $attempt failed with exit code $($process.ExitCode)." }
     $entries = @(& $findApp)
     if ($entries.Count -ne 1) { throw "Expected one FlickVert install entry after attempt $attempt; found $($entries.Count)." }
     $uninstaller = & $getUninstaller $entries[0]
+    if ($expectedInstallDirectory) {
+      $actualInstallDirectory = [IO.Path]::GetFullPath((Split-Path -Parent $uninstaller)).TrimEnd('\')
+      if (-not [string]::Equals($actualInstallDirectory, $expectedInstallDirectory, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Expected installation in '$expectedInstallDirectory', got '$actualInstallDirectory'."
+      }
+    }
     if ($attempt -eq 0) { $firstUninstaller = $uninstaller }
     elseif ($uninstaller -ne $firstUninstaller) { throw 'Update or reinstall registered a second installation path.' }
   }
@@ -50,4 +68,5 @@ finally {
   Remove-Item -LiteralPath $userFile -Force -ErrorAction SilentlyContinue
   Remove-Item -LiteralPath $appData -Force -ErrorAction SilentlyContinue
   Remove-Item -LiteralPath $selectedFile -Force -ErrorAction SilentlyContinue
+  if ($expectedInstallDirectory) { Remove-Item -LiteralPath $expectedInstallDirectory -Recurse -Force -ErrorAction SilentlyContinue }
 }

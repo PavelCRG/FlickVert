@@ -21,9 +21,9 @@ The Desktop builds workflow tests every push and pull request. Pushing a version
    git push origin v0.1.11
    ~~~
 
-5. Watch the **Desktop builds** workflow. It runs the checks, builds Windows packages, verifies install/upgrade behavior, and publishes the release with SHA-256 checksums. The installer update artifacts are signed; see [release signing](release-signing.md).
+5. Watch the **Desktop builds** workflow. It runs the checks, builds Windows packages, verifies install/upgrade behavior (including a custom install directory), and publishes the release with SHA-256 checksums and GitHub build attestations. The installer update artifacts are signed; see [release signing](release-signing.md).
 
-Do not reuse or move an existing release tag. If a tag build needs to be retried, use **Actions → Desktop builds → Run workflow** and enter the existing tag; the workflow rebuilds and republishes that release. For a new version, create a new tag after the fix has reached main.
+Do not reuse or move an existing release tag. If a tag build needs to be retried, use **Actions → Desktop builds → Run workflow**, select the existing tag in the branch picker, and enter the same tag; the workflow checks that both values match before it rebuilds and republishes. For a new version, create a new tag after the fix has reached main.
 
 ## Before publishing
 

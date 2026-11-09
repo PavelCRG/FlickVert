@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Existing release tag to rebuild and publish (for example v0.1.10)
+        description: Existing tag to rebuild; select the same tag in the branch picker
         required: true
         type: string
 
@@ -23,6 +23,13 @@ jobs:
             target: x86_64-pc-windows-msvc
     runs-on: ${{ matrix.os }}
     steps:
+      - name: Validate selected release tag
+        if: inputs.release_tag != ''
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          if ($env:GITHUB_REF -ne "refs/tags/$env:RELEASE_TAG") { throw 'Select the release tag in the branch picker and enter the same tag.' }
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.release_tag || github.ref }}
@@ -55,7 +62,8 @@ jobs:
         run: |
           $installers = @(Get-ChildItem "src-tauri/target/${{ matrix.target }}/release/bundle/nsis" -Filter '*-setup.exe')
           if ($installers.Count -ne 1) { throw "Expected one NSIS installer, found $($installers.Count)." }
-          ./scripts/test-windows-installer.ps1 -Installer $installers[0].FullName
+          $installDirectory = Join-Path $env:RUNNER_TEMP 'FlickVert-custom-install-path'
+          ./scripts/test-windows-installer.ps1 -Installer $installers[0].FullName -InstallDirectory $installDirectory
       - name: Verify Windows upgrade from previous release, then uninstall
         if: ${{ runner.os == 'Windows' && (startsWith(github.ref, 'refs/tags/v') || inputs.release_tag != '') }}
         shell: pwsh
@@ -103,6 +111,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v4
       - name: Sync release version
@@ -136,6 +146,13 @@ jobs:
           (cd release-assets && sha256sum * > SHA256SUMS.txt)
         env:
           RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+      - name: Attest release artifacts
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            release-assets/FlickVert-Windows-x64-Setup.exe
+            release-assets/FlickVert-Windows-x64-Setup.msi
+            release-assets/FlickVert-Windows-x64-Portable.zip
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.release_tag || github.ref_name }}
@@ -146,7 +163,7 @@ jobs:
             ## Download
 
             - **Windows 10/11 x64:** [Setup](https://github.com/PavelCRG/FlickVert/releases/download/${{ inputs.release_tag || github.ref_name }}/FlickVert-Windows-x64-Setup.exe) · [MSI](https://github.com/PavelCRG/FlickVert/releases/download/${{ inputs.release_tag || github.ref_name }}/FlickVert-Windows-x64-Setup.msi) · [Portable ZIP](https://github.com/PavelCRG/FlickVert/releases/download/${{ inputs.release_tag || github.ref_name }}/FlickVert-Windows-x64-Portable.zip)
-            Setup builds check for signed updates at launch and every six hours. Portable builds update manually. Windows may show a SmartScreen warning because the installer is not Authenticode-signed. If updating from an older development build, uninstall it before installing this release.
+            Setup installs for the current user and lets you choose the destination folder. Portable ZIPs can be extracted to any writable drive. Setup builds check for signed updates at launch and every six hours; portable builds update manually. Windows may show a SmartScreen warning because the installer is not Authenticode-signed. If updating from an older development build, uninstall it before installing this release.
 
-            Files are processed locally. Optional engines (FFmpeg, Pandoc, ImageMagick, LibreOffice, Poppler) are installed separately. Verify downloads with `SHA256SUMS.txt`.
+            Files are processed locally. Optional engines (FFmpeg, Pandoc, ImageMagick, LibreOffice, Poppler) are installed separately. Verify downloads with `SHA256SUMS.txt` and the GitHub build attestation; see [download verification](https://github.com/PavelCRG/FlickVert/blob/main/docs/download-verification.md).
           files: release-assets/*
