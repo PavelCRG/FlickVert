@@ -15,6 +15,7 @@ mod quick_window;
 mod selection;
 mod shell_integration;
 mod spreadsheet_conversion;
+mod subtitle_conversion;
 mod state;
 mod workspaces;
 

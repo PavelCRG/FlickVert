@@ -1,6 +1,6 @@
 [package]
 name = "flickvert"
-version = "0.1.11"
+version = "0.1.12"
 description = "Local-first cross-platform file converter"
 authors = ["FlickVert"]
 edition = "2021"
@@ -30,6 +30,7 @@ lopdf = { version = "=0.47.0", default-features = false }
 pulldown-cmark = { version = "=0.13.6", default-features = false, features = ["html"] }
 html2text = { version = "=0.17.4", default-features = false }
 resvg = "=0.49.0"
+quick-xml = { version = "=0.39.3", default-features = false }
 
 [profile.release]
 panic = "abort"

@@ -90,6 +90,27 @@ test('native Markdown conversion limitation is translated in every language', ()
   assert.notEqual(t('zh', key), key)
 })
 
+test('native subtitle conversion limitation is translated in every language', () => {
+  const key = 'UTF-8 SRT/VTT only; cue timing and text are converted, but VTT notes, styles, and cue settings are omitted.'
+  assert.equal(t('en', key), key)
+  assert.notEqual(t('ru', key), key)
+  assert.notEqual(t('zh', key), key)
+})
+
+test('native Office text extraction limitation is translated in every language', () => {
+  const key = 'DOCX/ODT text extraction only; tables are flattened and layout, images, headers, and footnotes are not retained; 16 MiB input, 64 MiB XML, and 128 MiB output limits.'
+  assert.equal(t('en', key), key)
+  assert.notEqual(t('ru', key), key)
+  assert.notEqual(t('zh', key), key)
+})
+
+test('native EPUB text extraction limitation is translated in every language', () => {
+  const key = 'EPUB spine text extraction only; images and layout are not retained; UTF-8 members, 16 MiB input, 64 MiB content, and 128 MiB output limits.'
+  assert.equal(t('en', key), key)
+  assert.notEqual(t('ru', key), key)
+  assert.notEqual(t('zh', key), key)
+})
+
 test('operation shortcut controls are translated in every language', () => {
   for (const key of ['Operation shortcuts', 'Not assigned', 'Remove shortcut', 'Operation shortcut conflicts or is unavailable.'] as const) {
     assert.equal(t('en', key), key)

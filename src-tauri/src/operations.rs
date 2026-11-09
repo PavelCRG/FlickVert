@@ -104,19 +104,55 @@ const VIDEO: Operation = Operation {
     ],
     output_extensions: &["avi", "gif", "mkv", "mov", "mp3", "mp4", "webm", "wmv"],
 };
-const SUBTITLE: Operation = Operation {
+const SUBTITLE_FROM_ASS: Operation = Operation {
     engine: Engine::Ffmpeg,
-    input_extensions: &["ass", "srt", "ssa", "vtt"],
+    input_extensions: &["ass", "ssa"],
     output_extensions: &["ass", "srt", "ssa", "vtt"],
+};
+const SUBTITLE_TO_ASS: Operation = Operation {
+    engine: Engine::Ffmpeg,
+    input_extensions: &["srt", "vtt"],
+    output_extensions: &["ass", "ssa"],
+};
+const SUBTITLE_INPUTS: &[&str] = &["ass", "srt", "ssa", "vtt"];
+const SRT_TO_VTT: Operation = Operation {
+    engine: Engine::BuiltIn,
+    input_extensions: &["srt"],
+    output_extensions: &["vtt"],
+};
+const VTT_TO_SRT: Operation = Operation {
+    engine: Engine::BuiltIn,
+    input_extensions: &["vtt"],
+    output_extensions: &["srt"],
 };
 const DOCUMENT: Operation = Operation {
     engine: Engine::Pandoc,
     input_extensions: &[
-        "docx", "odt", "md", "markdown", "html", "htm", "epub", "rtf", "txt", "rst", "tex",
+        "md", "markdown", "html", "htm", "rtf", "txt", "rst", "tex",
     ],
     output_extensions: &[
         "docx", "odt", "md", "html", "epub", "rtf", "txt", "rst", "tex",
     ],
+};
+const DOCUMENT_EPUB: Operation = Operation {
+    engine: Engine::Pandoc,
+    input_extensions: &["epub"],
+    output_extensions: &["docx", "odt", "html", "rtf", "rst", "tex"],
+};
+const DOCUMENT_OFFICE: Operation = Operation {
+    engine: Engine::Pandoc,
+    input_extensions: &["docx", "odt"],
+    output_extensions: &["docx", "odt", "html", "epub", "rtf", "rst", "tex"],
+};
+const OFFICE_TEXT: Operation = Operation {
+    engine: Engine::BuiltIn,
+    input_extensions: &["docx", "odt"],
+    output_extensions: &["txt", "md"],
+};
+const EPUB_TEXT: Operation = Operation {
+    engine: Engine::BuiltIn,
+    input_extensions: &["epub"],
+    output_extensions: &["txt", "md"],
 };
 const RAW: Operation = Operation {
     engine: Engine::ImageMagick,
@@ -226,7 +262,7 @@ pub fn is_video_input(extension: &str) -> bool {
 }
 
 pub fn is_subtitle_input(extension: &str) -> bool {
-    SUBTITLE.input_extensions.contains(&extension.to_ascii_lowercase().as_str())
+    SUBTITLE_INPUTS.contains(&extension.to_ascii_lowercase().as_str())
 }
 
 pub fn is_delimited_input(extension: &str) -> bool {
@@ -245,10 +281,16 @@ pub fn is_pdf_text_conversion(input_extension: &str, output_extension: &str) -> 
 pub fn is_native_document_conversion(input_extension: &str, output_extension: &str) -> bool {
     let input = input_extension.to_ascii_lowercase();
     let output = output_extension.to_ascii_lowercase();
-    [&MARKDOWN, &HTML_TEXT].iter().any(|operation| {
+    [&MARKDOWN, &HTML_TEXT, &OFFICE_TEXT, &EPUB_TEXT].iter().any(|operation| {
         operation.input_extensions.contains(&input.as_str())
             && operation.output_extensions.contains(&output.as_str())
     })
+}
+
+pub fn is_native_subtitle_conversion(input_extension: &str, output_extension: &str) -> bool {
+    input_extension.eq_ignore_ascii_case("srt") && output_extension.eq_ignore_ascii_case("vtt")
+        || input_extension.eq_ignore_ascii_case("vtt")
+            && output_extension.eq_ignore_ascii_case("srt")
 }
 
 pub fn operations_for(extension: &str, engines: Engines) -> Vec<Operation> {
@@ -264,21 +306,28 @@ pub fn operations_for(extension: &str, engines: Engines) -> Vec<Operation> {
 
 fn catalog_operations(
     engines: Engines,
-) -> [(&'static Operation, &'static str, &'static str, bool); 19] {
+) -> [(&'static Operation, &'static str, &'static str, bool); 26] {
     [
         (&IMAGE, "Images and PDFs", "Built in", true),
         (&DELIMITED, "Documents", "Built in", true),
         (&SPREADSHEET_READ, "Documents", "Built in", true),
         (&PDF_TEXT, "PDF documents", "Built in", true),
+        (&OFFICE_TEXT, "Documents", "Built in", true),
+        (&EPUB_TEXT, "Documents", "Built in", true),
         (&MARKDOWN, "Documents", "Built in", true),
         (&HTML_TEXT, "Documents", "Built in", true),
+        (&SRT_TO_VTT, "Audio and video", "Built in", true),
+        (&VTT_TO_SRT, "Audio and video", "Built in", true),
         (&AUDIO, "Audio and video", "FFmpeg", engines.ffmpeg),
         (&VIDEO, "Audio and video", "FFmpeg", engines.ffmpeg),
-        (&SUBTITLE, "Audio and video", "FFmpeg", engines.ffmpeg),
+        (&SUBTITLE_FROM_ASS, "Audio and video", "FFmpeg", engines.ffmpeg),
+        (&SUBTITLE_TO_ASS, "Audio and video", "FFmpeg", engines.ffmpeg),
         (&RASTER_PNG, "Images and PDFs", "FFmpeg", engines.ffmpeg),
         (&RASTER_JPEG, "Images and PDFs", "FFmpeg", engines.ffmpeg),
         (&GIF_VIDEO, "Images and PDFs", "FFmpeg", engines.ffmpeg),
         (&DOCUMENT, "Documents", "Pandoc", engines.pandoc),
+        (&DOCUMENT_OFFICE, "Documents", "Pandoc", engines.pandoc),
+        (&DOCUMENT_EPUB, "Documents", "Pandoc", engines.pandoc),
         (&RAW, "Images and PDFs", "ImageMagick", engines.imagemagick),
         (&OFFICE_PDF, "Documents", "LibreOffice", engines.libreoffice),
         (
@@ -325,6 +374,12 @@ pub fn conversion_catalog(engines: Engines) -> Vec<ConversionCatalogItem> {
                 Some("Extracts selectable text only; 128 MiB and 10,000 pages maximum.")
             } else if std::ptr::eq(operation, &MARKDOWN) || std::ptr::eq(operation, &HTML_TEXT) {
                 Some("UTF-8 Markdown/TXT/HTML text conversions; 4 MiB HTML and 16 MiB other input limits; raw HTML and Office layout are not preserved; 128 MiB output limit.")
+            } else if std::ptr::eq(operation, &SRT_TO_VTT) || std::ptr::eq(operation, &VTT_TO_SRT) {
+                Some("UTF-8 SRT/VTT only; cue timing and text are converted, but VTT notes, styles, and cue settings are omitted.")
+            } else if std::ptr::eq(operation, &OFFICE_TEXT) {
+                Some("DOCX/ODT text extraction only; tables are flattened and layout, images, headers, and footnotes are not retained; 16 MiB input, 64 MiB XML, and 128 MiB output limits.")
+            } else if std::ptr::eq(operation, &EPUB_TEXT) {
+                Some("EPUB spine text extraction only; images and layout are not retained; UTF-8 members, 16 MiB input, 64 MiB content, and 128 MiB output limits.")
             } else {
                 None
             },
@@ -1150,12 +1205,16 @@ mod tests {
     #[test]
     fn subtitle_conversion_supports_all_four_formats_in_batches() {
         let engines = Engines { ffmpeg: true, ..Engines::default() };
-        for input in ["ass", "srt", "ssa", "vtt"] {
+        for input in ["ass", "ssa"] {
             assert_eq!(output_extensions_for(input, engines), ["ass", "srt", "ssa", "vtt"]);
+        }
+        for input in ["srt", "vtt"] {
+            assert_eq!(output_extensions_for(input, engines).len(), 3);
         }
         assert!(operation_for("srt", "ssa", engines).is_some());
         assert!(operation_for("ssa", "srt", engines).is_some());
         assert!(operation_for("vtt", "ass", engines).is_some());
+        assert_eq!(operation_for("srt", "vtt", engines).unwrap().engine, Engine::BuiltIn);
     }
 
     #[test]
@@ -1255,6 +1314,25 @@ mod tests {
         assert_eq!(operation_for("html", "txt", Engines::default()).unwrap().engine, Engine::BuiltIn);
         assert_eq!(operation_for("html", "md", Engines::default()).unwrap().engine, Engine::BuiltIn);
         assert_eq!(operation_for("md", "docx", Engines { pandoc: true, ..Engines::default() }).unwrap().engine, Engine::Pandoc);
+        assert_eq!(operation_for("docx", "txt", Engines::default()).unwrap().engine, Engine::BuiltIn);
+        assert_eq!(operation_for("odt", "md", Engines::default()).unwrap().engine, Engine::BuiltIn);
+        assert_eq!(operation_for("epub", "txt", Engines::default()).unwrap().engine, Engine::BuiltIn);
+        assert_eq!(operation_for("epub", "md", Engines::default()).unwrap().engine, Engine::BuiltIn);
+        assert!(operation_for("epub", "docx", Engines::default()).is_none());
+        assert_eq!(operation_for("epub", "docx", Engines { pandoc: true, ..Engines::default() }).unwrap().engine, Engine::Pandoc);
+        assert!(is_native_document_conversion("DOCX", "TXT"));
+        assert!(is_native_document_conversion("EPUB", "MD"));
+        assert!(operation_for("docx", "html", Engines::default()).is_none());
+        assert_eq!(operation_for("docx", "html", Engines { pandoc: true, ..Engines::default() }).unwrap().engine, Engine::Pandoc);
+    }
+
+    #[test]
+    fn srt_and_vtt_conversion_is_built_in_without_ffmpeg() {
+        assert_eq!(operation_for("srt", "vtt", Engines::default()).unwrap().engine, Engine::BuiltIn);
+        assert_eq!(operation_for("vtt", "srt", Engines::default()).unwrap().engine, Engine::BuiltIn);
+        assert!(operation_for("ass", "srt", Engines::default()).is_none());
+        assert!(is_native_subtitle_conversion("SRT", "VTT"));
+        assert!(!is_native_subtitle_conversion("srt", "srt"));
     }
 
     #[test]
@@ -1468,9 +1546,12 @@ mod tests {
         };
         assert_eq!(
             operation_for("DOCX", "md", engines).unwrap().engine,
-            Engine::Pandoc
+            Engine::BuiltIn
         );
-        assert!(operation_for("docx", "md", Engines::default()).is_none());
+        assert_eq!(
+            operation_for("docx", "md", Engines::default()).unwrap().engine,
+            Engine::BuiltIn
+        );
         assert_eq!(
             operation_for(
                 "cr3",

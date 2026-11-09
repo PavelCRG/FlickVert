@@ -1423,7 +1423,7 @@ dependencies = [
 
 [[package]]
 name = "flickvert"
-version = "0.1.11"
+version = "0.1.12"
 dependencies = [
  "calamine",
  "csv",
@@ -1433,6 +1433,7 @@ dependencies = [
  "image",
  "lopdf",
  "pulldown-cmark",
+ "quick-xml 0.39.3",
  "resvg",
  "rust_xlsxwriter",
  "serde",
