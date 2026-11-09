@@ -585,7 +585,7 @@ button:disabled {
 .welcome-page {
   max-width: 690px;
   padding-top: 54px;
-  animation: welcome-enter .18s cubic-bezier(.2, .75, .25, 1) both;
+  animation: welcome-enter .24s cubic-bezier(.22, .8, .25, 1) both;
 }
 
 .welcome-mark {
@@ -639,6 +639,14 @@ button:disabled {
   border: 1px solid var(--line);
   border-radius: 9px;
   background: var(--surface);
+  animation: welcome-enter .24s cubic-bezier(.22, .8, .25, 1) both;
+}
+
+.welcome-steps article:nth-child(2) { animation-delay: 60ms; }
+.welcome-steps article:nth-child(3) { animation-delay: 120ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-page, .welcome-steps article { animation: none; }
 }
 
 .welcome-steps article > span {
@@ -839,8 +847,8 @@ button:disabled {
 }
 
 .queue-open-button {
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
   display: grid;
   flex: none;
   place-items: center;
@@ -964,14 +972,16 @@ button:disabled {
 }
 
 .image-editor-tools button {
-  padding: 7px 10px;
+  min-height: 34px;
+  padding: 6px 11px;
   border: 1px solid transparent;
-  border-radius: 5px;
+  border-radius: 7px;
   background: transparent;
   color: var(--muted);
   font-size: 11px;
   white-space: nowrap;
   cursor: pointer;
+  transition: border-color .14s ease, background-color .14s ease, color .14s ease;
 }
 
 .image-editor-tools button:hover, .image-editor-tools button.selected {
@@ -1289,19 +1299,34 @@ button:disabled {
 
 .pdf-merge-list li > div {
   display: flex;
-  gap: 4px;
+  gap: 6px;
 }
 
-.pdf-merge-list .icon-button {
-  width: 32px;
-  height: 32px;
+.icon-button {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  flex: none;
+  place-items: center;
   border: 1px solid var(--line);
-  border-radius: 5px;
-  background: var(--surface-2);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
   cursor: pointer;
+  transition: border-color .14s ease, background-color .14s ease, color .14s ease, transform .14s ease;
 }
 
-.pdf-merge-list .icon-button:disabled {
+.icon-button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.icon-button:active:not(:disabled) {
+  transform: scale(.96);
+}
+
+.icon-button:disabled {
   opacity: .4;
   cursor: default;
 }
@@ -1467,21 +1492,7 @@ button:disabled {
 
 .pdf-pages-actions {
   display: flex;
-  gap: 4px;
-}
-
-.pdf-pages-actions .icon-button {
-  width: 32px;
-  height: 32px;
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  background: var(--surface-2);
-  cursor: pointer;
-}
-
-.pdf-pages-actions .icon-button:disabled {
-  opacity: .4;
-  cursor: default;
+  gap: 6px;
 }
 
 .pdf-pages-content .image-editor-save {

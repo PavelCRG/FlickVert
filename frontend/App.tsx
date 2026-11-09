@@ -18,9 +18,10 @@ import { QuickStartPage } from './app/QuickStartPage'
 import { HomePage } from './app/HomePage'
 import { ToolsPage } from './app/ToolsPage'
 import type { Engines, ConversionCatalogItem, OperationQueueItem } from './app/types'
+import { completeFirstRun, firstRunSection } from './app/first-run'
 
 export default function App() {
-  const [section, setSection] = useState<Section>('home')
+  const [section, setSection] = useState<Section>(() => firstRunSection(localStorage))
   const mainRef = useRef<HTMLElement>(null)
   const previousSection = useRef(section)
   const [settingsPage, setSettingsPage] = useState<SettingsPage>('general')
@@ -60,6 +61,7 @@ export default function App() {
   const toggleFavorite = (id: string) => updatePreferences({ favoriteActions: favoriteIds.includes(id) ? favoriteIds.filter((favorite) => favorite !== id) : [...favoriteIds, id] })
   useEffect(() => {
     if (previousSection.current === section) return
+    if (previousSection.current === 'guide') completeFirstRun(localStorage)
     previousSection.current = section
     if (document.activeElement === document.body) mainRef.current?.focus()
   }, [section])
@@ -314,7 +316,6 @@ export default function App() {
     <main ref={mainRef} className="main" tabIndex={0}>
       {section === 'home' ? <HomePage
         preferences={preferences}
-        engines={engines}
         queue={operationQueue}
         setQueue={setOperationQueue}
         pickError={pickError}
@@ -338,10 +339,10 @@ export default function App() {
         onChooseFiles={() => void chooseFiles()}
         onToggleFavorite={toggleFavorite}
       /> : section === 'guide' ? <QuickStartPage
-        preferences={preferences}
         tr={tr}
         onHome={dismissGuide}
         onChooseFiles={() => { dismissGuide(); void chooseFiles() }}
+        onExploreEngines={() => openToolCategory('optional-engines')}
       /> : <div className="settings-layout">
         <SettingsNavigation settingsPage={settingsPage} setSettingsPage={setSettingsPage} tr={tr}/>
         <SettingsView

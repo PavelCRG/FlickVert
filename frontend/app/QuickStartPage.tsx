@@ -1,30 +1,28 @@
 import { AppIcon } from '../icons/AppIcon'
-import type { AppSettings } from '../settings'
 import type { MessageKey } from '../i18n'
-import { modifierLabel } from './keyboard'
 
-export function QuickStartPage({ preferences, tr, onHome, onChooseFiles }: {
-  preferences: AppSettings
+export function QuickStartPage({ tr, onHome, onChooseFiles, onExploreEngines }: {
   tr: (key: MessageKey) => string
   onHome: () => void
   onChooseFiles: () => void
+  onExploreEngines: () => void
 }) {
   return <div className="page welcome-page">
     <p className="welcome-eyebrow">{tr('Quick start')}</p>
     <h1>{tr('Welcome to FlickVert')}</h1>
-    <p className="welcome-intro">{tr('The file tools you need, right where you work.')}</p>
+    <p className="welcome-intro">{tr('Choose a file to get started')}</p>
     <div className="welcome-steps">
-      <article><span>1</span><div><strong>{tr('Drag while holding the left mouse button.')}</strong><p>{tr('Select a file in Explorer or Finder, then use the shortcut or choose files here.')}</p></div></article>
-      <article><span>2</span><div><strong>{tr('Drag modifiers')}</strong><p>{tr('Formats modifier')}: {modifierLabel(preferences.dragModifiers.convert)} · {tr('Tools modifier')}: {modifierLabel(preferences.dragModifiers.tools)} · {tr('File actions modifier')}: {modifierLabel(preferences.dragModifiers.actions)}. {tr('Drop on an available action. Press Escape to cancel.')}</p></div></article>
+      <article><span>1</span><div><strong>{tr('Choose files')}</strong><p>{tr('Click below to browse or drag a file from File Explorer.')}</p></div></article>
+      <article><span>2</span><div><strong>{tr('Pick a compatible action')}</strong><p>{tr('FlickVert shows actions for your file. Built-in tools work immediately.')}</p></div></article>
+      <article><span>3</span><div><strong>{tr('Save your result')}</strong><p>{tr('Choose a format and location. The original file stays unchanged.')}</p></div></article>
     </div>
     <div className="welcome-details">
-      <div><span>{tr('Your configured shortcut:')}</span><kbd>{preferences.shortcut.split('+').map((key) => key === 'CTRL' ? 'Ctrl' : key === 'ALT' ? 'Alt' : key === 'SHIFT' ? 'Shift' : 'Space').join(' + ')}</kbd></div>
-      <p>{tr('Optional engines only enable the formats they support.')}</p>
-      <p>{tr('Closing the window keeps FlickVert running in the tray. Use Quit in the tray menu to exit.')}</p>
+      <p>{tr('Most everyday conversions are built in. Optional engines add audio/video, Office and specialized-format support.')}</p>
+      <button className="text-button" onClick={onExploreEngines}>{tr('Explore optional engines')}</button>
     </div>
     <div className="welcome-actions">
-      <button className="primary-button" onClick={onHome}><AppIcon name="home"/>{tr('Start using FlickVert')}</button>
-      <button className="secondary-button" onClick={onChooseFiles}><AppIcon name="file-plus"/>{tr('Choose files')}</button>
+      <button className="primary-button" onClick={onChooseFiles}><AppIcon name="file-plus"/>{tr('Choose files')}</button>
+      <button className="secondary-button" onClick={onHome}><AppIcon name="home"/>{tr('Start using FlickVert')}</button>
     </div>
   </div>
 }

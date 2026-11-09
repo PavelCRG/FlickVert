@@ -91,9 +91,12 @@ html:has(.quick-shell), body:has(.quick-shell), #root:has(.quick-shell) {
 .zip-preview li label span { overflow-wrap: anywhere; }
 .zip-preview li small { flex: none; color: color-mix(in srgb, CanvasText 55%, transparent); }
 .zip-preview .zip-select-actions { display: flex; gap: 6px; }
-.zip-preview .zip-select-actions button { min-height: 24px; padding: 3px 7px; font-size: 10px; }
+.zip-preview .zip-select-actions button { min-height: 32px; padding: 5px 9px; font-size: 11px; }
 .zip-preview footer { display: flex; justify-content: flex-end; gap: 8px; }
-.zip-preview button { min-height: 28px; padding: 4px 9px; border: 1px solid color-mix(in srgb, CanvasText 20%, transparent); border-radius: 6px; background: Canvas; color: CanvasText; font: inherit; cursor: pointer; }
+.zip-preview button { min-height: 34px; padding: 6px 11px; border: 1px solid color-mix(in srgb, CanvasText 20%, transparent); border-radius: 8px; background: Canvas; color: CanvasText; font: inherit; cursor: pointer; transition: border-color .14s ease, background-color .14s ease, color .14s ease, transform .14s ease; }
+.zip-preview button:hover:not(:disabled) { border-color: color-mix(in srgb, var(--wheel-accent) 45%, CanvasText 20%); background: color-mix(in srgb, var(--wheel-accent) 8%, Canvas); }
+.zip-preview .zip-confirm:hover:not(:disabled) { border-color: color-mix(in srgb, var(--wheel-accent) 88%, black); background: color-mix(in srgb, var(--wheel-accent) 88%, black); color: white; }
+.zip-preview button:active:not(:disabled) { transform: scale(.98); }
 .zip-preview .zip-confirm { border-color: var(--wheel-accent); background: var(--wheel-accent); color: white; }
 .zip-preview button:disabled { opacity: .55; cursor: not-allowed; }
 .quick-empty .quick-orbit::before { display: none; }
