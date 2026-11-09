@@ -48,9 +48,6 @@ pub(crate) fn convert_file(
             imagemagick: true,
             libreoffice: true,
             poppler: true,
-            pdfunite: true,
-            pdfsplit: true,
-            qpdf: true,
         };
         return Err(operation_error(
             if operations::operation_for(&extension, &output_extension, all_engines).is_some() {
@@ -87,6 +84,45 @@ pub(crate) fn convert_file(
             .file_stem()
             .and_then(|value| value.to_str())
             .unwrap_or("converted");
+        if operation.engine == operations::Engine::BuiltIn {
+            let output_temp = work_dir.join(format!("converted.{output_extension}"));
+            if operations::is_delimited_input(&extension) {
+                delimited_conversion::convert_delimited(&input, &output_temp, &output_extension)
+                    .map_err(|_| operation_error("conversion"))?;
+            } else if operations::is_spreadsheet_input(&extension) {
+                spreadsheet_conversion::spreadsheet_to_delimited(
+                    &input,
+                    &output_temp,
+                    &output_extension,
+                )
+                .map_err(|_| operation_error("conversion"))?;
+            } else if operations::is_pdf_text_conversion(&extension, &output_extension) {
+                pdf_conversion::pdf_to_text(&input, &output_temp, &output_extension)
+                    .map_err(|_| operation_error("conversion"))?;
+            } else {
+                image_conversion::convert_image(
+                    &input,
+                    &output_temp,
+                    &output_extension,
+                    quality.unwrap_or(88),
+                    width,
+                    height,
+                )
+                .map_err(|_| operation_error("conversion"))?;
+            }
+            if cancelled.load(Ordering::Acquire) {
+                return Err(operation_error("cancelled"));
+            }
+            let destination = destination_for(&input, destination_folder.as_deref())
+                .map_err(|_| operation_error("access"))?;
+            return files::write_output_file(
+                &destination,
+                &format!("{stem}.{output_extension}"),
+                &output_temp,
+            )
+            .map(|path| path.to_string_lossy().into_owned())
+            .map_err(|_| operation_error("write"));
+        }
         if operation.engine == operations::Engine::Poppler {
             let destination = destination_for(&input, destination_folder.as_deref())
                 .map_err(|_| operation_error("access"))?;
@@ -133,6 +169,7 @@ pub(crate) fn convert_file(
             work_dir.join(format!("converted.{output_extension}"))
         };
         let (executable, mut args) = match operation.engine {
+            operations::Engine::BuiltIn => unreachable!(),
             operations::Engine::Ffmpeg => (
                 operations::find_executable("ffmpeg").ok_or_else(|| operation_error("engine"))?,
                 if ["png", "jpg"].contains(&output_extension.as_str()) {

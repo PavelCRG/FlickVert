@@ -24,8 +24,6 @@ pub(crate) fn split_pdf_pages(
     if !operations::valid_pdf_page_numbers(&page_numbers, page_count) {
         return Err(operation_error("unsupported"));
     }
-    let pdfseparate =
-        operations::find_executable("pdfseparate").ok_or_else(|| operation_error("engine"))?;
     let destination = destination_for(&input, destination_folder.as_deref())
         .map_err(|_| operation_error("access"))?;
     let work_root = app
@@ -48,45 +46,6 @@ pub(crate) fn split_pdf_pages(
     };
     let work_dir = TemporaryDirectory(work_dir);
     let result = (|| {
-        let pattern = work_dir.join("page-%d.pdf");
-        let mut ranges = Vec::<(u32, u32)>::new();
-        for page in &page_numbers {
-            if let Some(last) = ranges.last_mut() {
-                if last.1.checked_add(1) == Some(*page) {
-                    last.1 = *page;
-                    continue;
-                }
-            }
-            ranges.push((*page, *page));
-        }
-        for (start, end) in ranges {
-            let args = operations::pdf_split_args(&input, start, end, &pattern)
-                .ok_or_else(|| operation_error("unsupported"))?;
-            let output = operations::run(&pdfseparate, &args).map_err(process_error)?;
-            if !output.status.success() {
-                return Err(
-                    if String::from_utf8_lossy(&output.stderr)
-                        .to_ascii_lowercase()
-                        .contains("encrypt")
-                    {
-                        operation_error("protected")
-                    } else {
-                        operation_error("conversion")
-                    },
-                );
-            }
-        }
-        for page in &page_numbers {
-            let extracted = work_dir.join(format!("page-{page}.pdf"));
-            if !extracted.is_file()
-                || fs::metadata(&extracted)
-                    .map_err(|_| operation_error("access"))?
-                    .len()
-                    == 0
-            {
-                return Err(operation_error("conversion"));
-            }
-        }
         let stem = input
             .file_stem()
             .and_then(|value| value.to_str())
@@ -94,6 +53,10 @@ pub(crate) fn split_pdf_pages(
         let mut written = Vec::with_capacity(page_numbers.len());
         for page in &page_numbers {
             let extracted = work_dir.join(format!("page-{page}.pdf"));
+            if pdf_conversion::split_pdf_page(&input, *page, &extracted).is_err() {
+                for path in written { let _ = fs::remove_file(path); }
+                return Err(operation_error("conversion"));
+            }
             match files::write_output_file(
                 &destination,
                 &format!("{stem}-page-{page}.pdf"),
@@ -147,7 +110,6 @@ pub(crate) fn edit_pdf_pages(
     {
         return Err(operation_error("unsupported"));
     }
-    let qpdf = operations::find_executable("qpdf").ok_or_else(|| operation_error("engine"))?;
     let destination = destination_for(&input, destination_folder.as_deref())
         .map_err(|_| operation_error("access"))?;
     let work_root = app
@@ -170,48 +132,9 @@ pub(crate) fn edit_pdf_pages(
     };
     let work_dir = TemporaryDirectory(work_dir);
     let result = (|| {
-        let rotations = rotations
-            .iter()
-            .enumerate()
-            .map(|(index, angle)| (index as u32 + 1, *angle))
-            .collect::<Vec<_>>();
-        let rotated = work_dir.join("rotated.pdf");
         let ordered = work_dir.join("edited.pdf");
-        let source = if rotations.iter().any(|(_, angle)| *angle != 0) {
-            let args = operations::pdf_rotate_args(&input, &rotated, &rotations, page_count)
-                .ok_or_else(|| operation_error("unsupported"))?;
-            let output = operations::run(&qpdf, &args).map_err(process_error)?;
-            if !output.status.success() {
-                return Err(
-                    if String::from_utf8_lossy(&output.stderr)
-                        .to_ascii_lowercase()
-                        .contains("encrypt")
-                    {
-                        operation_error("protected")
-                    } else {
-                        operation_error("conversion")
-                    },
-                );
-            }
-            rotated.as_path()
-        } else {
-            input.as_path()
-        };
-        let args = operations::pdf_page_order_args(source, &ordered, &page_order, page_count)
-            .ok_or_else(|| operation_error("unsupported"))?;
-        let output = operations::run(&qpdf, &args).map_err(process_error)?;
-        if !output.status.success() {
-            return Err(
-                if String::from_utf8_lossy(&output.stderr)
-                    .to_ascii_lowercase()
-                    .contains("encrypt")
-                {
-                    operation_error("protected")
-                } else {
-                    operation_error("conversion")
-                },
-            );
-        }
+        pdf_conversion::edit_pdf_pages(&input, &page_order, &rotations, &ordered)
+            .map_err(|_| operation_error("conversion"))?;
         if !ordered.is_file()
             || fs::metadata(&ordered)
                 .map_err(|_| operation_error("access"))?
@@ -255,8 +178,6 @@ pub(crate) fn merge_pdf_files(
         }
         inputs.push(input);
     }
-    let pdfunite =
-        operations::find_executable("pdfunite").ok_or_else(|| operation_error("engine"))?;
     let work_root = app
         .path()
         .app_cache_dir()
@@ -278,21 +199,8 @@ pub(crate) fn merge_pdf_files(
     let work_dir = TemporaryDirectory(work_dir);
     let result = (|| {
         let output_temp = work_dir.join("merged.pdf");
-        let args = operations::pdf_merge_args(&inputs, &output_temp)
-            .ok_or_else(|| operation_error("unsupported"))?;
-        let output = operations::run(&pdfunite, &args).map_err(process_error)?;
-        if !output.status.success() {
-            return Err(
-                if String::from_utf8_lossy(&output.stderr)
-                    .to_ascii_lowercase()
-                    .contains("encrypt")
-                {
-                    operation_error("protected")
-                } else {
-                    operation_error("conversion")
-                },
-            );
-        }
+        pdf_conversion::merge_pdf_files(&inputs, &output_temp)
+            .map_err(|_| operation_error("conversion"))?;
         if !output_temp.is_file()
             || fs::metadata(&output_temp)
                 .map_err(|_| operation_error("access"))?

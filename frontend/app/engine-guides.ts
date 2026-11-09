@@ -6,7 +6,6 @@ const pages: Record<string, string> = {
   ImageMagick: 'https://imagemagick.org/download/',
   LibreOffice: 'https://www.libreoffice.org/download/',
   Poppler: 'https://poppler.freedesktop.org/',
-  qpdf: 'https://github.com/qpdf/qpdf/releases',
 }
 
 export function engineGuides(engine: string): EngineGuide[] {

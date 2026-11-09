@@ -21,6 +21,12 @@ tauri-plugin-process = "2.4.0"
 tauri-plugin-opener = "2.7.2"
 unicode-normalization = "0.1.25"
 tauri-plugin-notification = "2"
+image = { version = "0.25.10", default-features = false, features = ["avif", "bmp", "gif", "jpeg", "png", "tiff", "webp"] }
+heifer = { version = "=0.4.0", features = ["image"] }
+csv = "1.4.0"
+rust_xlsxwriter = { version = "0.102.0", default-features = false, features = ["constant_memory"] }
+calamine = "0.38.0"
+lopdf = { version = "=0.47.0", default-features = false }
 
 [profile.release]
 panic = "abort"

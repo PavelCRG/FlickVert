@@ -3,13 +3,17 @@
 mod app;
 mod archive;
 mod commands;
+mod delimited_conversion;
 mod files;
 mod file_signatures;
+mod image_conversion;
 mod input;
 mod operations;
+mod pdf_conversion;
 mod quick_window;
 mod selection;
 mod shell_integration;
+mod spreadsheet_conversion;
 mod state;
 mod workspaces;
 
@@ -18,7 +22,6 @@ use state::*;
 use workspaces::*;
 use std::{
     collections::{HashMap, HashSet},
-    ffi::OsString,
     fs,
     io::{Read, Write},
     path::{Path, PathBuf},

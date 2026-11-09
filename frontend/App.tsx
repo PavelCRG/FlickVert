@@ -48,7 +48,7 @@ export default function App() {
   const [pdfSplitPath, setPdfSplitPath] = useState<string | null>(null)
   const [pdfPagesPath, setPdfPagesPath] = useState<string | null>(null)
   const [videoThumbnailPath, setVideoThumbnailPath] = useState<string | null>(null)
-  const [engines, setEngines] = useState<Engines>({ ffmpeg: false, pandoc: false, imagemagick: false, libreoffice: false, poppler: false, pdfunite: false, pdfsplit: false, qpdf: false })
+  const [engines, setEngines] = useState<Engines>({ ffmpeg: false, pandoc: false, imagemagick: false, libreoffice: false, poppler: false })
   const [videoCodecs, setVideoCodecs] = useState<string[]>([])
   const [audioFormats, setAudioFormats] = useState<string[]>([])
   const [videoScalingAvailable, setVideoScalingAvailable] = useState<boolean | null>(null)

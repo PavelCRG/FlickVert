@@ -21,6 +21,7 @@ pub struct Operation {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Engine {
+    BuiltIn,
     Ffmpeg,
     Pandoc,
     ImageMagick,
@@ -36,9 +37,6 @@ pub struct Engines {
     pub imagemagick: bool,
     pub libreoffice: bool,
     pub poppler: bool,
-    pub pdfunite: bool,
-    pub pdfsplit: bool,
-    pub qpdf: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
@@ -85,6 +83,7 @@ pub struct ConversionCatalogItem {
     pub output_extensions: &'static [&'static str],
     pub engine: &'static str,
     pub available: bool,
+    pub limitation: Option<&'static str>,
 }
 
 const AUDIO: Operation = Operation {
@@ -125,11 +124,11 @@ const RAW: Operation = Operation {
     output_extensions: &["png", "jpg", "tiff"],
 };
 const IMAGE: Operation = Operation {
-    engine: Engine::ImageMagick,
+    engine: Engine::BuiltIn,
     input_extensions: &[
-        "png", "jpg", "jpeg", "webp", "gif", "bmp", "avif", "heic", "heif", "svg", "tif", "tiff",
+        "png", "jpg", "jpeg", "webp", "gif", "bmp", "heic", "heif", "tif", "tiff",
     ],
-    output_extensions: &["png", "jpg", "webp", "bmp", "heic", "tiff", "avif", "pdf"],
+    output_extensions: &["png", "jpg", "webp", "bmp", "tiff", "avif", "heic", "pdf"],
 };
 const RASTER_PNG: Operation = Operation {
     engine: Engine::Ffmpeg,
@@ -159,6 +158,21 @@ const SPREADSHEET: Operation = Operation {
     input_extensions: &["xls", "xlsx", "ods", "csv", "tsv"],
     output_extensions: &["xlsx", "ods", "csv", "tsv"],
 };
+const DELIMITED: Operation = Operation {
+    engine: Engine::BuiltIn,
+    input_extensions: &["csv", "tsv"],
+    output_extensions: &["csv", "tsv", "xlsx"],
+};
+const SPREADSHEET_READ: Operation = Operation {
+    engine: Engine::BuiltIn,
+    input_extensions: &["xlsx"],
+    output_extensions: &["csv", "tsv"],
+};
+const PDF_TEXT: Operation = Operation {
+    engine: Engine::BuiltIn,
+    input_extensions: &["pdf"],
+    output_extensions: &["txt", "md"],
+};
 const SLIDE_IMAGES: Operation = Operation {
     engine: Engine::LibreOffice,
     input_extensions: &["ppt", "pptx", "odp"],
@@ -167,7 +181,7 @@ const SLIDE_IMAGES: Operation = Operation {
 const PDF: Operation = Operation {
     engine: Engine::Poppler,
     input_extensions: &["pdf"],
-    output_extensions: &["png", "jpg", "txt", "md"],
+    output_extensions: &["png", "jpg"],
 };
 const PDF_DOCUMENT: Operation = Operation {
     engine: Engine::Poppler,
@@ -175,8 +189,8 @@ const PDF_DOCUMENT: Operation = Operation {
     output_extensions: &["docx", "epub"],
 };
 
-const QUICK_IMAGE_INPUTS: &[&str] = &["png", "jpg", "jpeg", "webp", "gif", "bmp", "svg"];
-const QUICK_IMAGE_OUTPUTS: &[&str] = &["png", "jpg", "webp", "pdf"];
+const QUICK_IMAGE_INPUTS: &[&str] = &["png", "jpg", "jpeg", "webp", "gif", "bmp"];
+const QUICK_IMAGE_OUTPUTS: &[&str] = &["png", "jpg", "webp", "bmp", "tiff", "avif", "heic", "pdf"];
 
 pub fn quick_image_formats(extension: &str) -> Option<Vec<String>> {
     QUICK_IMAGE_INPUTS
@@ -205,6 +219,19 @@ pub fn is_subtitle_input(extension: &str) -> bool {
     SUBTITLE.input_extensions.contains(&extension.to_ascii_lowercase().as_str())
 }
 
+pub fn is_delimited_input(extension: &str) -> bool {
+    DELIMITED.input_extensions.contains(&extension.to_ascii_lowercase().as_str())
+}
+
+pub fn is_spreadsheet_input(extension: &str) -> bool {
+    SPREADSHEET_READ.input_extensions.contains(&extension.to_ascii_lowercase().as_str())
+}
+
+pub fn is_pdf_text_conversion(input_extension: &str, output_extension: &str) -> bool {
+    PDF_TEXT.input_extensions.contains(&input_extension.to_ascii_lowercase().as_str())
+        && PDF_TEXT.output_extensions.contains(&output_extension.to_ascii_lowercase().as_str())
+}
+
 pub fn operations_for(extension: &str, engines: Engines) -> Vec<Operation> {
     let extension = extension.to_ascii_lowercase();
     catalog_operations(engines)
@@ -218,8 +245,12 @@ pub fn operations_for(extension: &str, engines: Engines) -> Vec<Operation> {
 
 fn catalog_operations(
     engines: Engines,
-) -> [(&'static Operation, &'static str, &'static str, bool); 14] {
+) -> [(&'static Operation, &'static str, &'static str, bool); 17] {
     [
+        (&IMAGE, "Images and PDFs", "Built in", true),
+        (&DELIMITED, "Documents", "Built in", true),
+        (&SPREADSHEET_READ, "Documents", "Built in", true),
+        (&PDF_TEXT, "PDF documents", "Built in", true),
         (&AUDIO, "Audio and video", "FFmpeg", engines.ffmpeg),
         (&VIDEO, "Audio and video", "FFmpeg", engines.ffmpeg),
         (&SUBTITLE, "Audio and video", "FFmpeg", engines.ffmpeg),
@@ -228,12 +259,6 @@ fn catalog_operations(
         (&GIF_VIDEO, "Images and PDFs", "FFmpeg", engines.ffmpeg),
         (&DOCUMENT, "Documents", "Pandoc", engines.pandoc),
         (&RAW, "Images and PDFs", "ImageMagick", engines.imagemagick),
-        (
-            &IMAGE,
-            "Images and PDFs",
-            "ImageMagick",
-            engines.imagemagick,
-        ),
         (&OFFICE_PDF, "Documents", "LibreOffice", engines.libreoffice),
         (
             &SPREADSHEET,
@@ -264,6 +289,7 @@ pub fn conversion_catalog(engines: Engines) -> Vec<ConversionCatalogItem> {
         output_extensions: QUICK_IMAGE_OUTPUTS,
         engine: "Built in",
         available: true,
+        limitation: None,
     }];
     items.extend(catalog_operations(engines).into_iter().map(
         |(operation, category, engine, available)| ConversionCatalogItem {
@@ -272,6 +298,13 @@ pub fn conversion_catalog(engines: Engines) -> Vec<ConversionCatalogItem> {
             output_extensions: operation.output_extensions,
             engine,
             available,
+            limitation: if std::ptr::eq(operation, &SPREADSHEET_READ) {
+                Some("Built-in XLSX only; one sheet, 2,000,000 cells, and 128 MiB maximum.")
+            } else if std::ptr::eq(operation, &PDF_TEXT) {
+                Some("Extracts selectable text only; 128 MiB and 10,000 pages maximum.")
+            } else {
+                None
+            },
         },
     ));
     items
@@ -306,9 +339,6 @@ pub fn all_engine_status() -> Engines {
         imagemagick: find_executable("magick").is_some(),
         libreoffice: find_executable("soffice").is_some(),
         poppler: find_executable("pdftoppm").is_some() && find_executable("pdftotext").is_some(),
-        pdfunite: find_executable("pdfunite").is_some(),
-        pdfsplit: find_executable("pdfinfo").is_some() && find_executable("pdfseparate").is_some(),
-        qpdf: find_executable("qpdf").is_some(),
     }
 }
 
@@ -462,74 +492,18 @@ pub fn pandoc_args(input: &Path, output: &Path) -> Vec<OsString> {
     .to_vec()
 }
 
-pub fn pdf_merge_args(inputs: &[PathBuf], output: &Path) -> Option<Vec<OsString>> {
-    if inputs.len() < 2 { return None; }
-    Some(inputs.iter().map(|input| input.as_os_str().to_owned()).chain([output.as_os_str().to_owned()]).collect())
-}
-
 const MAX_PDF_SPLIT_PAGES: usize = 10_000;
-const MAX_PDF_EDIT_PAGES: usize = 3_000;
-
-pub fn parse_qpdf_page_count(output: &str) -> Option<u32> {
-    let count = output.trim().parse::<u32>().ok()?;
-    (count > 0 && count as usize <= MAX_PDF_EDIT_PAGES).then_some(count)
-}
-
-pub fn qpdf_encryption_status(exit_code: i32) -> Option<bool> {
-    match exit_code { 0 => Some(true), 2 => Some(false), _ => None }
-}
-
-pub fn valid_pdf_page_order(pages: &[u32], page_count: u32) -> bool {
-    page_count > 0 && page_count as usize <= MAX_PDF_EDIT_PAGES && pages.len() == page_count as usize && pages.iter().all(|page| *page > 0 && *page <= page_count) && pages.iter().copied().collect::<HashSet<_>>().len() == pages.len()
-}
-
-pub fn pdf_rotate_args(input: &Path, output: &Path, rotations: &[(u32, u16)], page_count: u32) -> Option<Vec<OsString>> {
-    if !valid_pdf_page_order(&(1..=page_count).collect::<Vec<_>>(), page_count) || rotations.iter().any(|(page, angle)| *page == 0 || *page > page_count || ![0, 90, 180, 270].contains(angle)) || rotations.iter().map(|(page, _)| page).collect::<HashSet<_>>().len() != rotations.len() { return None; }
-    let mut args = vec![input.as_os_str().to_owned(), output.as_os_str().to_owned()];
-    args.extend(rotations.iter().filter(|(_, angle)| *angle != 0).map(|(page, angle)| OsString::from(format!("--rotate=+{angle}:{page}"))));
-    Some(args)
-}
-
-pub fn pdf_page_order_args(input: &Path, output: &Path, pages: &[u32], page_count: u32) -> Option<Vec<OsString>> {
-    if !valid_pdf_page_order(pages, page_count) { return None; }
-    Some([input.as_os_str().to_owned(), output.as_os_str().to_owned(), OsString::from("--pages"), OsString::from("."), OsString::from(pages.iter().map(u32::to_string).collect::<Vec<_>>().join(",")), OsString::from("--")].into())
-}
 
 pub fn valid_pdf_page_numbers(pages: &[u32], page_count: u32) -> bool {
     page_count > 0 && !pages.is_empty() && pages.len() <= MAX_PDF_SPLIT_PAGES && pages.iter().all(|page| *page > 0 && *page <= page_count) && pages.iter().copied().collect::<HashSet<_>>().len() == pages.len()
 }
 
-pub fn parse_pdf_page_selection(value: &str, page_count: u32) -> Option<Vec<u32>> {
-    if page_count == 0 || value.trim().is_empty() { return None; }
-    let mut pages = Vec::new();
-    let mut seen = HashSet::new();
-    for item in value.split(',') {
-        let item = item.trim();
-        if item.is_empty() { return None; }
-        let mut range = item.split('-');
-        let start = range.next()?.trim().parse::<u32>().ok()?;
-        let end = match range.next() { Some(part) => part.trim().parse::<u32>().ok()?, None => start };
-        if range.next().is_some() || start == 0 || start > end || end > page_count || pages.len().saturating_add((end - start) as usize + 1) > MAX_PDF_SPLIT_PAGES { return None; }
-        for page in start..=end {
-            if !seen.insert(page) { return None; }
-            pages.push(page);
-        }
-    }
-    Some(pages)
+pub fn valid_pdf_page_order(pages: &[u32], page_count: u32) -> bool {
+    page_count > 0 && page_count as usize <= MAX_PDF_SPLIT_PAGES && pages.len() == page_count as usize
+        && pages.iter().all(|page| *page > 0 && *page <= page_count)
+        && pages.iter().copied().collect::<HashSet<_>>().len() == pages.len()
 }
 
-pub fn parse_pdf_page_count(info: &str) -> Option<u32> {
-    let count = info.lines().find_map(|line| {
-        let (key, value) = line.split_once(':')?;
-        key.trim().eq_ignore_ascii_case("pages").then(|| value.trim().parse::<u32>().ok()).flatten()
-    })?;
-    (count > 0).then_some(count)
-}
-
-pub fn pdf_split_args(input: &Path, start: u32, end: u32, output_pattern: &Path) -> Option<Vec<OsString>> {
-    if start == 0 || start > end || !output_pattern.to_string_lossy().contains("%d") { return None; }
-    Some([OsString::from("-f"), OsString::from(start.to_string()), OsString::from("-l"), OsString::from(end.to_string()), input.as_os_str().to_owned(), output_pattern.as_os_str().to_owned()].into())
-}
 
 pub fn imagemagick_args(
     input: &Path,
@@ -828,7 +802,7 @@ fn format_seconds(microseconds: u64) -> String {
 }
 
 pub fn run(executable: &Path, args: &[OsString]) -> io::Result<Output> {
-    Command::new(executable)
+    hidden_command(executable)
         .args(args)
         .stdin(Stdio::null())
         .output()
@@ -860,7 +834,7 @@ fn run_cancellable_with_timeout(
     timeout: Duration,
     mut on_progress: impl FnMut(u8),
 ) -> io::Result<Output> {
-    let mut child = Command::new(executable)
+    let mut child = hidden_command(executable)
         .args(args)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -917,6 +891,16 @@ fn run_cancellable_with_timeout(
         stdout,
         stderr: stderr_reader.join().unwrap_or_default(),
     })
+}
+
+fn hidden_command(executable: &Path) -> Command {
+    let mut command = Command::new(executable);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x08000000);
+    }
+    command
 }
 
 fn progress_percent(out_time_us: u64, duration_us: u64) -> u8 {
@@ -1165,32 +1149,6 @@ mod tests {
     }
 
     #[test]
-    fn pdf_merge_arguments_keep_user_order_and_paths_separate() {
-        let inputs = [PathBuf::from("first file.pdf"), PathBuf::from("second.pdf")];
-        let args = pdf_merge_args(&inputs, Path::new("merged output.pdf")).unwrap();
-        assert_eq!(args, ["first file.pdf", "second.pdf", "merged output.pdf"].map(OsString::from));
-        assert!(pdf_merge_args(&inputs[..1], Path::new("merged.pdf")).is_none());
-    }
-
-    #[test]
-    fn pdf_page_selection_accepts_pages_and_ranges_and_rejects_invalid_input() {
-        assert_eq!(parse_pdf_page_selection("1, 3-5, 8", 10), Some(vec![1, 3, 4, 5, 8]));
-        for invalid in ["", "1,", "0", "11", "3-1", "1,,2", "2,2", "1-x"] {
-            assert_eq!(parse_pdf_page_selection(invalid, 10), None, "{invalid}");
-        }
-    }
-
-    #[test]
-    fn pdfinfo_page_count_and_separate_arguments_are_parsed_safely() {
-        assert_eq!(parse_pdf_page_count("Title: report\nPages: 42\n"), Some(42));
-        assert_eq!(parse_pdf_page_count("Pages: 0\n"), None);
-        assert_eq!(parse_pdf_page_count("No page count\n"), None);
-        assert_eq!(pdf_split_args(Path::new("source file.pdf"), 3, 5, Path::new("page-%d.pdf")).unwrap(), ["-f", "3", "-l", "5", "source file.pdf", "page-%d.pdf"].map(OsString::from));
-        assert!(pdf_split_args(Path::new("source.pdf"), 0, 2, Path::new("page-%d.pdf")).is_none());
-        assert!(pdf_split_args(Path::new("source.pdf"), 5, 3, Path::new("page-%d.pdf")).is_none());
-    }
-
-    #[test]
     fn pdf_split_page_numbers_are_bounded_unique_and_inside_the_document() {
         assert!(valid_pdf_page_numbers(&[1, 4, 7], 7));
         assert!(!valid_pdf_page_numbers(&[], 7));
@@ -1198,26 +1156,6 @@ mod tests {
         assert!(!valid_pdf_page_numbers(&[8], 7));
         assert!(!valid_pdf_page_numbers(&[2, 2], 7));
         assert!(!valid_pdf_page_numbers(&vec![1; MAX_PDF_SPLIT_PAGES + 1], 1));
-    }
-
-    #[test]
-    fn qpdf_page_edit_arguments_validate_order_and_rotations() {
-        assert_eq!(parse_qpdf_page_count("3\n"), Some(3));
-        assert_eq!(parse_qpdf_page_count("0"), None);
-        assert_eq!(parse_qpdf_page_count("not a number"), None);
-        assert_eq!(qpdf_encryption_status(0), Some(true));
-        assert_eq!(qpdf_encryption_status(2), Some(false));
-        assert_eq!(qpdf_encryption_status(3), None);
-        let pages = [3, 1, 2];
-        assert!(valid_pdf_page_order(&pages, 3));
-        assert!(!valid_pdf_page_order(&[1, 1, 2], 3));
-        assert!(!valid_pdf_page_order(&[1, 2], 3));
-        let order = pdf_page_order_args(Path::new("source file.pdf"), Path::new("ordered.pdf"), &pages, 3).unwrap();
-        assert_eq!(order, ["source file.pdf", "ordered.pdf", "--pages", ".", "3,1,2", "--"].map(OsString::from));
-        let rotations = pdf_rotate_args(Path::new("source.pdf"), Path::new("rotated.pdf"), &[(2, 90), (3, 0)], 3).unwrap();
-        assert_eq!(rotations, ["source.pdf", "rotated.pdf", "--rotate=+90:2"].map(OsString::from));
-        assert!(pdf_rotate_args(Path::new("source.pdf"), Path::new("out.pdf"), &[(4, 90)], 3).is_none());
-        assert!(pdf_rotate_args(Path::new("source.pdf"), Path::new("out.pdf"), &[(2, 45)], 3).is_none());
     }
 
     #[test]
@@ -1272,12 +1210,30 @@ mod tests {
     }
 
     #[test]
-    fn tsv_conversion_is_offered_only_when_libreoffice_is_available() {
+    fn csv_tsv_conversion_is_native_while_office_spreadsheets_need_libreoffice() {
         let engines = Engines { libreoffice: true, ..Engines::default() };
         assert!(operation_for("tsv", "xlsx", engines).is_some());
-        assert!(operation_for("xlsx", "tsv", engines).is_some());
-        assert!(operation_for("tsv", "xlsx", Engines::default()).is_none());
+        assert_eq!(operation_for("tsv", "xlsx", engines).unwrap().engine, Engine::BuiltIn);
+        assert_eq!(operation_for("xlsx", "tsv", engines).unwrap().engine, Engine::BuiltIn);
+        assert!(operation_for("xls", "csv", Engines::default()).is_none());
+        assert!(operation_for("ods", "tsv", Engines::default()).is_none());
+        assert_eq!(operation_for("tsv", "csv", Engines::default()).unwrap().engine, Engine::BuiltIn);
+        assert_eq!(operation_for("csv", "tsv", Engines::default()).unwrap().engine, Engine::BuiltIn);
+        assert_eq!(operation_for("tsv", "xlsx", Engines::default()).unwrap().engine, Engine::BuiltIn);
+        assert!(operation_for("xlsx", "ods", Engines::default()).is_none());
         assert_eq!(spreadsheet_convert_args(Path::new("input.xlsx"), Path::new("out"), "tsv")[2], "tsv:Text - txt - csv (StarCalc):9,34,76,1");
+    }
+
+    #[test]
+    fn selectable_pdf_text_extraction_is_native_while_rasterization_uses_poppler() {
+        assert_eq!(operation_for("pdf", "txt", Engines::default()).unwrap().engine, Engine::BuiltIn);
+        assert_eq!(operation_for("pdf", "md", Engines::default()).unwrap().engine, Engine::BuiltIn);
+        assert_eq!(
+            operation_for("pdf", "png", Engines { poppler: true, ..Engines::default() }).unwrap().engine,
+            Engine::Poppler,
+        );
+        assert!(is_pdf_text_conversion("PDF", "TXT"));
+        assert!(!is_pdf_text_conversion("pdf", "png"));
     }
 
     #[test]
@@ -1381,20 +1337,19 @@ mod tests {
     }
 
     #[test]
-    fn ffmpeg_only_accelerates_alpha_safe_image_targets() {
+    fn built_in_image_conversions_do_not_depend_on_external_tools() {
         let engines = Engines {
-            ffmpeg: true,
             ..Engines::default()
         };
         assert_eq!(
             operation_for("jpg", "jpg", engines).unwrap().engine,
-            Engine::Ffmpeg
+            Engine::BuiltIn
         );
         assert_eq!(
             operation_for("png", "png", engines).unwrap().engine,
-            Engine::Ffmpeg
+            Engine::BuiltIn
         );
-        assert!(operation_for("png", "jpg", engines).is_none());
+        assert_eq!(operation_for("png", "jpg", engines).unwrap().engine, Engine::BuiltIn);
         assert!(operation_for("svg", "png", engines).is_none());
     }
 

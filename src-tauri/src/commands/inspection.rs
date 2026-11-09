@@ -236,51 +236,21 @@ pub(crate) fn audio_formats() -> Vec<&'static str> {
 
 #[tauri::command]
 pub(crate) fn pdf_merge_available() -> bool {
-    operations::all_engine_status().pdfunite
+    true
 }
 
 #[tauri::command]
 pub(crate) fn pdf_split_available() -> bool {
-    operations::all_engine_status().pdfsplit
+    true
 }
 
 #[tauri::command]
 pub(crate) fn pdf_edit_available() -> bool {
-    operations::all_engine_status().qpdf
+    true
 }
 
 pub(crate) fn read_qpdf_page_count(input: &Path) -> Result<u32, String> {
-    let qpdf = operations::find_executable("qpdf").ok_or_else(|| operation_error("engine"))?;
-    let encryption = operations::run(
-        &qpdf,
-        &[
-            OsString::from("--is-encrypted"),
-            input.as_os_str().to_owned(),
-        ],
-    )
-    .map_err(process_error)?;
-    match encryption
-        .status
-        .code()
-        .and_then(operations::qpdf_encryption_status)
-    {
-        Some(true) => return Err(operation_error("protected")),
-        Some(false) => {}
-        None => return Err(operation_error("conversion")),
-    }
-    let output = operations::run(
-        &qpdf,
-        &[
-            OsString::from("--show-npages"),
-            input.as_os_str().to_owned(),
-        ],
-    )
-    .map_err(process_error)?;
-    if !output.status.success() {
-        return Err(operation_error("conversion"));
-    }
-    operations::parse_qpdf_page_count(&String::from_utf8_lossy(&output.stdout))
-        .ok_or_else(|| operation_error("unsupported"))
+    pdf_conversion::pdf_page_count(input).map_err(|_| operation_error("conversion"))
 }
 
 #[tauri::command(async)]
@@ -301,13 +271,7 @@ pub(crate) fn pdf_edit_page_count(
 }
 
 pub(crate) fn read_pdf_page_count(input: &Path) -> Option<u32> {
-    let pdfinfo = operations::find_executable("pdfinfo")?;
-    let output = operations::run(&pdfinfo, &[input.as_os_str().to_owned()]).ok()?;
-    output
-        .status
-        .success()
-        .then(|| operations::parse_pdf_page_count(&String::from_utf8_lossy(&output.stdout)))
-        .flatten()
+    pdf_conversion::pdf_page_count(input).ok()
 }
 
 #[tauri::command(async)]

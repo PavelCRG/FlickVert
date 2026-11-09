@@ -69,6 +69,20 @@ test('settings help text is translated in every language', () => {
   }
 })
 
+test('spreadsheet conversion limitation is translated in every language', () => {
+  const key = 'Built-in XLSX only; one sheet, 2,000,000 cells, and 128 MiB maximum.'
+  assert.equal(t('en', key), key)
+  assert.notEqual(t('ru', key), key)
+  assert.notEqual(t('zh', key), key)
+})
+
+test('native PDF text extraction limitation is translated in every language', () => {
+  const key = 'Extracts selectable text only; 128 MiB and 10,000 pages maximum.'
+  assert.equal(t('en', key), key)
+  assert.notEqual(t('ru', key), key)
+  assert.notEqual(t('zh', key), key)
+})
+
 test('operation shortcut controls are translated in every language', () => {
   for (const key of ['Operation shortcuts', 'Not assigned', 'Remove shortcut', 'Operation shortcut conflicts or is unavailable.'] as const) {
     assert.equal(t('en', key), key)
