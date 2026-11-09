@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.13
+
+- Added customizable quick-menu colors and opacity controls, including a fully transparent preset, with backup and restore support.
+- Kept the conversion format label clear of the file name in the center preview.
+
 ## 0.1.11
 
 - Reflowed the base styles into readable rules and made the window usable at smaller sizes.
