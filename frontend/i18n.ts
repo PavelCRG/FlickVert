@@ -166,6 +166,7 @@ const messages = {
   'Open FlickVert actions from File Explorer.': ['Open FlickVert actions from File Explorer.', 'Open FlickVert actions from File Explorer.'],
   'Follow your system theme or choose one.': ['Follow your system theme or choose one.', 'Follow your system theme or choose one.'],
   'Choose a preset or set a custom color.': ['Choose a preset or set a custom color.', 'Choose a preset or set a custom color.'],
+  'Quick menu theme': ['Quick menu theme', 'Тема кругового меню'], 'Theme preset': ['Theme preset', 'Предустановка темы'], 'Default': ['Default', 'По умолчанию'], 'Fully transparent': ['Fully transparent', 'Полностью прозрачная'], 'Custom': ['Custom', 'Собственная'], 'Circle background': ['Circle background', 'Фон круга'], 'Sectors': ['Sectors', 'Секторы'], 'Active sector': ['Active sector', 'Активный сектор'], 'Text and icons': ['Text and icons', 'Текст и значки'], 'Circle background opacity': ['Circle background opacity', 'Прозрачность фона круга'], 'Sector opacity': ['Sector opacity', 'Прозрачность секторов'],
   'Choose the language used across FlickVert.': ['Choose the language used across FlickVert.', 'Choose the language used across FlickVert.'],
   'Built-in XLSX only; one sheet, 2,000,000 cells, and 128 MiB maximum.': ['Built-in XLSX only; one sheet, 2,000,000 cells, and 128 MiB maximum.', '\u0412\u0441\u0442\u0440\u043e\u0435\u043d\u043e \u0442\u043e\u043b\u044c\u043a\u043e \u0434\u043b\u044f XLSX: \u043e\u0434\u0438\u043d \u043b\u0438\u0441\u0442, \u0434\u043e 2\u00a0000\u00a0000 \u044f\u0447\u0435\u0435\u043a \u0438 128 MiB.'],
   'Extracts selectable text only; 128 MiB and 10,000 pages maximum.': ['Extracts selectable text only; 128 MiB and 10,000 pages maximum.', '\u0418\u0437\u0432\u043b\u0435\u043a\u0430\u0435\u0442 \u0442\u043e\u043b\u044c\u043a\u043e \u0432\u044b\u0434\u0435\u043b\u044f\u0435\u043c\u044b\u0439 \u0442\u0435\u043a\u0441\u0442; \u0434\u043e 128 MiB \u0438 10\u00a0000 \u0441\u0442\u0440\u0430\u043d\u0438\u0446.'],
@@ -178,6 +179,7 @@ const messages = {
 export type MessageKey = keyof typeof messages
 const russianOverrides: Partial<Record<MessageKey, string>> = {
   'Orange': '\u041e\u0440\u0430\u043d\u0436\u0435\u0432\u044b\u0439',
+  'Quick menu theme': 'Тема кругового меню', 'Theme preset': 'Предустановка темы', 'Default': 'По умолчанию', 'Fully transparent': 'Полностью прозрачная', 'Custom': 'Собственная', 'Circle background': 'Фон круга', 'Sectors': 'Секторы', 'Active sector': 'Активный сектор', 'Text and icons': 'Текст и значки', 'Circle background opacity': 'Прозрачность фона круга', 'Sector opacity': 'Прозрачность секторов',
   'Home': '\u0413\u043b\u0430\u0432\u043d\u0430\u044f', 'Settings': '\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438', 'General': '\u041e\u0431\u0449\u0438\u0435',
   'Appearance': '\u0412\u043d\u0435\u0448\u043d\u0438\u0439 \u0432\u0438\u0434', 'Keyboard': '\u041a\u043b\u0430\u0432\u0438\u0430\u0442\u0443\u0440\u0430', 'Conversion': '\u041a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f',
   'Files': '\u0424\u0430\u0439\u043b\u044b', 'About': '\u041e \u043f\u0440\u043e\u0433\u0440\u0430\u043c\u043c\u0435', 'Quick start': '\u0411\u044b\u0441\u0442\u0440\u044b\u0439 \u0441\u0442\u0430\u0440\u0442',
@@ -240,6 +242,7 @@ const chinese: Record<string, string> = {
   'Installed': '\u5df2\u5b89\u88c5', 'Optional': '\u53ef\u9009',
   'Not installed': '\u672a\u5b89\u88c5',
   'Orange': '\u6a59\u8272',
+  'Quick menu theme': '快捷菜单主题', 'Theme preset': '主题预设', 'Default': '默认', 'Fully transparent': '完全透明', 'Custom': '自定义', 'Circle background': '圆形背景', 'Sectors': '扇区', 'Active sector': '当前扇区', 'Text and icons': '文字和图标', 'Circle background opacity': '圆形背景不透明度', 'Sector opacity': '扇区不透明度',
   'Review the main gestures and shortcuts.': '\u590d\u4e60\u4e3b\u8981\u624b\u52bf\u548c\u5feb\u6377\u952e\u3002',
   'Closing normally keeps FlickVert in the tray.': '\u6b63\u5e38\u5173\u95ed\u540e\uff0cFlickVert \u4f1a\u7ee7\u7eed\u7559\u5728\u7cfb\u7edf\u6258\u76d8\u4e2d\u3002',
   'Used when an action opens a terminal.': '\u6253\u5f00\u7ec8\u7aef\u65f6\u4f7f\u7528\u6b64\u9009\u9879\u3002',

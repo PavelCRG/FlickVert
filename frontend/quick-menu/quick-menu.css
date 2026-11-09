@@ -3,8 +3,10 @@ html:has(.quick-shell), body:has(.quick-shell), #root:has(.quick-shell) {
   overflow: hidden; background: transparent;
 }
 .quick-shell {
-  position: relative; width: 100%; height: 100%; color: CanvasText;
+  position: relative; width: 100%; height: 100%; color: var(--wheel-text, CanvasText);
   --wheel-accent-base: #315fce; --wheel-accent: var(--wheel-accent-base);
+  --wheel-background: #f8fafc; --wheel-sector: #e2e8f0; --wheel-active: #dbeafe; --wheel-text: #172033;
+  --wheel-background-opacity: 94%; --wheel-sector-opacity: 95%;
   color-scheme: light dark;
   font: 13px system-ui, -apple-system, "Segoe UI", sans-serif;
   user-select: none; pointer-events: none;
@@ -20,58 +22,59 @@ html:has(.quick-shell), body:has(.quick-shell), #root:has(.quick-shell) {
   position: absolute; inset: 1px; content: "";
   border: 1px solid color-mix(in srgb, var(--wheel-accent) 18%, transparent);
   border-radius: 50%; pointer-events: none;
+  background: color-mix(in srgb, var(--wheel-background) var(--wheel-background-opacity), transparent);
   box-shadow: 0 14px 42px #12203324;
 }
 .quick-segments { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .quick-segment {
-  fill: color-mix(in srgb, Canvas 95%, #cbd5e1);
-  stroke: color-mix(in srgb, CanvasText 11%, transparent);
+  fill: color-mix(in srgb, var(--wheel-sector) var(--wheel-sector-opacity), transparent);
+  stroke: color-mix(in srgb, var(--wheel-text) 22%, transparent);
   stroke-width: 1.2; stroke-linejoin: round; cursor: pointer; pointer-events: visiblePainted;
   transition: fill .13s ease, stroke .13s ease, stroke-width .13s ease;
 }
 .quick-segment:hover, .quick-segment.active, .quick-segment:focus-visible {
-  fill: color-mix(in srgb, var(--wheel-accent) 15%, Canvas);
+  fill: color-mix(in srgb, var(--wheel-active) var(--wheel-sector-opacity), transparent);
   stroke: var(--wheel-accent); stroke-width: 2; outline: none;
 }
 .quick-segment.disabled {
-  fill: color-mix(in srgb, Canvas 58%, transparent);
-  stroke: color-mix(in srgb, CanvasText 6%, transparent); cursor: default;
+  fill: color-mix(in srgb, var(--wheel-sector) 38%, transparent);
+  stroke: color-mix(in srgb, var(--wheel-text) 12%, transparent); cursor: default;
 }
 .quick-labels { position: absolute; inset: 0; pointer-events: none; }
 .quick-label {
   position: absolute; width: 52px; height: 54px; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 2px;
-  transform: translate(-50%, -50%); color: color-mix(in srgb, CanvasText 86%, transparent);
+  transform: translate(-50%, -50%); color: var(--wheel-text);
   text-align: center; transition: color 160ms cubic-bezier(.23, 1, .32, 1);
 }
 .quick-choice-name {
   display: -webkit-box; max-width: 52px; overflow: hidden;
-  color: color-mix(in srgb, CanvasText 78%, transparent); font-size: 9px; font-weight: 650;
+  color: color-mix(in srgb, var(--wheel-text) 90%, transparent); font-size: 9px; font-weight: 650;
   line-height: 1.05; overflow-wrap: anywhere; text-overflow: ellipsis; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
 }
-.quick-label.active .quick-choice-name { color: var(--wheel-accent); }
-.quick-label .quick-glyph { width: 21px; height: 21px; flex: none; color: color-mix(in srgb, CanvasText 62%, transparent); }
-.quick-label.active { color: var(--wheel-accent); }
-.quick-label.active .quick-glyph { color: var(--wheel-accent); }
+.quick-label.active .quick-choice-name { color: var(--wheel-text); }
+.quick-label .quick-glyph { width: 21px; height: 21px; flex: none; color: color-mix(in srgb, var(--wheel-text) 82%, transparent); }
+.quick-label.active { color: var(--wheel-text); }
+.quick-label.active .quick-glyph { color: var(--wheel-text); }
 .quick-label.disabled { opacity: .42; }
 .quick-center {
   position: absolute; top: 50%; left: 50%; width: 96px; height: 96px;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-  padding: 9px; transform: translate(-50%, -50%); border: 1px solid color-mix(in srgb, CanvasText 11%, transparent);
-  border-radius: 50%; background: color-mix(in srgb, Canvas 97%, transparent);
+  padding: 9px; transform: translate(-50%, -50%); border: 1px solid color-mix(in srgb, var(--wheel-text) 22%, transparent);
+  border-radius: 50%; background: color-mix(in srgb, var(--wheel-background) var(--wheel-background-opacity), transparent);
   box-shadow: 0 5px 18px #18364b24; text-align: center; pointer-events: none;
   transition: width .16s ease, height .16s ease, background-color .16s ease;
 }
-.quick-center-icon { width: 26px; height: 26px; flex: none; color: var(--wheel-accent); stroke-width: 1.8; }
+.quick-center-icon { width: 26px; height: 26px; flex: none; color: var(--wheel-text); stroke-width: 1.8; }
 .quick-center.is-working { border-color: color-mix(in srgb, var(--wheel-accent) 42%, transparent); box-shadow: 0 5px 22px color-mix(in srgb, var(--wheel-accent) 18%, transparent); }
 .quick-loader { width: 23px; height: 23px; flex: none; border: 2px solid color-mix(in srgb, var(--wheel-accent) 18%, transparent); border-top-color: var(--wheel-accent); border-radius: 50%; animation: quick-spin .8s linear infinite; }
 @keyframes quick-spin { to { transform: rotate(360deg); } }
 .quick-center strong {
-  display: -webkit-box; max-width: 78px; overflow: hidden; color: CanvasText;
+  display: -webkit-box; max-width: 78px; overflow: hidden; color: var(--wheel-text);
   font-size: 14px; font-weight: 700; line-height: 1.2; text-overflow: ellipsis;
   -webkit-box-orient: vertical; -webkit-line-clamp: 2;
 }
-.quick-center small { max-width: 78px; overflow: hidden; color: color-mix(in srgb, CanvasText 58%, transparent); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.quick-center small { max-width: 78px; overflow: hidden; color: color-mix(in srgb, var(--wheel-text) 78%, transparent); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .quick-center.has-preview { gap: 2px; }
 .quick-center.has-preview .quick-center-icon { width: 20px; height: 20px; }
 .quick-center.has-preview strong { font-size: 12px; }

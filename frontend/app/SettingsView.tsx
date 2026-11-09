@@ -2,7 +2,7 @@ import { useState, type ChangeEvent, type RefObject } from 'react'
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { AppIcon } from '../icons/AppIcon'
 import type { MessageKey } from '../i18n'
-import { resetSettingsSection, type AppSettings } from '../settings'
+import { quickMenuThemeValues, resetSettingsSection, type AppSettings } from '../settings'
 import { AccentPicker, SegmentedControl, SettingsRow, sizePresets } from '../settings/SettingsControls'
 import { modifierLabel } from './keyboard'
 import { operationShortcutActions } from '../quick-menu/quick-actions'
@@ -53,6 +53,10 @@ export function SettingsView(props: SettingsViewProps) {
         {settingsPage === 'appearance' && <section className="settings-group"><h2>{tr('Appearance')}</h2>
           <SettingsRow label={tr('Appearance')} description={tr('Follow your system theme or choose one.')}><SegmentedControl label={tr('Appearance')} value={preferences.appearance} options={(['system', 'light', 'dark'] as const).map((value) => ({ value, label: tr(value === 'system' ? 'System' : value === 'light' ? 'Light' : 'Dark') }))} onChange={(appearance) => updatePreferences({ appearance })}/></SettingsRow>
           <SettingsRow label={tr('Accent color')} description={tr('Choose a preset or set a custom color.')}><AccentPicker label={tr('Accent color')} value={preferences.accent} customValue={preferences.customAccent} onChange={(accent, customAccent) => updatePreferences(customAccent ? { accent, customAccent } : { accent, customAccent: undefined })} tr={tr}/></SettingsRow>
+          <h3>{tr('Quick menu theme')}</h3>
+          <SettingsRow label={tr('Theme preset')}><select className="modifier-select" aria-label={tr('Theme preset')} value={preferences.quickMenuTheme} onChange={(event) => updatePreferences(quickMenuThemeValues(event.target.value as AppSettings['quickMenuTheme']))}><option value="default">{tr('Default')}</option><option value="transparent">{tr('Fully transparent')}</option><option value="custom">{tr('Custom')}</option></select></SettingsRow>
+          {([['quickMenuBackground', 'Circle background'], ['quickMenuSector', 'Sectors'], ['quickMenuActive', 'Active sector'], ['quickMenuText', 'Text and icons']] as const).map(([field, label]) => <SettingsRow key={field} label={tr(label as never)}><input aria-label={tr(label as never)} type="color" value={preferences[field]} onChange={(event) => updatePreferences({ ...(preferences.quickMenuTheme === 'transparent' ? quickMenuThemeValues('custom') : {}), quickMenuTheme: 'custom', [field]: event.target.value } as Partial<AppSettings>)}/></SettingsRow>)}
+          {([['quickMenuBackgroundOpacity', 'Circle background opacity'], ['quickMenuSectorOpacity', 'Sector opacity']] as const).map(([field, label]) => <SettingsRow key={field} label={`${tr(label as never)} · ${preferences[field]}%`}><input aria-label={tr(label as never)} type="range" min="0" max="100" value={preferences[field]} onChange={(event) => updatePreferences({ quickMenuTheme: 'custom', [field]: Number(event.target.value) } as Partial<AppSettings>)}/></SettingsRow>)}
           <SettingsRow label={tr('Language')} description={tr('Choose the language used across FlickVert.')}><SegmentedControl label={tr('Language')} value={preferences.language} options={(['en', 'ru', 'zh'] as const).map((value) => ({ value, label: tr(value === 'en' ? 'English' : value === 'ru' ? 'Russian' : 'Chinese') }))} onChange={(language) => updatePreferences({ language })}/></SettingsRow>
           <SettingsRow label={tr('Reset appearance settings')}><button className="secondary-button" onClick={() => updatePreferences(resetSettingsSection('appearance'))}>{tr('Reset')}</button></SettingsRow>
         </section>}

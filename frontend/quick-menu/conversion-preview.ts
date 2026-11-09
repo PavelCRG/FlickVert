@@ -1,5 +1,9 @@
 type PreviewFile = { name: string; path: string }
 
+export function conversionPreviewDetail(hasPreview: boolean, detail: string) {
+  return hasPreview ? '' : detail
+}
+
 function parentPath(path: string) {
   const parent = path.replace(/[\\/][^\\/]*$/, '')
   if (parent) return /^[A-Za-z]:$/.test(parent) ? `${parent}\\` : parent

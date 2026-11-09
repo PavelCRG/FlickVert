@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { normalizeSettings, normalizeOperationShortcuts, defaultSettings, createSettingsBackup, restoreSettingsBackup, resetSettingsSection } from './settings.ts'
+import { normalizeSettings, normalizeOperationShortcuts, defaultSettings, createSettingsBackup, restoreSettingsBackup, resetSettingsSection, quickMenuThemeValues, saveSettings, loadSettings } from './settings.ts'
 
 test('invalid or absent saved settings resolve to safe defaults', () => {
   assert.deepEqual(normalizeSettings(undefined), defaultSettings)
@@ -8,6 +8,38 @@ test('invalid or absent saved settings resolve to safe defaults', () => {
   assert.equal(normalizeSettings({ videoPreset: 'fastest' }).videoPreset, 'balanced')
   assert.equal(normalizeSettings({ videoCodec: 'av1', videoHeight: 4320 }).videoCodec, 'h264')
   assert.equal(normalizeSettings({ videoCodec: 'av1', videoHeight: 4320 }).videoHeight, undefined)
+})
+
+test('quick menu theme normalizes colors and opacity and survives settings backups', () => {
+  const settings = normalizeSettings({ quickMenuTheme: 'custom', quickMenuBackground: '#123456', quickMenuSector: '#234567', quickMenuActive: '#345678', quickMenuText: '#fefefe', quickMenuBackgroundOpacity: 42, quickMenuSectorOpacity: 67 })
+  assert.deepEqual([settings.quickMenuTheme, settings.quickMenuBackground, settings.quickMenuSector, settings.quickMenuActive, settings.quickMenuText, settings.quickMenuBackgroundOpacity, settings.quickMenuSectorOpacity], ['custom', '#123456', '#234567', '#345678', '#fefefe', 42, 67])
+  const restored = restoreSettingsBackup(JSON.parse(createSettingsBackup(settings)))
+  assert.deepEqual([restored.quickMenuTheme, restored.quickMenuBackground, restored.quickMenuSector, restored.quickMenuActive, restored.quickMenuText, restored.quickMenuBackgroundOpacity, restored.quickMenuSectorOpacity], ['custom', '#123456', '#234567', '#345678', '#fefefe', 42, 67])
+  assert.equal(normalizeSettings({}).quickMenuTheme, 'default')
+  assert.equal(normalizeSettings({ quickMenuTheme: 'transparent' }).quickMenuTheme, 'transparent')
+  const transparent = normalizeSettings({ quickMenuTheme: 'transparent', quickMenuBackgroundOpacity: 60, quickMenuSectorOpacity: 30 })
+  assert.deepEqual([transparent.quickMenuBackgroundOpacity, transparent.quickMenuSectorOpacity], [0, 0])
+  assert.deepEqual([normalizeSettings({ quickMenuBackground: 'red', quickMenuBackgroundOpacity: 101 }).quickMenuBackground, normalizeSettings({ quickMenuBackgroundOpacity: 101 }).quickMenuBackgroundOpacity], ['#F8FAFC', 94])
+})
+
+test('quick menu theme presets select default or transparent values', () => {
+  assert.deepEqual(quickMenuThemeValues('transparent'), { quickMenuTheme: 'transparent', quickMenuBackgroundOpacity: 0, quickMenuSectorOpacity: 0 })
+  assert.deepEqual(quickMenuThemeValues('default'), { quickMenuTheme: 'default', quickMenuBackground: '#F8FAFC', quickMenuSector: '#E2E8F0', quickMenuActive: '#DBEAFE', quickMenuText: '#172033', quickMenuBackgroundOpacity: 94, quickMenuSectorOpacity: 95 })
+  assert.deepEqual(quickMenuThemeValues('custom'), { quickMenuTheme: 'custom', quickMenuBackgroundOpacity: 94, quickMenuSectorOpacity: 95 })
+})
+
+test('quick menu theme preferences persist through the existing local settings store', () => {
+  const original = globalThis.localStorage
+  const values = new Map<string, string>()
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value) } })
+  try {
+    const expected = normalizeSettings({ quickMenuTheme: 'custom', quickMenuText: '#aabbcc', quickMenuBackgroundOpacity: 37 })
+    saveSettings(expected)
+    assert.deepEqual(loadSettings(), expected)
+  } finally {
+    if (original) Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: original })
+    else delete (globalThis as { localStorage?: Storage }).localStorage
+  }
 })
 
 test('video codec, resolution, and quality preset are retained in settings backup', () => {
@@ -63,7 +95,7 @@ test('ZIP compression level is bounded and retained in settings backups', () => 
 
 test('valid settings retain supported preferences', () => {
   assert.deepEqual(normalizeSettings({ language: 'ru', appearance: 'dark', quality: 75, width: 1200, height: 900, format: 'image/jpeg', shortcut: 'CTRL+SHIFT+SPACE', outputFolder: 'D:/Photos' }), {
-    language: 'ru', appearance: 'dark', accent: 'orange', quality: 75, pdfDpi: 300, pdfPageSize: 'source', pdfPageOrientation: 'auto', zipCompressionLevel: 6, width: 1200, height: 900, format: 'image/jpeg', videoPreset: 'balanced', videoCodec: 'h264', audioTargetLufs: -16, audioTruePeakDb: -1, audioExtractionFormat: 'mp3', shortcut: 'CTRL+SHIFT+SPACE', operationShortcuts: {}, terminalPreference: 'windows-terminal', launchAtStartup: true, launchAtStartupConfigured: false, contextMenuEnabled: false, confirmQuitOnClose: false, dragModifiers: { convert: 'SHIFT', tools: 'CTRL', actions: 'ALT' }, outputFolder: 'D:/Photos',
+    language: 'ru', appearance: 'dark', accent: 'orange', quickMenuTheme: 'default', quickMenuBackground: '#F8FAFC', quickMenuSector: '#E2E8F0', quickMenuActive: '#DBEAFE', quickMenuText: '#172033', quickMenuBackgroundOpacity: 94, quickMenuSectorOpacity: 95, quality: 75, pdfDpi: 300, pdfPageSize: 'source', pdfPageOrientation: 'auto', zipCompressionLevel: 6, width: 1200, height: 900, format: 'image/jpeg', videoPreset: 'balanced', videoCodec: 'h264', audioTargetLufs: -16, audioTruePeakDb: -1, audioExtractionFormat: 'mp3', shortcut: 'CTRL+SHIFT+SPACE', operationShortcuts: {}, terminalPreference: 'windows-terminal', launchAtStartup: true, launchAtStartupConfigured: false, contextMenuEnabled: false, confirmQuitOnClose: false, dragModifiers: { convert: 'SHIFT', tools: 'CTRL', actions: 'ALT' }, outputFolder: 'D:/Photos',
   })
 })
 

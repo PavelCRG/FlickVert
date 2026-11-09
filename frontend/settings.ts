@@ -14,6 +14,13 @@ export type AppSettings = {
   language: Language
   appearance: Appearance
   accent: AccentColor
+  quickMenuTheme: 'default' | 'transparent' | 'custom'
+  quickMenuBackground: string
+  quickMenuSector: string
+  quickMenuActive: string
+  quickMenuText: string
+  quickMenuBackgroundOpacity: number
+  quickMenuSectorOpacity: number
   customAccent?: string
   favoriteActions?: string[]
   quality: number
@@ -43,7 +50,7 @@ export type AppSettings = {
 }
 
 export const defaultSettings: AppSettings = {
-  language: 'en', appearance: 'system', accent: 'orange', quality: 88, pdfDpi: 300, pdfPageSize: 'source', pdfPageOrientation: 'auto', zipCompressionLevel: 6, format: 'image/webp', videoPreset: 'balanced', videoCodec: 'h264', audioTargetLufs: -16, audioTruePeakDb: -1, audioExtractionFormat: 'mp3', shortcut: 'CTRL+ALT+SPACE', terminalPreference: 'windows-terminal', launchAtStartup: true, launchAtStartupConfigured: false, contextMenuEnabled: false, confirmQuitOnClose: false, operationShortcuts: {}, dragModifiers: { convert: 'SHIFT', tools: 'CTRL', actions: 'ALT' },
+  language: 'en', appearance: 'system', accent: 'orange', quickMenuTheme: 'default', quickMenuBackground: '#F8FAFC', quickMenuSector: '#E2E8F0', quickMenuActive: '#DBEAFE', quickMenuText: '#172033', quickMenuBackgroundOpacity: 94, quickMenuSectorOpacity: 95, quality: 88, pdfDpi: 300, pdfPageSize: 'source', pdfPageOrientation: 'auto', zipCompressionLevel: 6, format: 'image/webp', videoPreset: 'balanced', videoCodec: 'h264', audioTargetLufs: -16, audioTruePeakDb: -1, audioExtractionFormat: 'mp3', shortcut: 'CTRL+ALT+SPACE', terminalPreference: 'windows-terminal', launchAtStartup: true, launchAtStartupConfigured: false, contextMenuEnabled: false, confirmQuitOnClose: false, operationShortcuts: {}, dragModifiers: { convert: 'SHIFT', tools: 'CTRL', actions: 'ALT' },
 }
 
 export const accentColors: Record<AccentColor, string> = {
@@ -54,8 +61,14 @@ export function accentColor(settings: AppSettings): string {
   return settings.customAccent && /^#[0-9a-fA-F]{6}$/.test(settings.customAccent) ? settings.customAccent : accentColors[settings.accent]
 }
 
+export function quickMenuThemeValues(theme: AppSettings['quickMenuTheme']): Partial<AppSettings> {
+  if (theme === 'transparent') return { quickMenuTheme: theme, quickMenuBackgroundOpacity: 0, quickMenuSectorOpacity: 0 }
+  if (theme === 'default') return { quickMenuTheme: theme, quickMenuBackground: defaultSettings.quickMenuBackground, quickMenuSector: defaultSettings.quickMenuSector, quickMenuActive: defaultSettings.quickMenuActive, quickMenuText: defaultSettings.quickMenuText, quickMenuBackgroundOpacity: 94, quickMenuSectorOpacity: 95 }
+  return { quickMenuTheme: theme, quickMenuBackgroundOpacity: 94, quickMenuSectorOpacity: 95 }
+}
+
 export function resetSettingsSection(section: 'appearance' | 'keyboard' | 'paths'): Partial<AppSettings> {
-  if (section === 'appearance') return { appearance: 'system', accent: 'orange', customAccent: undefined }
+  if (section === 'appearance') return { appearance: 'system', accent: 'orange', customAccent: undefined, quickMenuTheme: 'default', quickMenuBackground: '#F8FAFC', quickMenuSector: '#E2E8F0', quickMenuActive: '#DBEAFE', quickMenuText: '#172033', quickMenuBackgroundOpacity: 94, quickMenuSectorOpacity: 95 }
   if (section === 'keyboard') return { shortcut: defaultSettings.shortcut, operationShortcuts: {}, dragModifiers: defaultSettings.dragModifiers }
   return { outputFolder: undefined }
 }
@@ -86,6 +99,8 @@ export function normalizeSettings(value: unknown): AppSettings {
   const validModifiers = modifierKeys.every((key) => key === 'SHIFT' || key === 'CTRL' || key === 'ALT') && new Set(modifierKeys).size === 3
   const validDimension = (v: unknown) => Number.isInteger(v) && Number(v) > 0 && Number(v) <= 32768 ? Number(v) : undefined
   const shortcut = validShortcut(raw.shortcut) ? raw.shortcut : 'CTRL+ALT+SPACE'
+  const color = (value: unknown, fallback: string) => typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value) ? value : fallback
+  const opacity = (value: unknown, fallback: number) => Number.isInteger(value) && Number(value) >= 0 && Number(value) <= 100 ? Number(value) : fallback
   const presetNames = new Set<string>()
   const dimensionPresets = Array.isArray(raw.dimensionPresets) ? raw.dimensionPresets.flatMap((preset) => {
     if (!preset || typeof preset !== 'object') return []
@@ -104,6 +119,9 @@ export function normalizeSettings(value: unknown): AppSettings {
     language: raw.language === 'ru' || raw.language === 'zh' ? raw.language : 'en',
     appearance: raw.appearance === 'dark' || raw.appearance === 'light' ? raw.appearance : 'system',
     accent: ['orange', 'blue', 'violet', 'teal', 'green', 'rose'].includes(String(raw.accent)) ? raw.accent as AccentColor : 'orange',
+    quickMenuTheme: ['default', 'transparent', 'custom'].includes(String(raw.quickMenuTheme)) ? raw.quickMenuTheme as AppSettings['quickMenuTheme'] : 'default',
+    quickMenuBackground: color(raw.quickMenuBackground, defaultSettings.quickMenuBackground), quickMenuSector: color(raw.quickMenuSector, defaultSettings.quickMenuSector), quickMenuActive: color(raw.quickMenuActive, defaultSettings.quickMenuActive), quickMenuText: color(raw.quickMenuText, defaultSettings.quickMenuText),
+    quickMenuBackgroundOpacity: raw.quickMenuTheme === 'transparent' ? 0 : opacity(raw.quickMenuBackgroundOpacity, 94), quickMenuSectorOpacity: raw.quickMenuTheme === 'transparent' ? 0 : opacity(raw.quickMenuSectorOpacity, 95),
     ...(typeof raw.customAccent === 'string' && /^#[0-9a-fA-F]{6}$/.test(raw.customAccent) ? { customAccent: raw.customAccent } : {}),
     ...(Array.isArray(raw.favoriteActions) ? { favoriteActions: [...new Set(raw.favoriteActions.filter((id): id is string => typeof id === 'string' && /^[a-z0-9-]+$/.test(id)))].slice(0, 100) } : {}),
     quality: Number.isInteger(raw.quality) && Number(raw.quality) >= 40 && Number(raw.quality) <= 100 ? Number(raw.quality) : 88,

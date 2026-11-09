@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import { strict as assert } from 'node:assert'
 import { canRunFileAction, canRunSelectedTool, canRunWheelTool, canUseNativeImagePath, commonFormats, conversionConcurrency, launcherActions, operationShortcutActions, selectedToolUnavailableReason, toolActionsFor } from './quick-actions.ts'
 import { operationErrorKind } from './operation-errors.ts'
-import { conversionPreview } from './conversion-preview.ts'
+import { conversionPreview, conversionPreviewDetail } from './conversion-preview.ts'
 import { validateVideoFrameTime, validateVideoTrimRange } from '../video-trim/ranges.ts'
 
 test('conversion preview shows the target name and destination before starting', () => {
@@ -17,6 +17,11 @@ test('conversion preview shows the target name and destination before starting',
     destination: '/exports',
   })
   assert.equal(conversionPreview([{ name: 'a.png', path: '/one/a.png' }, { name: 'b.png', path: '/two/b.png' }], 'jpg').destination, 'Source folders')
+})
+
+test('conversion preview keeps the format label clear of the filename detail', () => {
+  assert.equal(conversionPreviewDetail(true, 'photo.webp'), '')
+  assert.equal(conversionPreviewDetail(false, 'photo.webp'), 'photo.webp')
 })
 
 test('the empty quick popup offers file selection, tools, and settings without file actions', () => {
