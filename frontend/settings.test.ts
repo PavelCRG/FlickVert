@@ -195,6 +195,12 @@ test('settings backups retain custom dimension presets but exclude output paths'
   assert.deepEqual(restoreSettingsBackup(backup).dimensionPresets, settings.dimensionPresets)
 })
 
+test('settings backups retain reusable conversion profiles', () => {
+  const profile = { name: 'Web delivery', quality: 76, format: 'image/jpeg', pdfDpi: 220, pdfPageSize: 'a4', pdfPageOrientation: 'portrait', videoPreset: 'small', videoCodec: 'h264', audioTargetLufs: -18, audioTruePeakDb: -2, audioExtractionFormat: 'opus' }
+  assert.deepEqual(normalizeSettings({ conversionProfiles: [profile] }).conversionProfiles?.[0].name, 'Web delivery')
+  assert.deepEqual(restoreSettingsBackup(JSON.parse(createSettingsBackup(normalizeSettings({ conversionProfiles: [profile] })))).conversionProfiles?.[0].audioExtractionFormat, 'opus')
+})
+
 test('settings backup import rejects unrelated and incomplete JSON', () => {
   assert.throws(() => restoreSettingsBackup({ settings: {} }))
   assert.throws(() => restoreSettingsBackup({ app: 'FlickVert', version: 1, settings: { language: 'en' } }))

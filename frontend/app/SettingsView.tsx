@@ -10,6 +10,7 @@ import { operationShortcutActions } from '../quick-menu/quick-actions'
 import { EngineStatusList } from './EngineStatusList'
 import { WheelEditor } from './WheelEditor'
 import { purposeProfiles } from '../settings/profiles'
+import { applyConversionProfile, removeConversionProfile, saveConversionProfile } from '../settings/conversion-profiles'
 import type { Section, SettingsPage } from './AppSidebar'
 import type { Engines } from './types'
 
@@ -33,6 +34,8 @@ export function SettingsView(props: SettingsViewProps) {
   const [closeError, setCloseError] = useState(false)
   const [notificationError, setNotificationError] = useState(false)
   const [contextMenuError, setContextMenuError] = useState(false)
+  const [conversionProfileName, setConversionProfileName] = useState('')
+  const [selectedConversionProfile, setSelectedConversionProfile] = useState('')
   const { settingsPage, preferences, tr, pickError, shortcutError, operationShortcutError, modifierError, recordingShortcut, recordingOperationShortcut, startupError, setStartupError, setRecordingShortcut, setRecordingOperationShortcut, setShortcutError, setOperationShortcutError, updatePreferences, updateShortcut, updateOperationShortcut, updateDragModifier, setSection, chooseOutputFolder, engines, videoCodecs, audioFormats, videoScalingAvailable, selectedDimensionPreset, setSelectedDimensionPreset, applyDimensionPreset, saveDimensionPreset, removeDimensionPreset, presetName, setPresetName, presetSaved, setPresetSaved, exportSettings, importSettings, settingsImportInput, settingsImportError } = props
   const shellIntegrationSupported = isTauri() && /Win|Mac/.test(navigator.platform)
   return <div className="page settings-page" data-page={settingsPage}>
@@ -103,6 +106,10 @@ export function SettingsView(props: SettingsViewProps) {
 
         {settingsPage === 'conversion' && <section className="settings-group" aria-labelledby="output-title">
           <h2 id="output-title">{tr('Output settings')}</h2>
+          <h3 className="setting-subheading">{tr('Saved conversion profiles')}</h3>
+          <div className="dimension-preset-save"><input type="text" maxLength={32} aria-label={tr('Profile name')} placeholder={tr('Profile name')} value={conversionProfileName} onChange={(event) => setConversionProfileName(event.target.value)}/><button className="secondary-button" disabled={!conversionProfileName.trim()} onClick={() => { updatePreferences({ conversionProfiles: saveConversionProfile(preferences.conversionProfiles ?? [], preferences, conversionProfileName) }); setSelectedConversionProfile(conversionProfileName.trim()); setConversionProfileName('') }}><AppIcon name="star"/>{tr('Save current settings')}</button></div>
+          <div className="dimension-preset-controls"><select className="modifier-select" aria-label={tr('Saved conversion profiles')} value={selectedConversionProfile} onChange={(event) => setSelectedConversionProfile(event.target.value)}><option value="">{tr('Choose a profile')}</option>{preferences.conversionProfiles?.map((profile) => <option key={profile.name} value={profile.name}>{profile.name}</option>)}</select><button className="secondary-button" type="button" disabled={!selectedConversionProfile} onClick={() => { const profile = preferences.conversionProfiles?.find((item) => item.name === selectedConversionProfile); if (profile) updatePreferences(applyConversionProfile(profile)) }}>{tr('Apply profile')}</button><button className="secondary-button" type="button" disabled={!selectedConversionProfile} onClick={() => { updatePreferences({ conversionProfiles: removeConversionProfile(preferences.conversionProfiles ?? [], selectedConversionProfile) }); setSelectedConversionProfile('') }}>{tr('Remove profile')}</button></div>
+          <p className="catalog-note">{tr('Profiles save image, PDF, video, and audio output preferences on this device.')}</p>
           <h3 className="setting-subheading">{tr('Images and PDFs')}</h3>
           <div className="setting-fields">
             <label className="field"><span>{tr('Quality')} · {preferences.quality}%</span><input type="range" min="40" max="100" value={preferences.quality} onChange={(event) => updatePreferences({ quality: Number(event.target.value) })}/></label>
@@ -136,6 +143,6 @@ export function SettingsView(props: SettingsViewProps) {
           <EngineStatusList engines={engines} tr={tr}/>
         </section>}
         {settingsPage === 'files' && <><section className="settings-group"><h2>{tr('Files')}</h2><div className="output-folder-setting"><div><strong>{tr('Save location')}</strong><span title={preferences.outputFolder}>{preferences.outputFolder || tr('Same folder as original')}</span></div><button className="secondary-button" onClick={() => void chooseOutputFolder()}><AppIcon name="folder"/>{tr('Choose folder')}</button>{preferences.outputFolder && <button className="secondary-button" onClick={() => updatePreferences({ outputFolder: undefined })}>{tr('Use source folder')}</button>}</div><label className="field"><span>{tr('ZIP compression')} · {preferences.zipCompressionLevel}/9</span><input type="range" min="1" max="9" value={preferences.zipCompressionLevel} onChange={(event) => updatePreferences({ zipCompressionLevel: Number(event.target.value) })}/></label><p className="catalog-note">{tr('Higher compression can make ZIP archives smaller but takes longer.')}</p></section><section className="settings-group"><h2>{tr('Settings backup')}</h2><p className="catalog-note">{tr('Back up appearance, keyboard, and conversion preferences. Folder paths are excluded.')}</p><div className="settings-backup-actions"><button className="secondary-button" onClick={exportSettings}><AppIcon name="download"/>{tr('Export settings')}</button><button className="secondary-button" onClick={() => settingsImportInput.current?.click()}><AppIcon name="folder"/>{tr('Import settings')}</button><input ref={settingsImportInput} hidden type="file" accept="application/json,.json" onChange={(event) => void importSettings(event)}/></div>{settingsImportError && <p className="shortcut-error" role="alert">{tr('Could not import settings. Choose a valid FlickVert backup.')}</p>}</section></>}
-        {settingsPage === 'about' && <section className="settings-group"><h2>FlickVert 0.1.13</h2></section>}
+        {settingsPage === 'about' && <section className="settings-group"><h2>FlickVert 0.1.14</h2></section>}
       </div>
 }

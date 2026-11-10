@@ -1,4 +1,5 @@
 import { fileActions } from './quick-menu/quick-actions.ts'
+import { normalizeConversionProfiles, type ConversionProfile } from './settings/conversion-profiles.ts'
 
 export type Language = 'en' | 'ru' | 'zh'
 export type Appearance = 'system' | 'light' | 'dark'
@@ -35,6 +36,7 @@ export type AppSettings = {
   width?: number
   height?: number
   dimensionPresets?: DimensionPreset[]
+  conversionProfiles?: ConversionProfile[]
   outputFolder?: string
   format: 'image/png' | 'image/jpeg' | 'image/webp'
   videoPreset: VideoPreset
@@ -121,6 +123,7 @@ export function normalizeSettings(value: unknown): AppSettings {
     const format: AppSettings['format'] | undefined = item.format === 'image/png' || item.format === 'image/jpeg' || item.format === 'image/webp' ? item.format : undefined
     return [{ name, width, height, ...(quality ? { quality } : {}), ...(format ? { format } : {}) }]
   }).slice(0, 20) : []
+  const conversionProfiles = normalizeConversionProfiles(raw.conversionProfiles)
   return {
     language: raw.language === 'ru' || raw.language === 'zh' ? raw.language : 'en',
     appearance: raw.appearance === 'dark' || raw.appearance === 'light' ? raw.appearance : 'system',
@@ -156,6 +159,7 @@ export function normalizeSettings(value: unknown): AppSettings {
     ...(validDimension(raw.width) ? { width: validDimension(raw.width) } : {}),
     ...(validDimension(raw.height) ? { height: validDimension(raw.height) } : {}),
     ...(dimensionPresets.length ? { dimensionPresets } : {}),
+    ...(conversionProfiles.length ? { conversionProfiles } : {}),
     ...(typeof raw.outputFolder === 'string' && raw.outputFolder.trim() ? { outputFolder: raw.outputFolder.trim() } : {}),
   }
 }

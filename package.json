@@ -1,12 +1,12 @@
 {
   "name": "flickvert",
   "private": true,
-  "version": "0.1.13",
+  "version": "0.1.14",
   "type": "module",
   "scripts": {
     "dev": "npm run build && tauri dev",
     "build": "tsc -b && node scripts/prepare-dist.mjs && esbuild frontend/main.tsx --bundle --outdir=dist/assets --jsx=automatic --platform=browser --target=safari16 --minify",
-    "test": "node --experimental-strip-types --test --test-isolation=none frontend/settings.test.ts frontend/settings/profiles.test.ts frontend/app/conversion-history.test.ts frontend/app/completion-notification.test.ts frontend/i18n.test.ts frontend/conversion/images.test.ts frontend/conversion/pdf-page-layout.test.ts frontend/conversion/concurrent.test.ts frontend/image-editor/image-editor.test.ts frontend/quick-menu/quick-actions.test.ts frontend/quick-menu/radial-wheel.test.ts frontend/updates/update-notification.test.ts frontend/video-trim/preview.test.ts frontend/pdf/merge.test.ts frontend/pdf/split.test.ts frontend/pdf/pages.test.ts frontend/pdf/image-pages.test.ts frontend/app/first-run.test.ts frontend/app/tool-family.test.ts frontend/app/operation-details.test.ts scripts/create-update-manifest.test.mjs scripts/sync-release-version.test.mjs",
+    "test": "node --experimental-strip-types --test --test-isolation=none frontend/settings.test.ts frontend/settings/profiles.test.ts frontend/settings/conversion-profiles.test.ts frontend/app/conversion-history.test.ts frontend/app/completion-notification.test.ts frontend/i18n.test.ts frontend/conversion/images.test.ts frontend/conversion/pdf-page-layout.test.ts frontend/conversion/concurrent.test.ts frontend/image-editor/image-editor.test.ts frontend/image-editor/watermark-templates.test.ts frontend/quick-menu/quick-actions.test.ts frontend/quick-menu/radial-wheel.test.ts frontend/updates/update-notification.test.ts frontend/video-trim/preview.test.ts frontend/pdf/merge.test.ts frontend/pdf/split.test.ts frontend/pdf/pages.test.ts frontend/pdf/image-pages.test.ts frontend/app/first-run.test.ts frontend/app/tool-family.test.ts frontend/app/operation-details.test.ts scripts/create-update-manifest.test.mjs scripts/sync-release-version.test.mjs",
     "test:rust": "cargo test --locked --manifest-path src-tauri/Cargo.toml",
     "check": "npm run test && npm run build && npm run test:rust",
     "version:sync": "node scripts/sync-release-version.mjs",

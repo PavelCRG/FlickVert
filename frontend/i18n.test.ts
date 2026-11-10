@@ -55,6 +55,22 @@ test('image to PDF page arrangement labels are translated in all languages', () 
   }
 })
 
+test('reusable conversion profile labels are translated in all languages', () => {
+  for (const key of ['Saved conversion profiles', 'Profile name', 'Save current settings', 'Choose a profile', 'Apply profile', 'Remove profile', 'Profiles save image, PDF, video, and audio output preferences on this device.'] as const) {
+    assert.equal(t('en', key), key)
+    assert.notEqual(t('ru', key), key)
+    assert.notEqual(t('zh', key), key)
+  }
+})
+
+test('watermark template controls are translated in all supported languages', () => {
+  for (const key of ['Watermark templates', 'Choose a template', 'Save watermark text', 'Remove template', 'Image details'] as const) {
+    assert.equal(t('en', key), key)
+    assert.notEqual(t('ru', key), key)
+    assert.notEqual(t('zh', key), key)
+  }
+})
+
 test('theme labels are translated in English, Russian, and Simplified Chinese', () => {
   const expected = {
     'Accent color': ['Accent color', 'Акцентный цвет', '强调色'],

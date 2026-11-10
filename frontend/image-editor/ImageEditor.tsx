@@ -5,12 +5,16 @@ import { pixelAspectRatio, selectionToPixels, normalizeSelection, normalizeSelec
 import { checkpointDraft, redoDraft, undoDraft, type DraftHistory } from './draft-history'
 import { editorOutputExtension, encodeImage, formatImageSize, type CompressionFormat } from './image-compression'
 import { t, type MessageKey } from '../i18n'
+import { normalizeWatermarkTemplates, removeWatermarkTemplate, saveWatermarkTemplate } from './watermark-templates'
 
 export type ImageEditTool = 'crop' | 'redact' | 'annotate' | 'background' | 'adjust' | 'compress'
 type Props = { inputPath: string; initialTool: ImageEditTool; outputFolder?: string; onClose: () => void }
 const tools: ImageEditTool[] = ['crop', 'redact', 'annotate', 'background', 'adjust', 'compress']
 const labels: Record<ImageEditTool, MessageKey> = { crop: 'Crop', redact: 'Redact', annotate: 'Annotate', background: 'Background', adjust: 'Adjust', compress: 'Compress' }
 const cropAspects = [{ label: 'Free', value: 0 }, { label: 'Square', value: 1 }, { label: '4:3', value: 4 / 3 }, { label: '3:2', value: 3 / 2 }, { label: '16:9', value: 16 / 9 }] as const
+function loadWatermarkTemplates() {
+  try { return normalizeWatermarkTemplates(JSON.parse(localStorage.getItem('flickvert-watermark-templates') ?? '[]')) } catch { return [] }
+}
 type EditorDraft = { tool: ImageEditTool; selection: Selection | null; cropAspect: number; textPosition: [number, number] | null; caption: string; textColor: string; backgroundColor: string; brightness: number; contrast: number; compressionFormat: CompressionFormat; compressionQuality: number }
 
 export default function ImageEditor({ inputPath, initialTool, outputFolder, onClose }: Props) {
@@ -24,6 +28,9 @@ export default function ImageEditor({ inputPath, initialTool, outputFolder, onCl
   const closeRef = useRef(onClose)
   const [url, setUrl] = useState('')
   const [originalSize, setOriginalSize] = useState(0)
+  const [watermarkTemplates, setWatermarkTemplates] = useState(loadWatermarkTemplates)
+  const [selectedWatermarkTemplate, setSelectedWatermarkTemplate] = useState('')
+  const [showImageDetails, setShowImageDetails] = useState(false)
   const [compressionPreview, setCompressionPreview] = useState<{ url: string; blob: Blob; format: CompressionFormat; quality: number; backgroundColor: string } | null>(null)
   const [comparisonPosition, setComparisonPosition] = useState(50)
   const [draft, setDraft] = useState<EditorDraft>(() => {
@@ -81,6 +88,11 @@ export default function ImageEditor({ inputPath, initialTool, outputFolder, onCl
   const setBackgroundColor = (value: string) => updateDraft({ backgroundColor: value })
   const setBrightness = (value: number) => updateDraft({ brightness: value })
   const setContrast = (value: number) => updateDraft({ contrast: value })
+
+  function persistWatermarkTemplates(next: string[]) {
+    setWatermarkTemplates(next)
+    try { localStorage.setItem('flickvert-watermark-templates', JSON.stringify(next)) } catch {}
+  }
 
   useEffect(() => {
     let disposed = false
@@ -227,7 +239,7 @@ export default function ImageEditor({ inputPath, initialTool, outputFolder, onCl
   const currentCompressionPreview = compressionPreview?.format === compressionFormat && compressionPreview.quality === compressionQuality && compressionPreview.backgroundColor === backgroundColor ? compressionPreview : null
   return <div className="image-editor-backdrop">
     <section className="image-editor" role="dialog" aria-modal="true" aria-label={tr('Edit image')}>
-      <header className="image-editor-header"><div><strong>{tr('Edit image')}</strong><span title={fileName}>{fileName}</span></div><div className="image-editor-history"><button className="secondary-button" onClick={() => stepDraft('undo')} disabled={busy || !draftHistory.current.past.length}>{tr('Undo')}</button><button className="secondary-button" onClick={() => stepDraft('redo')} disabled={busy || !draftHistory.current.future.length}>{tr('Redo')}</button><button className="secondary-button" onClick={onClose} disabled={busy}>{tr('Cancel')}</button></div></header>
+      <header className="image-editor-header"><div><strong>{tr('Edit image')}</strong><span title={fileName}>{fileName}</span></div><div className="image-editor-history"><button className="secondary-button" type="button" aria-pressed={showImageDetails} onClick={() => setShowImageDetails((current) => !current)}>{tr('Image details')}</button><button className="secondary-button" onClick={() => stepDraft('undo')} disabled={busy || !draftHistory.current.past.length}>{tr('Undo')}</button><button className="secondary-button" onClick={() => stepDraft('redo')} disabled={busy || !draftHistory.current.future.length}>{tr('Redo')}</button><button className="secondary-button" onClick={onClose} disabled={busy}>{tr('Cancel')}</button></div></header>
       <nav className="image-editor-tools" aria-label={tr('Edit image')}>
         {tools.map((item) => <button type="button" key={item} className={tool === item ? 'selected' : ''} onClick={() => { setTool(item); setError('') }}>{tr(labels[item])}</button>)}
       </nav>
@@ -247,9 +259,10 @@ export default function ImageEditor({ inputPath, initialTool, outputFolder, onCl
           </div>}
         </div>
         <aside className="image-editor-controls">
+          {showImageDetails && bitmap.current && <output className="image-dimensions"><span>{tr('Image details')}</span><strong>{bitmap.current.width} × {bitmap.current.height} px</strong><small>{fileName.split('.').pop()?.toUpperCase()} · {formatImageSize(originalSize)}</small></output>}
           {tool === 'crop' && <><p>{tr('Drag to select an area')}</p><label className="field"><span>{tr('Aspect ratio')}</span><select value={cropAspect} onChange={(event) => setCropAspect(Number(event.target.value))}>{cropAspects.map((aspect) => <option key={aspect.label} value={aspect.value}>{aspect.value ? aspect.label : tr('Free')}</option>)}</select></label>{cropPixels && <output className="image-dimensions" aria-live="polite"><span>{tr('Output dimensions')}</span><strong>{cropPixels.width} × {cropPixels.height} px</strong><small>{tr('Aspect ratio')}: {pixelAspectRatio(cropPixels.width, cropPixels.height)}</small></output>}</>}
           {tool === 'redact' && <p>{tr('Drag to select an area')}</p>}
-          {tool === 'annotate' && <><p>{tr('Click image to place text')}</p><label className="field"><span>{tr('Text')}</span><input value={caption} maxLength={300} onChange={(event) => setCaption(event.target.value)}/></label><label className="field"><span>{tr('Text color')}</span><input type="color" value={textColor} onChange={(event) => setTextColor(event.target.value)}/></label></>}
+          {tool === 'annotate' && <><p>{tr('Click image to place text')}</p><label className="field"><span>{tr('Text')}</span><input value={caption} maxLength={300} onChange={(event) => setCaption(event.target.value)}/></label><div className="dimension-preset-controls"><select className="modifier-select" aria-label={tr('Watermark templates')} value={selectedWatermarkTemplate} onChange={(event) => { setSelectedWatermarkTemplate(event.target.value); if (event.target.value) setCaption(event.target.value) }}><option value="">{tr('Choose a template')}</option>{watermarkTemplates.map((template) => <option key={template} value={template}>{template}</option>)}</select><button type="button" className="secondary-button" disabled={!caption.trim()} onClick={() => { const next = saveWatermarkTemplate(watermarkTemplates, caption); persistWatermarkTemplates(next); setSelectedWatermarkTemplate(caption.trim().slice(0, 300)) }}>{tr('Save watermark text')}</button><button type="button" className="secondary-button" disabled={!selectedWatermarkTemplate} onClick={() => { persistWatermarkTemplates(removeWatermarkTemplate(watermarkTemplates, selectedWatermarkTemplate)); setSelectedWatermarkTemplate('') }}>{tr('Remove template')}</button></div><label className="field"><span>{tr('Text color')}</span><input type="color" value={textColor} onChange={(event) => setTextColor(event.target.value)}/></label></>}
           {tool === 'background' && <><p>{tr('Fills transparent pixels')}</p><label className="field"><span>{tr('Background color')}</span><input type="color" value={backgroundColor} onChange={(event) => setBackgroundColor(event.target.value)}/></label></>}
           {tool === 'adjust' && <><label className="field"><span>{tr('Brightness')} · {brightness}%</span><input type="range" min="25" max="200" value={brightness} onPointerDown={beginDraftTransaction} onPointerUp={finishDraftTransaction} onPointerCancel={finishDraftTransaction} onChange={(event) => setBrightness(Number(event.target.value))}/></label><label className="field"><span>{tr('Contrast')} · {contrast}%</span><input type="range" min="25" max="200" value={contrast} onPointerDown={beginDraftTransaction} onPointerUp={finishDraftTransaction} onPointerCancel={finishDraftTransaction} onChange={(event) => setContrast(Number(event.target.value))}/></label></>}
           {tool === 'compress' && <><p>{tr('Compare the original with the encoded output before saving.')}</p><label className="field"><span>{tr('Format')}</span><select value={compressionFormat} onChange={(event) => updateDraft({ compressionFormat: event.target.value as CompressionFormat })}><option value="image/png">PNG</option><option value="image/jpeg">JPEG</option><option value="image/webp">WebP</option></select></label>{compressionFormat === 'image/jpeg' && <label className="field"><span>{tr('JPEG background')}</span><input type="color" value={backgroundColor} onChange={(event) => setBackgroundColor(event.target.value)}/></label>}{compressionFormat !== 'image/png' && <label className="field"><span>{tr('Quality')} · {compressionQuality}%</span><input type="range" min="40" max="100" value={compressionQuality} onPointerDown={beginDraftTransaction} onPointerUp={finishDraftTransaction} onPointerCancel={finishDraftTransaction} onChange={(event) => updateDraft({ compressionQuality: Number(event.target.value) })}/></label>}{currentCompressionPreview && <output className="image-dimensions"><span>{tr('Original size')}</span><strong>{formatImageSize(originalSize)}</strong><small>{tr('Output size')}: {formatImageSize(currentCompressionPreview.blob.size)}</small></output>}</>}

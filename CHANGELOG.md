@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.14
+
+- Added a personalized action wheel, local photo themes, favorites, conversion history, and reusable image, PDF, video, and audio profiles.
+- Added safe batch file renaming, background completion notifications, reusable watermark text, and image-to-PDF page ordering and rotation.
+- Added image details and kept the quick menu's custom colors, transparency, and opacity settings.
+
 ## 0.1.13
 
 - Added customizable quick-menu colors and opacity controls, including a fully transparent preset, with backup and restore support.
