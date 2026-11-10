@@ -11,6 +11,7 @@ import PdfMergeEditor from './pdf/PdfMergeEditor'
 import PdfSplitEditor from './pdf/PdfSplitEditor'
 import PdfPagesEditor from './pdf/PdfPagesEditor'
 import { sizePresets } from './settings/SettingsControls'
+import { purposeProfiles } from './settings/profiles'
 import { SettingsView } from './app/SettingsView'
 import { AppSidebar, SettingsNavigation, type Section, type SettingsPage } from './app/AppSidebar'
 import { WindowChrome } from './app/WindowChrome'
@@ -19,6 +20,12 @@ import { HomePage } from './app/HomePage'
 import { ToolsPage } from './app/ToolsPage'
 import type { Engines, ConversionCatalogItem, OperationQueueItem } from './app/types'
 import { completeFirstRun, firstRunSection } from './app/first-run'
+import { loadConversionHistory, mergeConversionHistory, totalSavedBytes, type ConversionHistoryEntry } from './app/conversion-history'
+
+function loadThemePhoto(): string | null {
+  const photo = localStorage.getItem('flickvert-photo-theme')
+  return photo && photo.length <= 2_000_000 && /^data:image\/webp;base64,[A-Za-z0-9+/]+=*$/.test(photo) ? photo : null
+}
 
 export default function App() {
   const [section, setSection] = useState<Section>(() => firstRunSection(localStorage))
@@ -32,6 +39,8 @@ export default function App() {
   const [recordingOperationShortcut, setRecordingOperationShortcut] = useState<string | null>(null)
   const [operationShortcutError, setOperationShortcutError] = useState(false)
   const [preferences, setPreferences] = useState<AppSettings>(loadSettings)
+  const [themePhoto, setThemePhoto] = useState<string | null>(loadThemePhoto)
+  const [photoThemeEnabled, setPhotoThemeEnabled] = useState(() => localStorage.getItem('flickvert-photo-theme-enabled') === 'true')
   const [presetName, setPresetName] = useState('')
   const [selectedDimensionPreset, setSelectedDimensionPreset] = useState('')
   const [presetSaved, setPresetSaved] = useState(false)
@@ -54,6 +63,7 @@ export default function App() {
   const [audioFormats, setAudioFormats] = useState<string[]>([])
   const [videoScalingAvailable, setVideoScalingAvailable] = useState<boolean | null>(null)
   const [operationQueue, setOperationQueue] = useState<OperationQueueItem[]>([])
+  const [conversionHistory, setConversionHistory] = useState<ConversionHistoryEntry[]>(loadConversionHistory)
   const [conversionCatalog, setConversionCatalog] = useState<ConversionCatalogItem[]>([])
 
   const tr = (key: MessageKey) => t(preferences.language, key)
@@ -92,7 +102,14 @@ export default function App() {
       else if (payload === 'home') setSection('home')
       else if (payload === 'settings') { setSection('settings'); setSettingsPage('general') }
     }).then(addStop)
-    void listen<OperationQueueItem[]>('flickvert://operation-queue', ({ payload }) => setOperationQueue(payload.slice(0, 100))).then(addStop)
+    void listen<OperationQueueItem[]>('flickvert://operation-queue', ({ payload }) => {
+      setOperationQueue(payload.slice(0, 100))
+      setConversionHistory((current) => {
+        const next = mergeConversionHistory(current, payload)
+        try { localStorage.setItem('flickvert-conversion-history', JSON.stringify(next)) } catch {}
+        return next
+      })
+    }).then(addStop)
     void listen<{ jobId: string; progress: number }>('flickvert://operation-progress', ({ payload }) => setOperationQueue((queue) => queue.map((item) => item.jobId === payload.jobId ? { ...item, progress: payload.progress } : item))).then(addStop)
     void listen<{ inputPath: string; initialTool: ImageEditTool }>('flickvert://image-editor-open', ({ payload }) => {
       if (typeof payload.inputPath === 'string') { setSection('settings'); setImageEdit(payload) }
@@ -194,10 +211,47 @@ export default function App() {
     if (isTauri()) void emit('flickvert://settings-changed', next).catch(() => {})
   }
 
+  async function chooseThemePhoto(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0]
+    event.currentTarget.value = ''
+    if (!file || !['image/jpeg', 'image/png', 'image/webp', 'image/avif'].includes(file.type) || file.size > 20 * 1024 * 1024) return
+    try {
+      const bitmap = await createImageBitmap(file, { resizeWidth: 1600, resizeQuality: 'high' })
+      const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height))
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.round(bitmap.width * scale)
+      canvas.height = Math.round(bitmap.height * scale)
+      const context = canvas.getContext('2d')
+      if (!context) { bitmap.close(); return }
+      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+      bitmap.close()
+      const photo = canvas.toDataURL('image/webp', 0.78)
+      if (!photo.startsWith('data:image/webp;base64,') || photo.length > 2_000_000) return
+      localStorage.setItem('flickvert-photo-theme', photo)
+      localStorage.setItem('flickvert-photo-theme-enabled', 'true')
+      setThemePhoto(photo)
+      setPhotoThemeEnabled(true)
+    } catch { /* Keep the current photo if the new image cannot be stored. */ }
+  }
+
+  function togglePhotoTheme() {
+    const enabled = !photoThemeEnabled
+    localStorage.setItem('flickvert-photo-theme-enabled', String(enabled))
+    setPhotoThemeEnabled(enabled)
+  }
+
+  function removeThemePhoto() {
+    localStorage.removeItem('flickvert-photo-theme')
+    localStorage.removeItem('flickvert-photo-theme-enabled')
+    setThemePhoto(null)
+    setPhotoThemeEnabled(false)
+  }
+
   function applyDimensionPreset(value: string) {
     setSelectedDimensionPreset(value)
     setPresetSaved(false)
     const preset = sizePresets.find((item) => item.id === value)
+      ?? purposeProfiles.find((item) => item.id === value)
       ?? (value.startsWith('custom-') ? preferences.dimensionPresets?.[Number(value.slice(7))] : undefined)
     if (preset) updatePreferences({ width: preset.width, height: preset.height, ...('quality' in preset && preset.quality ? { quality: preset.quality } : {}), ...('format' in preset && preset.format ? { format: preset.format } : {}) })
   }
@@ -298,13 +352,21 @@ export default function App() {
     catch { setPickError(true) }
   }
 
+  async function rerunConversion(format: string) {
+    try {
+      await emit('flickvert://replay-conversion', format)
+      await invoke('choose_files')
+      setPickError(false)
+    } catch { setPickError(true) }
+  }
+
   async function chooseOutputFolder() {
     const folder = await invoke<string | null>('choose_output_folder')
     if (folder) updatePreferences({ outputFolder: folder })
   }
 
-  return <div className={`app ${preferences.appearance}`} data-accent={preferences.accent} style={{ '--accent-base': accentColor(preferences) } as CSSProperties}>
-    <WindowChrome language={preferences.language}/>
+  return <div className={`app ${preferences.appearance}${photoThemeEnabled && themePhoto ? ' photo-theme' : ''}`} data-accent={preferences.accent} style={{ '--accent-base': accentColor(preferences), ...(photoThemeEnabled && themePhoto ? { '--photo-wallpaper': `url("${themePhoto}")` } : {}) } as CSSProperties}>
+    <WindowChrome language={preferences.language} photo={themePhoto} photoEnabled={photoThemeEnabled} onChoosePhoto={chooseThemePhoto} onTogglePhoto={togglePhotoTheme} onRemovePhoto={removeThemePhoto} tr={tr}/>
     <AppSidebar
       section={section}
       language={preferences.language}
@@ -316,6 +378,9 @@ export default function App() {
     <main ref={mainRef} className="main" tabIndex={0}>
       {section === 'home' ? <HomePage
         preferences={preferences}
+        favorites={favoriteIds}
+        history={conversionHistory}
+        spaceSaved={totalSavedBytes(conversionHistory)}
         queue={operationQueue}
         setQueue={setOperationQueue}
         pickError={pickError}
@@ -324,6 +389,8 @@ export default function App() {
         tr={tr}
         onChooseFiles={() => void chooseFiles()}
         onExploreTools={() => setSection('tools')}
+        onOpenFavorite={(actionId) => { setToolSearch(actionId); setSection('tools') }}
+        onRerunHistory={(format) => void rerunConversion(format)}
         onOpenCategory={openToolCategory}
         onOpenKeyboard={() => { setSection('settings'); setSettingsPage('keyboard') }}
         onRevealOutput={(path) => { void invoke('reveal_output_path', { outputPath: path }).catch(() => setResultOpenError(true))}}

@@ -9,6 +9,17 @@ pub(crate) fn existing_output_path(output_path: &str) -> Result<PathBuf, String>
     }
 }
 
+#[tauri::command]
+pub(crate) fn output_file_size(output_path: String) -> Result<u64, String> {
+    let path = existing_output_path(&output_path)?;
+    if !path.is_file() {
+        return Err("Output is not a file".into());
+    }
+    fs::metadata(path)
+        .map(|metadata| metadata.len())
+        .map_err(|_| "Could not read output size".into())
+}
+
 pub(crate) fn selected_dropped_path(
     input_path: &str,
     dropped: &DroppedFiles,
@@ -268,7 +279,7 @@ pub(crate) fn copy_path_to_clipboard(_: &str) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::existing_output_path;
+    use super::{existing_output_path, output_file_size};
     use crate::MEDIA_TEMP_ID;
 
     #[test]
@@ -288,6 +299,21 @@ mod tests {
         );
         assert!(existing_output_path(directory.join("missing.txt").to_str().unwrap()).is_err());
 
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn reports_only_the_size_of_an_existing_file() {
+        let directory = std::env::temp_dir().join(format!(
+            "flickvert-file-size-{}-{}",
+            std::process::id(),
+            MEDIA_TEMP_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+        ));
+        std::fs::create_dir(&directory).unwrap();
+        let file = directory.join("result.bin");
+        std::fs::write(&file, b"12345").unwrap();
+        assert_eq!(output_file_size(file.to_str().unwrap().to_string()).unwrap(), 5);
+        assert!(output_file_size(directory.to_str().unwrap().to_string()).is_err());
         std::fs::remove_dir_all(directory).unwrap();
     }
 }

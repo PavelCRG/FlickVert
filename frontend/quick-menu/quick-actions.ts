@@ -79,6 +79,20 @@ export function canRunSelectedTool(actionId: string, actionIds: string[], fileCo
   return fileCount > 0 && actionIds.includes(actionId)
 }
 
+export function orderWheelActions<T>(available: T[], configuredIds?: string[], getId: (action: T) => string = (action) => (action as { id: string }).id): T[] {
+  if (configuredIds === undefined) return available
+  const byId = new Map(available.map((action) => [getId(action), action]))
+  return [...new Set(configuredIds)].flatMap((id) => byId.has(id) ? [byId.get(id)!] : [])
+}
+
+export function moveWheelAction(ids: string[], actionId: string, targetId?: string, after = false): string[] {
+  if (!actionId || actionId === targetId) return ids
+  const next = ids.filter((id) => id !== actionId)
+  const targetIndex = targetId ? next.indexOf(targetId) : -1
+  next.splice(targetIndex < 0 ? next.length : targetIndex + Number(after), 0, actionId)
+  return next
+}
+
 export function selectedToolUnavailableReason(actionId: string, files: { hasAudio?: boolean | null }[], audioFormat?: string, audioFormats: string[] = []): MessageKey | null {
   if (actionId !== 'mute-video' && actionId !== 'extract-audio') return null
   if (files.some((file) => file.hasAudio === false)) return actionId === 'mute-video' ? 'Mute video needs an audio track in every selected file.' : 'No audio track found in the selected video.'

@@ -2,6 +2,35 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { t, type MessageKey } from './i18n.ts'
 
+test('photo theme controls are translated in all supported languages', () => {
+  for (const key of ['Personalize with a photo', 'Your photo theme', 'Your photo stays on this device.', 'Current theme photo', 'Turn off photo theme', 'Use photo theme', 'Choose a photo', 'Change photo', 'Remove photo'] as const) {
+    assert.notEqual(t('ru', key), key)
+    assert.notEqual(t('zh', key), key)
+  }
+})
+
+test('action wheel editor controls are translated in all supported languages', () => {
+  for (const key of ['Action wheel', 'Choose actions, arrange the circle, and set shortcuts.', 'Reset wheel', 'Wheel preview', 'Wheel color', 'Wheel actions', 'Drop actions here or add them from the list.', 'Remove from wheel', 'Available actions', 'Add to wheel', 'Add', 'Added'] as const) {
+    assert.notEqual(t('ru', key), key)
+    assert.notEqual(t('zh', key), key)
+  }
+})
+
+test('purpose image profiles are translated in all supported languages', () => {
+  for (const key of ['Purpose profiles', 'Email', 'Web', 'Print'] as const) {
+    assert.notEqual(t('ru', key), key)
+    assert.notEqual(t('zh', key), key)
+  }
+})
+
+test('conversion history labels are translated in all supported languages', () => {
+  for (const key of ['Recent conversions', 'Convert again', 'Space saved'] as const) {
+    assert.equal(t('en', key), key)
+    assert.notEqual(t('ru', key), key)
+    assert.notEqual(t('zh', key), key)
+  }
+})
+
 test('theme labels are translated in English, Russian, and Simplified Chinese', () => {
   const expected = {
     'Accent color': ['Accent color', 'Акцентный цвет', '强调色'],

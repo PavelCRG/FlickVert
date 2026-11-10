@@ -1,3 +1,5 @@
+import { fileActions } from './quick-menu/quick-actions.ts'
+
 export type Language = 'en' | 'ru' | 'zh'
 export type Appearance = 'system' | 'light' | 'dark'
 export type AccentColor = 'orange' | 'blue' | 'violet' | 'teal' | 'green' | 'rose'
@@ -23,6 +25,8 @@ export type AppSettings = {
   quickMenuSectorOpacity: number
   customAccent?: string
   favoriteActions?: string[]
+  fileWheelActions?: string[]
+  wheelColor?: string
   quality: number
   pdfDpi: number
   pdfPageSize: PdfPageSize
@@ -94,6 +98,7 @@ export function normalizeOperationShortcuts(value: unknown, primaryShortcut: str
 export function normalizeSettings(value: unknown): AppSettings {
   if (!value || typeof value !== 'object') return defaultSettings
   const raw = value as Record<string, unknown>
+  const validWheelIds = new Set<string>(fileActions.map((action) => action.id))
   const rawModifiers = raw.dragModifiers && typeof raw.dragModifiers === 'object' ? raw.dragModifiers as Record<string, unknown> : {}
   const modifierKeys = [rawModifiers.convert, rawModifiers.tools, rawModifiers.actions]
   const validModifiers = modifierKeys.every((key) => key === 'SHIFT' || key === 'CTRL' || key === 'ALT') && new Set(modifierKeys).size === 3
@@ -124,6 +129,8 @@ export function normalizeSettings(value: unknown): AppSettings {
     quickMenuBackgroundOpacity: raw.quickMenuTheme === 'transparent' ? 0 : opacity(raw.quickMenuBackgroundOpacity, 94), quickMenuSectorOpacity: raw.quickMenuTheme === 'transparent' ? 0 : opacity(raw.quickMenuSectorOpacity, 95),
     ...(typeof raw.customAccent === 'string' && /^#[0-9a-fA-F]{6}$/.test(raw.customAccent) ? { customAccent: raw.customAccent } : {}),
     ...(Array.isArray(raw.favoriteActions) ? { favoriteActions: [...new Set(raw.favoriteActions.filter((id): id is string => typeof id === 'string' && /^[a-z0-9-]+$/.test(id)))].slice(0, 100) } : {}),
+    ...(Array.isArray(raw.fileWheelActions) ? { fileWheelActions: [...new Set(raw.fileWheelActions.filter((id): id is string => typeof id === 'string' && validWheelIds.has(id)))].slice(0, 12) } : {}),
+    ...(typeof raw.wheelColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(raw.wheelColor) ? { wheelColor: raw.wheelColor } : {}),
     quality: Number.isInteger(raw.quality) && Number(raw.quality) >= 40 && Number(raw.quality) <= 100 ? Number(raw.quality) : 88,
     pdfDpi: Number.isInteger(raw.pdfDpi) && Number(raw.pdfDpi) >= 72 && Number(raw.pdfDpi) <= 600 ? Number(raw.pdfDpi) : 300,
     pdfPageSize: raw.pdfPageSize === 'a4' || raw.pdfPageSize === 'letter' ? raw.pdfPageSize : 'source',

@@ -25,6 +25,7 @@ export default function ImageEditor({ inputPath, initialTool, outputFolder, onCl
   const [url, setUrl] = useState('')
   const [originalSize, setOriginalSize] = useState(0)
   const [compressionPreview, setCompressionPreview] = useState<{ url: string; blob: Blob; format: CompressionFormat; quality: number; backgroundColor: string } | null>(null)
+  const [comparisonPosition, setComparisonPosition] = useState(50)
   const [draft, setDraft] = useState<EditorDraft>(() => {
     const preferences = loadSettings()
     return { tool: initialTool, selection: null, cropAspect: 0, textPosition: null, caption: '', textColor: '#ffffff', backgroundColor: '#ffffff', brightness: 100, contrast: 100, compressionFormat: preferences.format === 'image/png' || preferences.format === 'image/jpeg' ? preferences.format : 'image/webp', compressionQuality: preferences.quality }
@@ -233,8 +234,12 @@ export default function ImageEditor({ inputPath, initialTool, outputFolder, onCl
       <div className="image-editor-body">
         <div className="image-editor-preview">
           {!url ? <p>{tr('Loading image...')}</p> : tool === 'compress' ? <div className="compression-comparison" aria-live="polite">
-            <figure><figcaption>{tr('Original')} · {formatImageSize(originalSize)}</figcaption><img src={url} alt={`${tr('Original')}: ${fileName}`}/></figure>
-            <figure><figcaption>{tr('Compressed preview')} · {currentCompressionPreview ? formatImageSize(currentCompressionPreview.blob.size) : tr('Preparing preview...')}</figcaption>{currentCompressionPreview ? <img src={currentCompressionPreview.url} alt={tr('Compressed preview')}/> : <div className="compression-preview-loading">{tr('Preparing preview...')}</div>}</figure>
+            <img className="compression-before" src={url} alt={`${tr('Original')}: ${fileName}`}/>
+            <div className="compression-after" style={{ clipPath: `inset(0 0 0 ${comparisonPosition}%)` }}>{currentCompressionPreview ? <img src={currentCompressionPreview.url} alt={tr('Compressed preview')}/> : <span>{tr('Preparing preview...')}</span>}</div>
+            <span className="compression-divider" style={{ left: `${comparisonPosition}%` }}/>
+            <span className="compression-caption compression-caption-before">{tr('Original')} · {formatImageSize(originalSize)}</span>
+            <span className="compression-caption compression-caption-after">{tr('Compressed preview')} · {currentCompressionPreview ? formatImageSize(currentCompressionPreview.blob.size) : tr('Preparing preview...')}</span>
+            <input className="compression-slider" type="range" min="1" max="99" value={comparisonPosition} aria-label={tr('Compare the original with the encoded output before saving.')} onChange={(event) => setComparisonPosition(Number(event.target.value))}/>
           </div> : <div className="image-editor-image" style={{ backgroundColor: tool === 'background' ? backgroundColor : undefined }} onPointerDown={startSelection} onPointerMove={moveSelection} onPointerUp={endSelection} onPointerCancel={endSelection}>
             <img src={url} alt={fileName} style={{ filter: tool === 'adjust' ? `brightness(${brightness}%) contrast(${contrast}%)` : undefined }}/>
             {selection && (tool === 'crop' || tool === 'redact') && <div className={`image-editor-selection${tool === 'redact' ? ' redact' : ''}`} style={{ left: `${selection.x * 100}%`, top: `${selection.y * 100}%`, width: `${selection.width * 100}%`, height: `${selection.height * 100}%` }}/>} 

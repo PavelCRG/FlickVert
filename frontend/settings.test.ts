@@ -148,6 +148,15 @@ test('favorite action ids are deduplicated and malformed values are ignored', ()
   assert.deepEqual(normalizeSettings({ favoriteActions: ['resize', 'resize', '../x', 3, 'compress-audio'] }).favoriteActions, ['resize', 'compress-audio'])
 })
 
+test('file wheel customization validates action ids, preserves an empty wheel, and survives backups', () => {
+  const customized = normalizeSettings({ fileWheelActions: ['reveal', 'unknown', 'reveal', '../escape', 'create-zip'], wheelColor: '#21a9b4' })
+  assert.deepEqual(customized.fileWheelActions, ['reveal', 'create-zip'])
+  assert.equal(customized.wheelColor, '#21a9b4')
+  assert.deepEqual(restoreSettingsBackup(JSON.parse(createSettingsBackup(customized))).fileWheelActions, ['reveal', 'create-zip'])
+  assert.deepEqual(normalizeSettings({ fileWheelActions: [] }).fileWheelActions, [])
+  assert.equal(normalizeSettings({ wheelColor: 'url(javascript:alert(1))' }).wheelColor, undefined)
+})
+
 test('custom dimension presets are validated, deduplicated, and bounded', () => {
   assert.deepEqual(normalizeSettings({ dimensionPresets: [
     { name: '  Portrait  ', width: 1080, height: 1920 },

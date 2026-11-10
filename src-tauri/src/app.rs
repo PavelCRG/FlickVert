@@ -68,6 +68,7 @@ pub(super) fn run() {
             copy_dropped_file_path,
             copy_powershell_path,
             open_terminal,
+            output_file_size,
             copy_to_flickvert_folder,
             move_to_flickvert_folder,
             register_shortcut,

@@ -4,7 +4,7 @@ import UpdateNotice from '../updates/UpdateNotice'
 import type { MessageKey } from '../i18n'
 
 export type Section = 'guide' | 'home' | 'settings' | 'tools'
-export type SettingsPage = 'general' | 'appearance' | 'keyboard' | 'conversion' | 'files' | 'about'
+export type SettingsPage = 'general' | 'wheel' | 'appearance' | 'keyboard' | 'conversion' | 'files' | 'about'
 
 const sections: { id: Section; label: MessageKey }[] = [
   { id: 'home', label: 'Home' },
@@ -15,6 +15,7 @@ const sections: { id: Section; label: MessageKey }[] = [
 
 const settingsPages: { id: SettingsPage; label: MessageKey; icon: AppIconName }[] = [
   { id: 'general', label: 'General', icon: 'settings' },
+  { id: 'wheel', label: 'Action wheel', icon: 'rotate' },
   { id: 'appearance', label: 'Appearance', icon: 'palette' },
   { id: 'keyboard', label: 'Keyboard', icon: 'keyboard' },
   { id: 'conversion', label: 'Conversion', icon: 'sliders' },

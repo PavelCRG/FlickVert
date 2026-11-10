@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import { strict as assert } from 'node:assert'
-import { canRunFileAction, canRunSelectedTool, canRunWheelTool, canUseNativeImagePath, commonFormats, conversionConcurrency, launcherActions, operationShortcutActions, selectedToolUnavailableReason, toolActionsFor } from './quick-actions.ts'
+import { canRunFileAction, canRunSelectedTool, canRunWheelTool, canUseNativeImagePath, commonFormats, conversionConcurrency, launcherActions, moveWheelAction, operationShortcutActions, orderWheelActions, selectedToolUnavailableReason, toolActionsFor } from './quick-actions.ts'
 import { operationErrorKind } from './operation-errors.ts'
 import { conversionPreview, conversionPreviewDetail } from './conversion-preview.ts'
 import { validateVideoFrameTime, validateVideoTrimRange } from '../video-trim/ranges.ts'
@@ -26,6 +26,16 @@ test('conversion preview keeps the format label clear of the filename detail', (
 
 test('the empty quick popup offers file selection, tools, and settings without file actions', () => {
   assert.deepEqual(launcherActions.map(({ id }) => id), ['choose-files', 'tools', 'settings'])
+})
+
+test('wheel customization orders only currently available actions and keeps the default when unset', () => {
+  const actions = [{ id: 'resize' }, { id: 'compress' }, { id: 'rotate' }]
+  assert.deepEqual(orderWheelActions(actions, ['rotate', 'resize']), [actions[2], actions[0]])
+  assert.deepEqual(orderWheelActions(actions, []), [])
+  assert.deepEqual(orderWheelActions(actions), actions)
+  assert.deepEqual(moveWheelAction(['a', 'b', 'c'], 'c', 'a'), ['c', 'a', 'b'])
+  assert.deepEqual(moveWheelAction(['a', 'b', 'c'], 'a', 'b', true), ['b', 'a', 'c'])
+  assert.deepEqual(moveWheelAction(['a', 'b'], 'c'), ['a', 'b', 'c'])
 })
 
 test('operation errors map only known native codes to user-facing categories', () => {

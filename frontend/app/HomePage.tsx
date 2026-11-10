@@ -4,9 +4,14 @@ import { operationErrorMessages } from '../quick-menu/operation-errors'
 import type { MessageKey } from '../i18n'
 import type { AppSettings } from '../settings'
 import type { OperationQueueItem } from './types'
+import { operationShortcutActions } from '../quick-menu/quick-actions'
+import { formatBytes, type ConversionHistoryEntry } from './conversion-history'
 
-export function HomePage({ preferences, queue, setQueue, pickError, resultOpenError, setResultOpenError, tr, onChooseFiles, onExploreTools, onOpenCategory, onOpenKeyboard, onRevealOutput }: {
+export function HomePage({ preferences, favorites, history, spaceSaved, queue, setQueue, pickError, resultOpenError, setResultOpenError, tr, onChooseFiles, onExploreTools, onOpenFavorite, onRerunHistory, onOpenCategory, onOpenKeyboard, onRevealOutput }: {
   preferences: AppSettings
+  favorites: string[]
+  history: ConversionHistoryEntry[]
+  spaceSaved: number
   queue: OperationQueueItem[]
   setQueue: (queue: OperationQueueItem[]) => void
   pickError: boolean
@@ -15,6 +20,8 @@ export function HomePage({ preferences, queue, setQueue, pickError, resultOpenEr
   tr: (key: MessageKey) => string
   onChooseFiles: () => void
   onExploreTools: () => void
+  onOpenFavorite: (actionId: string) => void
+  onRerunHistory: (format: string) => void
   onOpenCategory: (category: string) => void
   onOpenKeyboard: () => void
   onRevealOutput: (path: string) => void
@@ -22,6 +29,8 @@ export function HomePage({ preferences, queue, setQueue, pickError, resultOpenEr
   return <div className="page dashboard-page">
     <header className="settings-header"><div><h1>{tr('Home')}</h1><p className="subtitle">{tr('The file tools you need, right where you work.')}</p></div><button className="primary-button choose-files-button" onClick={onChooseFiles}><AppIcon name="file-plus"/>{tr('Choose files')}</button></header>
     {pickError && <p className="shortcut-error">{tr('Could not open files')}</p>}
+    {favorites.length > 0 && <section className="dashboard-favorites" aria-labelledby="dashboard-favorites-title"><h2 id="dashboard-favorites-title">{tr('Favorites')}</h2><div>{operationShortcutActions.filter((action) => favorites.includes(action.id)).slice(0, 8).map((action) => <button key={action.id} type="button" className="dashboard-favorite" onClick={() => onOpenFavorite(action.id)}><AppIcon name={action.glyph}/><span>{tr(action.label)}</span><AppIcon name="arrow-right"/></button>)}</div></section>}
+    {spaceSaved > 0 && <section className="dashboard-savings" aria-label={tr('Space saved')}><AppIcon name="compress"/><span>{tr('Space saved')}</span><strong>{formatBytes(spaceSaved, preferences.language === 'zh' ? 'zh-CN' : preferences.language)}</strong></section>}
     <section className="dashboard-start"><div><span className="dashboard-icon"><AppIcon name="convert"/></span><div><h2>{tr('Convert files')}</h2><p>{tr('Drop a file on the quick wheel or choose files to start.')}</p></div></div><button className="secondary-button" onClick={onExploreTools}><AppIcon name="tools"/>{tr('Explore tools')}</button></section>
     <section className="dashboard-grid" aria-label={tr('Tools & formats')}>
       <button className="dashboard-card" onClick={() => onOpenCategory('image-tools')}><span className="dashboard-card-icon"><AppIcon name="image"/></span><strong>{tr('Images and PDFs')}</strong><small>PNG · JPEG · WebP · SVG · PDF</small><AppIcon name="arrow-right" className="dashboard-card-arrow"/></button>
@@ -39,6 +48,7 @@ export function HomePage({ preferences, queue, setQueue, pickError, resultOpenEr
         {item.outputPath && <button className="queue-open-button" type="button" aria-label={`${tr('Show in folder')}: ${item.name}`} title={tr('Show in folder')} onClick={() => { setResultOpenError(false); onRevealOutput(item.outputPath!) }}><AppIcon name="folder"/></button>}
       </div>)}</div>
     </section>}
+    {history.length > 0 && <section className="settings-group operation-history"><div className="queue-header"><h2>{tr('Recent conversions')}</h2></div><div className="history-list">{history.slice(0, 5).map((item) => <div className="file-row" key={item.id}><span className="file-icon queue-done"><AppIcon name="check"/></span><div className="file-info"><strong title={item.name}>{item.name}</strong><span>{item.format.toUpperCase()} · {formatBytes(item.outputBytes, preferences.language)}</span></div><button type="button" className="text-button" onClick={() => onRerunHistory(item.format)}>{tr('Convert again')}</button>{item.outputPath && <button className="queue-open-button" type="button" aria-label={`${tr('Show in folder')}: ${item.name}`} title={tr('Show in folder')} onClick={() => { setResultOpenError(false); onRevealOutput(item.outputPath!) }}><AppIcon name="folder"/></button>}</div>)}</div></section>}
     <button className="dashboard-shortcut" onClick={onOpenKeyboard}><AppIcon name="keyboard"/><span>{tr('Quick shortcut')}</span><kbd>{preferences.shortcut.split('+').map((key) => key === 'CTRL' ? 'Ctrl' : key === 'ALT' ? 'Alt' : key === 'SHIFT' ? 'Shift' : key === 'SPACE' ? 'Space' : key).join(' + ')}</kbd><span>{tr('Change shortcut')} <AppIcon name="arrow-right"/></span></button>
     <section className="dashboard-ready"><span className="dashboard-ready-icon"><AppIcon name="check"/></span><div><h2>{tr('Everyday conversions are built in')}</h2><p>{tr('Images, PDFs, text and spreadsheets work without extra downloads.')}</p></div><button className="secondary-button" onClick={() => onOpenCategory('optional-engines')}>{tr('Explore optional engines')}</button></section>
   </div>

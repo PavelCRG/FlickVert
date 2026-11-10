@@ -8,7 +8,7 @@ import { mapConcurrent } from '../conversion/concurrent'
 import { imagesToPdf } from '../conversion/pdf'
 import { accentColor, loadSettings, normalizeSettings, saveSettings } from '../settings'
 import { t, type MessageKey } from '../i18n'
-import { allToolActions, canRunFileAction, canRunSelectedTool, canRunWheelTool, canUseNativeImagePath, commonFormats, conversionConcurrency, fileActionsForPlatform, imageToolActions, launcherActions, selectedToolUnavailableReason, toolActionsFor } from './quick-actions'
+import { allToolActions, canRunFileAction, canRunSelectedTool, canRunWheelTool, canUseNativeImagePath, commonFormats, conversionConcurrency, fileActionsForPlatform, imageToolActions, launcherActions, orderWheelActions, selectedToolUnavailableReason, toolActionsFor } from './quick-actions'
 import { wheelLabelPosition, wheelSectorAt, wheelSlicePath } from './radial-wheel'
 import { AppIcon, type AppIconName } from '../icons/AppIcon'
 import { operationErrorKind, operationErrorMessages, type OperationErrorKind } from './operation-errors'
@@ -19,7 +19,7 @@ type NativeFile = { path: string; name: string; size: number; extension: string;
 type Format = { extension: string; label: string }
 type Position = { x: number; y: number }
 type WheelChoice = { key: string; label: string; glyph?: AppIconName; disabled: boolean; disabledReason?: string; onChoose: () => void }
-type QueueItem = { id: string; name: string; status: 'queued' | 'processing' | 'done' | 'failed' | 'cancelled'; outputPath?: string; retryReady?: boolean; jobId?: string; progress?: number; error?: OperationErrorKind }
+type QueueItem = { id: string; name: string; format: string; inputBytes: number; status: 'queued' | 'processing' | 'done' | 'failed' | 'cancelled'; outputPath?: string; outputBytes?: number; completedAt?: number; retryReady?: boolean; jobId?: string; progress?: number; error?: OperationErrorKind }
 type ZipPreview = { entries: { path: string; size: number; directory: boolean }[]; fileCount: number; totalSize: number; conflicts: string[] }
 const imageExtensions = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'svg']
 const quickWindowSize = { width: 400, height: 400 }
@@ -69,6 +69,8 @@ function WheelChoices({ items, active, onActive }: { items: WheelChoice[]; activ
 
 export default function QuickMenu() {
   const [settings, setSettings] = useState(loadSettings)
+  const settingsRef = useRef(settings)
+  settingsRef.current = settings
   const tr = (key: MessageKey) => t(settings.language, key)
   const visibleFileActions = fileActionsForPlatform(navigator.userAgent.includes('Windows'))
   const [dragMode, setDragMode] = useState(false)
@@ -108,6 +110,7 @@ export default function QuickMenu() {
   const activeJobIdRef = useRef<string | null>(null)
   const cancelRequestedRef = useRef(false)
   const onJobStartedRef = useRef<((jobId: string) => void) | null>(null)
+  const replayFormatRef = useRef<string | null>(null)
 
   function setDragVisible(value: boolean) {
     dragModeRef.current = value
@@ -121,7 +124,7 @@ export default function QuickMenu() {
       const totalBytes = files.reduce((sum, file) => sum + file.size, 0)
       return toolActionsFor(files, ffmpegAvailableRef.current, imagemagickAvailableRef.current, videoCodecsRef.current, pdfMergeAvailableRef.current, pdfSplitAvailableRef.current, pdfEditAvailableRef.current).some((action) => canRunWheelTool(action.id, files.length, totalBytes))
     }
-    return visibleFileActions.some((action) => canRunFileAction(action.id, files))
+    return visibleFileActions.some((action) => (settingsRef.current.fileWheelActions === undefined || settingsRef.current.fileWheelActions.includes(action.id)) && canRunFileAction(action.id, files))
   }
 
   function setActiveWheelMode(value: 'convert' | 'tools' | 'actions') {
@@ -242,7 +245,7 @@ export default function QuickMenu() {
     cancelRequestedRef.current = false
     dropHandled.current = true
     setStatus(tr('Converting...'))
-    const queue: QueueItem[] = [...previousQueue, ...items.map((file, index) => ({ id: `${previousQueue.length + index}:${file.name}`, name: file.name, status: 'queued' as const }))]
+    const queue: QueueItem[] = [...previousQueue, ...items.map((file) => ({ id: crypto.randomUUID(), name: file.name, format: format.extension, inputBytes: file.size, status: 'queued' as const }))]
     publishQueue(queue)
     try {
       const concurrency = conversionConcurrency(format.extension, items, ffmpegAvailableRef.current)
@@ -261,7 +264,8 @@ export default function QuickMenu() {
         publishQueue(queue)
         try {
           const outputPath = await convertTo(file, format)
-          queue[queueIndex] = { ...queue[queueIndex], status: 'done', outputPath, jobId: undefined, progress: 100 }
+          const outputBytes = await invoke<number>('output_file_size', { outputPath }).catch(() => 0)
+          queue[queueIndex] = { ...queue[queueIndex], status: 'done', outputPath, outputBytes, completedAt: Date.now(), jobId: undefined, progress: 100 }
           publishQueue(queue)
           return outputPath
         } catch (error) {
@@ -538,11 +542,21 @@ export default function QuickMenu() {
       hideTimer.current = window.setTimeout(hide, 280)
     }).then(addStop)
     void listen('flickvert://cancel-drag-wheel', hide).then(addStop)
-    void listen<string[]>('flickvert://shortcut-files', ({ payload }) => {
+    void listen<string>('flickvert://replay-conversion', ({ payload }) => { replayFormatRef.current = payload }).then(addStop)
+    void listen<string[]>('flickvert://shortcut-files', async ({ payload }) => {
       if (!dragModeRef.current) setActiveWheelMode('convert')
-      if (payload.length) void refreshFiles(payload).catch(() => setStatus(tr('Could not open files')))
+      if (payload.length) {
+        try {
+          const { received, options } = await refreshFiles(payload)
+          const replayFormat = replayFormatRef.current
+          replayFormatRef.current = null
+          const format = options.find((item) => item.extension === replayFormat)
+          if (format) void convertFiles(received, format)
+          else if (replayFormat) setStatus(tr('Format not supported'))
+        } catch { replayFormatRef.current = null; setStatus(tr('Could not open files')) }
+      }
       else if (dragModeRef.current) { filesRef.current = []; formatsRef.current = []; setFiles([]); setFormats([]); setStatus(tr('No selected files found')) }
-      else { filesRef.current = []; formatsRef.current = []; setFiles([]); setFormats([]); setDragVisible(false) }
+      else { replayFormatRef.current = null; filesRef.current = []; formatsRef.current = []; setFiles([]); setFormats([]); setDragVisible(false) }
     }).then(addStop)
     void listen<{ actionId: string; paths: string[] }>('flickvert://operation-shortcut', async ({ payload }) => {
       try {
@@ -690,7 +704,7 @@ export default function QuickMenu() {
   }
 
   const actions = files.length ? wheelMode === 'actions' ? visibleFileActions : wheelMode === 'tools' ? toolActionsFor(files, ffmpegAvailable, imagemagickAvailable, videoCodecs, pdfMergeAvailable, pdfSplitAvailable, pdfEditAvailable) : [] : []
-  const choices: WheelChoice[] = !files.length
+  const availableChoices: WheelChoice[] = !files.length
     ? launcherActions.map((action) => ({ key: action.id, label: tr(action.label), glyph: action.glyph, disabled: false, onChoose: () => {
       if (action.id === 'choose-files') void invoke('choose_files')
       else void invoke('quick_action', { actionId: action.id })
@@ -705,6 +719,9 @@ export default function QuickMenu() {
       const disabledReason = selectedToolUnavailableReason(action.id, files, settings.audioExtractionFormat, audioFormats)
       return { key: action.id, label: tr(action.id === 'open-terminal' && navigator.userAgent.includes('Windows') ? 'Open PowerShell' : action.label), glyph: action.glyph, disabled: unavailableTool || disabledBySelection || Boolean(disabledReason), disabledReason: disabledReason ? tr(disabledReason) : undefined, onChoose: () => void choose(action.id) }
     })
+  const choices: WheelChoice[] = wheelMode === 'actions' && files.length
+    ? orderWheelActions(availableChoices, settings.fileWheelActions, (choice) => choice.key)
+    : availableChoices
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') { if (zipPreview) setZipPreview(null); else hide(); return }
@@ -738,7 +755,7 @@ export default function QuickMenu() {
   const centerDetail = status ? (files.length === 1 ? files[0].name : '') : activeChoice?.disabledReason || conversionPreviewDetail(Boolean(preview), activeChoice ? (files.length === 1 ? files[0].name : '') : files.length ? wheelMode === 'convert' ? tr('Select output format') : '' : tr('Choose files, tools, or settings'))
   const previewDestination = preview && !activeChoice?.disabledReason ? preview.destination === 'Source folders' ? tr('Source folders') : preview.destination : ''
   const pdfResolution = preview && files.some((file) => file.extension === 'pdf') && ['jpg', 'png'].includes(activeChoice?.key ?? '')
-  const wheelStyle = { '--wheel-accent-base': accentColor(settings), '--wheel-background': settings.quickMenuBackground, '--wheel-sector': settings.quickMenuSector, '--wheel-active': settings.quickMenuActive, '--wheel-text': settings.quickMenuText, '--wheel-background-opacity': `${settings.quickMenuBackgroundOpacity}%`, '--wheel-sector-opacity': `${settings.quickMenuSectorOpacity}%` } as CSSProperties
+  const wheelStyle = { '--wheel-accent-base': settings.wheelColor ?? accentColor(settings), '--wheel-background': settings.quickMenuBackground, '--wheel-sector': settings.quickMenuSector, '--wheel-active': settings.quickMenuActive, '--wheel-text': settings.quickMenuText, '--wheel-background-opacity': `${settings.quickMenuBackgroundOpacity}%`, '--wheel-sector-opacity': `${settings.quickMenuSectorOpacity}%` } as CSSProperties
   return <main className={`quick-shell${dragMode ? ' drag-mode' : ''}${emptyWheel ? ' quick-empty' : ''}`} data-appearance={settings.appearance} style={wheelStyle} aria-label="FlickVert quick actions">
     <div className={`quick-orbit${emptyWheel ? ' no-choices' : ''}`} aria-label={tr(wheelMode === 'convert' ? 'Select output format' : wheelMode === 'tools' ? 'Tools' : 'Actions')}>
       <WheelChoices items={choices} active={active} onActive={setActive}/>

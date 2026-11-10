@@ -1,6 +1,32 @@
 import type { Language } from './settings'
 
 const messages = {
+  'Personalize with a photo': ['Personalize with a photo', 'Оформить своим фото'],
+  'Your photo theme': ['Your photo theme', 'Тема из вашего фото'],
+  'Your photo stays on this device.': ['Your photo stays on this device.', 'Фото хранится только на этом устройстве.'],
+  'Current theme photo': ['Current theme photo', 'Текущее фото темы'],
+  'Turn off photo theme': ['Turn off photo theme', 'Выключить фото-тему'],
+  'Use photo theme': ['Use photo theme', 'Включить фото-тему'],
+  'Choose a photo': ['Choose a photo', 'Выбрать фото'],
+  'Change photo': ['Change photo', 'Изменить фото'],
+  'Remove photo': ['Remove photo', 'Удалить фото'],
+  'Action wheel': ['Action wheel', 'Круг действий'],
+  'Choose actions, arrange the circle, and set shortcuts.': ['Choose actions, arrange the circle, and set shortcuts.', 'Выберите действия, расположите их в круге и назначьте сочетания клавиш.'],
+  'Reset wheel': ['Reset wheel', 'Сбросить круг'],
+  'Wheel preview': ['Wheel preview', 'Предпросмотр круга'],
+  'actions selected': ['actions selected', 'действий выбрано'],
+  'Wheel color': ['Wheel color', 'Цвет круга'],
+  'Wheel actions': ['Wheel actions', 'Действия в круге'],
+  'Drop actions here or add them from the list.': ['Drop actions here or add them from the list.', 'Перетащите сюда действия или добавьте их из списка.'],
+  'Remove from wheel': ['Remove from wheel', 'Убрать из круга'],
+  'Available actions': ['Available actions', 'Доступные действия'],
+  'Add to wheel': ['Add to wheel', 'Добавить в круг'],
+  'Add': ['Add', 'Добавить'],
+  'Added': ['Added', 'Добавлено'],
+  'Purpose profiles': ['Purpose profiles', 'Профили по назначению'],
+  'Email': ['Email', 'Электронная почта'],
+  'Web': ['Web', 'Веб'],
+  'Print': ['Print', 'Печать'],
   'Orange': ['Orange', 'Orange'],
   'Format': ['Format', 'Формат'], 'Original': ['Original', 'Оригинал'], 'Compressed preview': ['Compressed preview', 'Предпросмотр сжатия'], 'Preparing preview...': ['Preparing preview...', 'Подготовка предпросмотра...'], 'Compare the original with the encoded output before saving.': ['Compare the original with the encoded output before saving.', 'Сравните оригинал с результатом сжатия перед сохранением.'], 'Original size': ['Original size', 'Размер оригинала'], 'Output size': ['Output size', 'Размер результата'], 'Compress and save': ['Compress and save', 'Сжать и сохранить'],
   'HD': ['HD', 'HD'], 'Full HD': ['Full HD', 'Full HD'], 'QHD': ['QHD', 'QHD'], '4K': ['4K', '4K'], 'Square': ['Square', 'Квадрат'], 'Dimension preset': ['Dimension preset', 'Пресет размера'], 'Choose preset': ['Choose preset', 'Выберите пресет'], 'Custom presets': ['Custom presets', 'Мои пресеты'], 'Custom preset name': ['Custom preset name', 'Название пресета'], 'Save preset': ['Save preset', 'Сохранить пресет'], 'Preset saved': ['Preset saved', 'Пресет сохранён'], 'Remove preset': ['Remove preset', 'Удалить пресет'],
@@ -34,6 +60,9 @@ const messages = {
   'Cancel operation': ['Cancel operation', '\u041e\u0442\u043c\u0435\u043d\u0438\u0442\u044c \u043e\u0431\u0440\u0430\u0431\u043e\u0442\u043a\u0443'], 'Operation cancelled': ['Operation cancelled', '\u041e\u0431\u0440\u0430\u0431\u043e\u0442\u043a\u0430 \u043e\u0442\u043c\u0435\u043d\u0435\u043d\u0430'], 'Cancelled': ['Cancelled', '\u041e\u0442\u043c\u0435\u043d\u0435\u043d\u043e'],
   'Input file unavailable': ['Input file unavailable', '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u0442\u043a\u0440\u044b\u0442\u044c \u0432\u0445\u043e\u0434\u043d\u043e\u0439 \u0444\u0430\u0439\u043b'], 'Required engine unavailable': ['Required engine unavailable', '\u041d\u0435 \u0434\u043e\u0441\u0442\u0443\u043f\u0435\u043d \u043d\u0443\u0436\u043d\u044b\u0439 \u0434\u0432\u0438\u0436\u043e\u043a'], 'Access denied': ['Access denied', '\u041d\u0435\u0442 \u0434\u043e\u0441\u0442\u0443\u043f\u0430 \u043a \u0444\u0430\u0439\u043b\u0443 \u0438\u043b\u0438 \u043f\u0430\u043f\u043a\u0435'], 'Could not save output': ['Could not save output', '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442'],
   'Favorites': ['Favorites', '\u0418\u0437\u0431\u0440\u0430\u043d\u043d\u043e\u0435'],
+  'Recent conversions': ['Recent conversions', '\u041d\u0435\u0434\u0430\u0432\u043d\u0438\u0435 \u043a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u0438'],
+  'Convert again': ['Convert again', '\u041a\u043e\u043d\u0432\u0435\u0440\u0442\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0441\u043d\u043e\u0432\u0430'],
+  'Space saved': ['Space saved', '\u042d\u043a\u043e\u043d\u043e\u043c\u0438\u044f \u043c\u0435\u0441\u0442\u0430'],
   'Add to favorites': ['Add to favorites', '\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u0432 \u0438\u0437\u0431\u0440\u0430\u043d\u043d\u043e\u0435'],
   'Remove from favorites': ['Remove from favorites', '\u0423\u0431\u0440\u0430\u0442\u044c \u0438\u0437 \u0438\u0437\u0431\u0440\u0430\u043d\u043d\u043e\u0433\u043e'],
   'Settings backup': ['Settings backup', '\u0420\u0435\u0437\u0435\u0440\u0432\u043d\u0430\u044f \u043a\u043e\u043f\u0438\u044f \u043d\u0430\u0441\u0442\u0440\u043e\u0435\u043a'],
@@ -331,6 +360,7 @@ Object.assign(chinese, { 'Arrange PDF pages': '\u6392\u5217 PDF \u9875\u9762', '
 Object.assign(chinese, { 'Favorites': '\u6536\u85cf', 'Add to favorites': '\u6dfb\u52a0\u5230\u6536\u85cf', 'Remove from favorites': '\u4ece\u6536\u85cf\u4e2d\u79fb\u9664', 'Settings backup': '\u8bbe\u7f6e\u5907\u4efd', 'Back up appearance, keyboard, and conversion preferences. Folder paths are excluded.': '\u5907\u4efd\u5916\u89c2\u3001\u952e\u76d8\u548c\u8f6c\u6362\u8bbe\u7f6e\u3002\u4e0d\u5305\u542b\u6587\u4ef6\u5939\u8def\u5f84\u3002', 'Export settings': '\u5bfc\u51fa\u8bbe\u7f6e', 'Import settings': '\u5bfc\u5165\u8bbe\u7f6e', 'Could not import settings. Choose a valid FlickVert backup.': '\u65e0\u6cd5\u5bfc\u5165\u8bbe\u7f6e\u3002\u8bf7\u9009\u62e9\u6709\u6548\u7684 FlickVert \u5907\u4efd\u6587\u4ef6\u3002', 'Check the selected file and required engine.': '\u68c0\u67e5\u6240\u9009\u6587\u4ef6\u548c\u6240\u9700\u7684\u5f15\u64ce\u3002' })
 Object.assign(chinese, { 'Preferred Windows terminal': '\u9996\u9009 Windows \u7ec8\u7aef', 'If the output folder already exists': '\u5982\u679c\u89e3\u538b\u6587\u4ef6\u5939\u5df2\u5b58\u5728', 'Extract into a safely named new folder': '\u89e3\u538b\u5230\u5b89\u5168\u547d\u540d\u7684\u65b0\u6587\u4ef6\u5939', 'Skip extraction': '\u8df3\u8fc7\u89e3\u538b', 'Archive skipped because the output folder already exists.': '\u5df2\u8df3\u8fc7\u538b\u7f29\u5305\uff1a\u76ee\u6807\u6587\u4ef6\u5939\u5df2\u5b58\u5728' })
 Object.assign(chinese, { 'Reset': '\u91cd\u7f6e', 'Reset appearance settings': '\u91cd\u7f6e\u5916\u89c2\u8bbe\u7f6e', 'Reset keyboard settings': '\u91cd\u7f6e\u952e\u76d8\u8bbe\u7f6e' })
+Object.assign(chinese, { 'Recent conversions': '\u6700\u8fd1\u8f6c\u6362', 'Convert again': '\u518d\u6b21\u8f6c\u6362', 'Space saved': '\u8282\u7701\u7684\u7a7a\u95f4' })
 Object.assign(chinese, { 'Launch FlickVert when I sign in': '\u767b\u5f55\u65f6\u542f\u52a8 FlickVert', 'Could not change startup settings.': '\u65e0\u6cd5\u66f4\u6539\u542f\u52a8\u8bbe\u7f6e\u3002' })
 Object.assign(chinese, { 'FlickVert starts after you sign in; it cannot run while your PC is off.': '\u767b\u5f55\u540e\u542f\u52a8 FlickVert\uff1b\u7535\u8111\u5173\u673a\u65f6\u7a0b\u5e8f\u65e0\u6cd5\u8fd0\u884c\u3002' })
 Object.assign(chinese, { 'Add FlickVert to file context menu': '\u5c06 FlickVert \u6dfb\u52a0\u5230\u6587\u4ef6\u53f3\u952e\u83dc\u5355', 'Could not change context menu settings.': '\u65e0\u6cd5\u66f4\u6539\u53f3\u952e\u83dc\u5355\u8bbe\u7f6e\u3002' })
@@ -338,3 +368,6 @@ Object.assign(chinese, { 'Operation shortcuts': '\u64cd\u4f5c\u5feb\u6377\u952e'
 Object.assign(chinese, { 'UTF-8 SRT/VTT only; cue timing and text are converted, but VTT notes, styles, and cue settings are omitted.': '\u4ec5\u652f\u6301 UTF-8 SRT/VTT\uff1a\u8f6c\u6362\u65f6\u4fdd\u7559\u65f6\u95f4\u548c\u6587\u672c\uff0c\u5ffd\u7565 VTT \u5907\u6ce8\u3001\u6837\u5f0f\u548c\u63d0\u793a\u8bbe\u7f6e\u3002' })
 Object.assign(chinese, { 'DOCX/ODT text extraction only; tables are flattened and layout, images, headers, and footnotes are not retained; 16 MiB input, 64 MiB XML, and 128 MiB output limits.': '\u4ec5\u4ece DOCX/ODT \u63d0\u53d6\u6587\u672c\uff1a\u8868\u683c\u4f1a\u5c55\u5e73\uff0c\u4e0d\u4fdd\u7559\u7248\u5f0f\u3001\u56fe\u7247\u3001\u9875\u7709\u9875\u811a\u548c\u811a\u6ce8\uff1b\u8f93\u5165\u9650\u5236 16 MiB\uff0cXML 64 MiB\uff0c\u8f93\u51fa 128 MiB\u3002' })
 Object.assign(chinese, { 'EPUB spine text extraction only; images and layout are not retained; UTF-8 members, 16 MiB input, 64 MiB content, and 128 MiB output limits.': '\u4ec5\u6309 EPUB \u9605\u8bfb\u987a\u5e8f\u63d0\u53d6\u6587\u672c\uff1b\u4e0d\u4fdd\u7559\u56fe\u7247\u548c\u7248\u5f0f\uff1b\u6587\u4ef6\u5185\u5bb9\u5fc5\u987b\u4e3a UTF-8\uff0c\u8f93\u5165\u9650\u5236 16 MiB\uff0c\u6570\u636e 64 MiB\uff0c\u8f93\u51fa 128 MiB\u3002' })
+Object.assign(chinese, { 'Personalize with a photo': '\u7528\u81ea\u5df1\u7684\u7167\u7247\u4e2a\u6027\u5316', 'Your photo theme': '\u4f60\u7684\u7167\u7247\u4e3b\u9898', 'Your photo stays on this device.': '\u7167\u7247\u4ec5\u4fdd\u5b58\u5728\u6b64\u8bbe\u5907\u4e0a\u3002', 'Current theme photo': '\u5f53\u524d\u4e3b\u9898\u7167\u7247', 'Turn off photo theme': '\u5173\u95ed\u7167\u7247\u4e3b\u9898', 'Use photo theme': '\u4f7f\u7528\u7167\u7247\u4e3b\u9898', 'Choose a photo': '\u9009\u62e9\u7167\u7247', 'Change photo': '\u66f4\u6362\u7167\u7247', 'Remove photo': '\u5220\u9664\u7167\u7247' })
+Object.assign(chinese, { 'Action wheel': '\u5feb\u6377\u64cd\u4f5c\u8f6e', 'Choose actions, arrange the circle, and set shortcuts.': '\u9009\u62e9\u64cd\u4f5c\u3001\u8c03\u6574\u5706\u76d8\u987a\u5e8f\u5e76\u8bbe\u7f6e\u5feb\u6377\u952e\u3002', 'Reset wheel': '\u91cd\u7f6e\u64cd\u4f5c\u8f6e', 'Wheel preview': '\u64cd\u4f5c\u8f6e\u9884\u89c8', 'actions selected': '\u9879\u5df2\u9009', 'Wheel color': '\u64cd\u4f5c\u8f6e\u989c\u8272', 'Wheel actions': '\u64cd\u4f5c\u8f6e\u5185\u7684\u64cd\u4f5c', 'Drop actions here or add them from the list.': '\u5c06\u64cd\u4f5c\u62d6\u5230\u6b64\u5904\uff0c\u6216\u4ece\u5217\u8868\u6dfb\u52a0\u3002', 'Remove from wheel': '\u4ece\u64cd\u4f5c\u8f6e\u4e2d\u79fb\u9664', 'Available actions': '\u53ef\u7528\u64cd\u4f5c', 'Add to wheel': '\u6dfb\u52a0\u5230\u64cd\u4f5c\u8f6e', 'Add': '\u6dfb\u52a0', 'Added': '\u5df2\u6dfb\u52a0' })
+Object.assign(chinese, { 'Purpose profiles': '\u7528\u9014\u9884\u8bbe', 'Email': '\u7535\u5b50\u90ae\u4ef6', 'Web': '\u7f51\u9875', 'Print': '\u6253\u5370' })

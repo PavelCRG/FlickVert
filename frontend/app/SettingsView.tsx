@@ -7,6 +7,8 @@ import { AccentPicker, SegmentedControl, SettingsRow, sizePresets } from '../set
 import { modifierLabel } from './keyboard'
 import { operationShortcutActions } from '../quick-menu/quick-actions'
 import { EngineStatusList } from './EngineStatusList'
+import { WheelEditor } from './WheelEditor'
+import { purposeProfiles } from '../settings/profiles'
 import type { Section, SettingsPage } from './AppSidebar'
 import type { Engines } from './types'
 
@@ -33,7 +35,7 @@ export function SettingsView(props: SettingsViewProps) {
   const shellIntegrationSupported = isTauri() && /Win|Mac/.test(navigator.platform)
   return <div className="page settings-page" data-page={settingsPage}>
         <header className="settings-header">
-          <div><p className="welcome-eyebrow">{tr('Settings')}</p><h1>{tr(settingsPage === 'general' ? 'General' : settingsPage === 'appearance' ? 'Appearance' : settingsPage === 'keyboard' ? 'Keyboard' : settingsPage === 'conversion' ? 'Conversion' : settingsPage === 'files' ? 'Files' : 'About')}</h1><p className="subtitle">{tr('Control how FlickVert looks, opens, and saves files.')}</p></div>
+          <div><p className="welcome-eyebrow">{tr('Settings')}</p><h1>{tr(settingsPage === 'general' ? 'General' : settingsPage === 'wheel' ? 'Action wheel' : settingsPage === 'appearance' ? 'Appearance' : settingsPage === 'keyboard' ? 'Keyboard' : settingsPage === 'conversion' ? 'Conversion' : settingsPage === 'files' ? 'Files' : 'About')}</h1>{settingsPage === 'wheel' && <p className="subtitle">{tr('Choose actions, arrange the circle, and set shortcuts.')}</p>}</div>
         </header>
         {pickError && <p className="shortcut-error">{tr('Could not open files')}</p>}
 
@@ -49,6 +51,8 @@ export function SettingsView(props: SettingsViewProps) {
           {shellIntegrationSupported && <label className="setting-row"><span className="setting-copy"><span>{tr('Add FlickVert to file context menu')}</span><small>{tr('Open FlickVert actions from File Explorer.')}</small></span><input type="checkbox" checked={preferences.contextMenuEnabled} onChange={(event) => { const enabled = event.target.checked; setContextMenuError(false); void invoke('set_context_menu_enabled', { enabled }).then(() => updatePreferences({ contextMenuEnabled: enabled })).catch(() => setContextMenuError(true)) }}/></label>}
           {contextMenuError && <p className="shortcut-error" role="alert">{tr('Could not change context menu settings.')}</p>}
         </section>}
+
+        {settingsPage === 'wheel' && <WheelEditor preferences={preferences} updatePreferences={updatePreferences} recordingAction={recordingOperationShortcut} shortcutError={operationShortcutError} onRecordShortcut={setRecordingOperationShortcut} tr={tr}/>}
 
         {settingsPage === 'appearance' && <section className="settings-group"><h2>{tr('Appearance')}</h2>
           <SettingsRow label={tr('Appearance')} description={tr('Follow your system theme or choose one.')}><SegmentedControl label={tr('Appearance')} value={preferences.appearance} options={(['system', 'light', 'dark'] as const).map((value) => ({ value, label: tr(value === 'system' ? 'System' : value === 'light' ? 'Light' : 'Dark') }))} onChange={(appearance) => updatePreferences({ appearance })}/></SettingsRow>
@@ -117,13 +121,9 @@ export function SettingsView(props: SettingsViewProps) {
           <p className="catalog-note">{tr('These targets apply to audio normalization. Lower true-peak values leave more headroom.')}</p>
           <SettingsRow label={tr('Audio extraction format')}><select className="modifier-select" aria-label={tr('Audio extraction format')} value={audioFormats.includes(preferences.audioExtractionFormat) ? preferences.audioExtractionFormat : ''} disabled={!audioFormats.length} onChange={(event) => updatePreferences({ audioExtractionFormat: event.target.value as AppSettings['audioExtractionFormat'] })}><option value="" disabled>{tr(audioFormats.length ? 'Choose available format' : 'No supported audio formats')}</option>{audioFormats.map((format) => <option key={format} value={format}>{format.toUpperCase()}</option>)}</select></SettingsRow>
           <p className="catalog-note">{tr('Audio extraction only lists formats supported by the installed FFmpeg.')}</p>
-          <SettingsRow label={tr('Dimension preset')}><div className="dimension-preset-controls"><select className="modifier-select" aria-label={tr('Dimension preset')} value={selectedDimensionPreset} onChange={(event) => applyDimensionPreset(event.target.value)}><option value="">{tr('Choose preset')}</option><optgroup label={tr('Built in')}>{sizePresets.map((preset) => <option key={preset.id} value={preset.id}>{tr(preset.name as MessageKey)} · {preset.width} × {preset.height}</option>)}</optgroup>{Boolean(preferences.dimensionPresets?.length) && <optgroup label={tr('Custom presets')}>{preferences.dimensionPresets?.map((preset, index) => <option key={`${preset.name}-${index}`} value={`custom-${index}`}>{preset.name} · {preset.width} × {preset.height}</option>)}</optgroup>}</select>{selectedDimensionPreset.startsWith('custom-') && <button type="button" className="secondary-button dimension-preset-remove" aria-label={tr('Remove preset')} title={tr('Remove preset')} onClick={removeDimensionPreset}><AppIcon name="close"/></button>}</div></SettingsRow>
+          <SettingsRow label={tr('Dimension preset')}><div className="dimension-preset-controls"><select className="modifier-select" aria-label={tr('Dimension preset')} value={selectedDimensionPreset} onChange={(event) => applyDimensionPreset(event.target.value)}><option value="">{tr('Choose preset')}</option><optgroup label={tr('Purpose profiles')}>{purposeProfiles.map((preset) => <option key={preset.id} value={preset.id}>{tr(preset.name)}</option>)}</optgroup><optgroup label={tr('Built in')}>{sizePresets.map((preset) => <option key={preset.id} value={preset.id}>{tr(preset.name as MessageKey)} · {preset.width} × {preset.height}</option>)}</optgroup>{Boolean(preferences.dimensionPresets?.length) && <optgroup label={tr('Custom presets')}>{preferences.dimensionPresets?.map((preset, index) => <option key={`${preset.name}-${index}`} value={`custom-${index}`}>{preset.name} · {preset.width} × {preset.height}</option>)}</optgroup>}</select>{selectedDimensionPreset.startsWith('custom-') && <button type="button" className="secondary-button dimension-preset-remove" aria-label={tr('Remove preset')} title={tr('Remove preset')} onClick={removeDimensionPreset}><AppIcon name="close"/></button>}</div></SettingsRow>
           <div className="dimension-preset-save"><input type="text" maxLength={32} aria-label={tr('Custom preset name')} placeholder={tr('Custom preset name')} value={presetName} onChange={(event) => { setPresetName(event.target.value); setPresetSaved(false) }}/><button className="secondary-button" disabled={!presetName.trim() || !preferences.width || !preferences.height} onClick={saveDimensionPreset}><AppIcon name="star"/>{tr('Save preset')}</button></div>
           {presetSaved && <p className="catalog-note" role="status">{tr('Preset saved')}</p>}
-          <div className="output-folder-setting"><div><strong>{tr('Save location')}</strong><span title={preferences.outputFolder}>{preferences.outputFolder || tr('Same folder as original')}</span></div>
-            <button className="secondary-button" onClick={() => void chooseOutputFolder()}><AppIcon name="folder"/>{tr('Choose folder')}</button>
-            {preferences.outputFolder && <button className="secondary-button" onClick={() => updatePreferences({ outputFolder: undefined })}>{tr('Use source folder')}</button>}
-          </div>
         </section>}
 
         {settingsPage === 'conversion' && <section className="settings-group" aria-labelledby="engines-title">

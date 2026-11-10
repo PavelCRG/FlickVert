@@ -1,3 +1,10 @@
+.dashboard-favorites > h2 { margin: 0 0 9px; color: var(--text); font-size: 13px; }
+.dashboard-favorites > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.dashboard-favorite { min-width: 148px; min-height: 42px; display: flex; align-items: center; gap: 9px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--text); text-align: left; cursor: pointer; }
+.dashboard-favorite:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); background: var(--accent-soft); }
+.dashboard-favorite svg { width: 16px; height: 16px; flex: none; color: var(--accent); }
+.dashboard-favorite span { flex: 1; }
+
 .dashboard-page {
   gap: 14px;
 }
