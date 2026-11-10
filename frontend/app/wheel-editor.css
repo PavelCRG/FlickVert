@@ -3,14 +3,16 @@
 .wheel-editor-layout { display: grid; grid-template-columns: minmax(250px, .85fr) minmax(340px, 1.15fr); align-items: start; gap: 14px; }
 .wheel-editor-stage, .wheel-editor-list, .wheel-editor-catalog { min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .wheel-editor-stage { display: flex; flex-direction: column; align-items: center; }
-.wheel-editor-preview { position: relative; width: min(100%, 300px); aspect-ratio: 1; --wheel-accent: var(--wheel-accent-base); }
-.wheel-editor-segments { position: absolute; inset: 0; width: 100%; height: 100%; }
-.wheel-editor-segments path { fill: color-mix(in srgb, var(--surface-2) 88%, var(--wheel-accent)); stroke: var(--line); stroke-width: 1.4; }
+.wheel-editor-preview { position: relative; width: min(100%, 360px); aspect-ratio: 1; border: 1px solid color-mix(in srgb, var(--wheel-accent) 18%, transparent); border-radius: 50%; background: color-mix(in srgb, var(--wheel-background) var(--wheel-background-opacity), transparent); box-shadow: 0 14px 42px #12203324; color: var(--wheel-text); --wheel-accent: var(--wheel-accent-base); }
+.wheel-editor-preview[data-appearance="dark"] { --wheel-accent: color-mix(in srgb, var(--wheel-accent-base) 66%, white); }
+.wheel-editor-segments { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.wheel-editor-segments path { fill: color-mix(in srgb, var(--wheel-sector) var(--wheel-sector-opacity), transparent); stroke: color-mix(in srgb, var(--wheel-text) 22%, transparent); stroke-width: 1.2; stroke-linejoin: round; }
 .wheel-editor-labels { position: absolute; inset: 0; }
-.wheel-editor-labels > span { position: absolute; width: 50px; height: 42px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; transform: translate(-50%, -50%); color: var(--text); text-align: center; }
-.wheel-editor-labels svg { width: 16px; height: 16px; flex: none; color: var(--wheel-accent); }
-.wheel-editor-labels small { max-width: 50px; overflow: hidden; font-size: 7px; font-weight: 650; line-height: 1.05; overflow-wrap: anywhere; text-overflow: ellipsis; }
-.wheel-editor-hub { position: absolute; top: 50%; left: 50%; width: 72px; height: 72px; display: grid; place-items: center; transform: translate(-50%, -50%); border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--text); font-size: 11px; font-weight: 700; }
+.wheel-editor-labels > span { position: absolute; width: 52px; height: 54px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; transform: translate(-50%, -50%); color: var(--wheel-text); text-align: center; }
+.wheel-editor-labels svg { width: 21px; height: 21px; flex: none; color: color-mix(in srgb, var(--wheel-text) 82%, transparent); }
+.wheel-editor-labels small { display: -webkit-box; max-width: 52px; overflow: hidden; color: color-mix(in srgb, var(--wheel-text) 90%, transparent); font-size: 9px; font-weight: 650; line-height: 1.05; overflow-wrap: anywhere; text-overflow: ellipsis; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.wheel-editor-hub { position: absolute; top: 50%; left: 50%; width: 96px; height: 96px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; transform: translate(-50%, -50%); border: 1px solid color-mix(in srgb, var(--wheel-text) 22%, transparent); border-radius: 50%; background: color-mix(in srgb, var(--wheel-background) var(--wheel-background-opacity), transparent); color: var(--wheel-text); box-shadow: 0 5px 18px #18364b24; font-size: 11px; font-weight: 700; }
+.wheel-editor-hub svg { width: 26px; height: 26px; stroke-width: 1.8; }
 .wheel-editor-count { margin: 7px 0 12px; color: var(--muted); font-size: 11px; }
 .wheel-color-picker { width: 100%; display: flex; align-items: center; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--text); font-size: 12px; }
 .wheel-color-swatches { display: flex; flex: 1; flex-wrap: wrap; gap: 5px; }

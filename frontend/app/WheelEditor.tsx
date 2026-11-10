@@ -31,10 +31,10 @@ export function WheelEditor({ preferences, updatePreferences, recordingAction, s
     <div className="wheel-editor-toolbar"><button type="button" className="secondary-button" onClick={() => { updatePreferences({ fileWheelActions: undefined, wheelColor: undefined }) }}>{tr('Reset wheel')}</button></div>
     <div className="wheel-editor-layout">
       <section className="wheel-editor-stage" aria-label={tr('Wheel preview')}>
-        <div className="wheel-editor-preview" style={{ '--wheel-accent-base': preferences.wheelColor ?? '#315fce' } as CSSProperties}>
+        <div className="wheel-editor-preview" data-appearance={preferences.appearance} style={{ '--wheel-accent-base': preferences.wheelColor ?? '#315fce', '--wheel-background': preferences.quickMenuBackground, '--wheel-sector': preferences.quickMenuSector, '--wheel-active': preferences.quickMenuActive, '--wheel-text': preferences.quickMenuText, '--wheel-background-opacity': `${preferences.quickMenuBackgroundOpacity}%`, '--wheel-sector-opacity': `${preferences.quickMenuSectorOpacity}%` } as CSSProperties}>
           <svg className="wheel-editor-segments" viewBox="0 0 352 352" aria-hidden="true">{selected.map((action, index) => <path key={action.id} d={wheelSlicePath(index, selected.length)}/>)}</svg>
           <div className="wheel-editor-labels" aria-hidden="true">{selected.map((action, index) => <span key={action.id} style={wheelLabelPosition(index, selected.length)}><AppIcon name={action.glyph}/><small>{tr(action.label)}</small></span>)}</div>
-          <div className="wheel-editor-hub">FlickVert</div>
+          <div className="wheel-editor-hub"><AppIcon name="settings"/><small>FlickVert</small></div>
         </div>
         <p className="wheel-editor-count">{selected.length} / 12 {tr('actions selected')}</p>
         <div className="wheel-color-picker"><span>{tr('Wheel color')}</span><div className="wheel-color-swatches">{Object.entries(accentColors).map(([name, color]) => <button key={name} type="button" aria-label={tr(name[0].toUpperCase() + name.slice(1) as MessageKey)} aria-pressed={(preferences.wheelColor ?? '#315fce').toLowerCase() === color.toLowerCase()} style={{ '--swatch': color } as CSSProperties} onClick={() => updatePreferences({ wheelColor: color })}/>)}</div><input type="color" aria-label={tr('Custom color')} value={preferences.wheelColor ?? '#315fce'} onChange={(event) => updatePreferences({ wheelColor: event.target.value })}/></div>
