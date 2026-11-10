@@ -31,16 +31,18 @@ The main window has the tools catalog, settings, and a quick-start guide. Closin
 
 ## What it can do
 
-| Files | Examples | Optional engine |
-| --- | --- | --- |
-| Images | Convert PNG, JPEG, WebP, BMP, SVG, HEIC, TIFF, AVIF; resize, rotate, crop, compress, remove metadata | ImageMagick for HEIC, TIFF, AVIF, and RAW |
-| PDF | Export pages to PNG/JPEG, extract text, merge, split, reorder, and rotate pages | Poppler for export, text, merge, and split; qpdf for page editing |
-| Audio and video | Convert and compress, trim, mute, extract audio, capture thumbnails, normalize loudness | FFmpeg |
-| Documents and ebooks | Convert supported text, ebook, and office formats | Pandoc or LibreOffice; Poppler for PDF page export |
-| Spreadsheets and slides | Convert XLSX, ODS, CSV, PPT, PPTX, and ODP | LibreOffice; Poppler for slide images |
-| Archives | Create and extract ZIP, TAR, and GZIP archives | Built in |
+FlickVert offers the operations implemented inside the app. It does not look for or launch separate converter programs.
 
-Available actions depend on the selected files and installed engines. FlickVert explains when an operation needs an optional engine.
+| Files | Built-in operations |
+| --- | --- |
+| Images | Convert common raster and SVG formats; resize, rotate, crop, compress, remove metadata, and create PDFs from images |
+| PDF | Extract selectable text; merge, split, reorder, and rotate pages |
+| Documents | Convert Markdown, HTML, and text; extract text from RTF, DOCX, ODT, and EPUB |
+| Spreadsheets | Convert CSV and TSV; convert a single-sheet XLSX to CSV/TSV and TSV to XLSX |
+| Subtitles | Convert SRT and VTT |
+| Archives | Create and extract ZIP, TAR, TAR.GZ, TGZ, and GZIP |
+
+Formats without an in-app implementation are not offered. FlickVert uses third-party Rust crates; their code remains under their respective licenses and is not claimed as original FlickVert code.
 
 ## Files and privacy
 

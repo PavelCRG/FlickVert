@@ -1,11 +1,10 @@
 import { AppIcon } from '../icons/AppIcon'
 import type { MessageKey } from '../i18n'
 
-export function QuickStartPage({ tr, onHome, onChooseFiles, onExploreEngines }: {
+export function QuickStartPage({ tr, onHome, onChooseFiles }: {
   tr: (key: MessageKey) => string
   onHome: () => void
   onChooseFiles: () => void
-  onExploreEngines: () => void
 }) {
   return <div className="page welcome-page">
     <p className="welcome-eyebrow">{tr('Quick start')}</p>
@@ -17,8 +16,7 @@ export function QuickStartPage({ tr, onHome, onChooseFiles, onExploreEngines }: 
       <article><span>3</span><div><strong>{tr('Save your result')}</strong><p>{tr('Choose a format and location. The original file stays unchanged.')}</p></div></article>
     </div>
     <div className="welcome-details">
-      <p>{tr('Most everyday conversions are built in. Optional engines add audio/video, Office and specialized-format support.')}</p>
-      <button className="text-button" onClick={onExploreEngines}>{tr('Explore optional engines')}</button>
+      <p>{tr('FlickVert shows actions for your file. Built-in tools work immediately.')}</p>
     </div>
     <div className="welcome-actions">
       <button className="primary-button" onClick={onChooseFiles}><AppIcon name="file-plus"/>{tr('Choose files')}</button>

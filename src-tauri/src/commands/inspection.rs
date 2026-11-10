@@ -1,28 +1,7 @@
 use crate::*;
 
-pub(crate) fn media_duration_us(input: &Path) -> Option<u64> {
-    let ffprobe = operations::find_executable("ffprobe")?;
-    let args = [
-        "-v",
-        "error",
-        "-show_entries",
-        "format=duration",
-        "-of",
-        "default=noprint_wrappers=1:nokey=1",
-    ]
-    .into_iter()
-    .map(std::ffi::OsString::from)
-    .chain([input.as_os_str().to_owned()])
-    .collect::<Vec<_>>();
-    let output = operations::run(&ffprobe, &args).ok()?;
-    if !output.status.success() {
-        return None;
-    }
-    let seconds = String::from_utf8_lossy(&output.stdout)
-        .trim()
-        .parse::<f64>()
-        .ok()?;
-    (seconds.is_finite() && seconds > 0.0).then_some((seconds * 1_000_000.0) as u64)
+pub(crate) fn media_duration_us(_: &Path) -> Option<u64> {
+    None
 }
 
 #[tauri::command(async)]

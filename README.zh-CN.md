@@ -31,16 +31,18 @@ FlickVert 在本机处理文件，无需上传。拖动文件，选择操作，�
 
 ## 功能
 
-| 文件 | 示例 | 可选引擎 |
-| --- | --- | --- |
-| 图片 | 转换 PNG、JPEG、WebP、BMP、SVG、HEIC、TIFF、AVIF；调整大小、旋转、裁剪、压缩、移除元数据 | HEIC、TIFF、AVIF 和 RAW 需要 ImageMagick |
-| PDF | 导出 PNG/JPEG 页面、提取文本、合并、拆分、排序和旋转页面 | 导出、文本、合并和拆分需要 Poppler；编辑页面需要 qpdf |
-| 音频和视频 | 转换和压缩、裁剪视频、静音、提取音频、生成缩略图、响度标准化 | FFmpeg |
-| 文档和电子书 | 转换支持的文本、电子书和 Office 格式 | Pandoc 或 LibreOffice；导出 PDF 页面需要 Poppler |
-| 表格和幻灯片 | XLSX、ODS、CSV、PPT、PPTX 和 ODP | LibreOffice；导出幻灯片图片需要 Poppler |
-| 压缩包 | 创建和解压 ZIP、TAR 和 GZIP | 内置 |
+FlickVert 仅显示应用内部已实现的操作，不会查找或启动独立的转换程序。
 
-可用操作取决于所选文件和已安装的引擎。需要额外引擎时，FlickVert 会显示提示。
+| 文件 | 内置操作 |
+| --- | --- |
+| 图片 | 转换常见栅格格式和 SVG；调整大小、旋转、裁剪、压缩、移除元数据，以及从图片创建 PDF |
+| PDF | 提取可选中文本；合并、拆分、排序和旋转页面 |
+| 文档 | 转换 Markdown、HTML 和文本；从 RTF、DOCX、ODT 和 EPUB 提取文本 |
+| 表格 | 转换 CSV 和 TSV；将单工作表 XLSX 转为 CSV/TSV，并将 TSV 转为 XLSX |
+| 字幕 | 转换 SRT 和 VTT |
+| 压缩包 | 创建和解压 ZIP、TAR、TAR.GZ、TGZ 和 GZIP |
+
+尚未在应用内实现的格式不会显示。FlickVert 使用第三方 Rust 库；这些库的代码仍受各自许可证约束，不属于 FlickVert 原创代码。
 
 ## 文件和隐私
 

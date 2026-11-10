@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.16
+
+- Made the tools catalog show only operations implemented in FlickVert and removed manual converter installation prompts.
+- Added built-in RTF text extraction and kept CSV/TSV, image, PDF, document-text, subtitle, and archive operations local to the app.
+- Disabled media, RAW, and other conversions that still required separate programs.
+
 ## 0.1.15
 
 - Matched the action wheel editor preview to the quick wheel, including custom colors, transparency, and dark appearance.

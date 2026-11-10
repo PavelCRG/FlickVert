@@ -39,7 +39,7 @@ export const archiveToolActions = [{ id: 'extract-archive', label: 'Extract arch
 export const pdfMergeActions = [{ id: 'merge-pdf', label: 'Merge PDFs', glyph: 'pdf-merge' }] as const satisfies readonly QuickAction[]
 export const pdfSplitActions = [{ id: 'split-pdf', label: 'Split PDF', glyph: 'pdf-split' }] as const satisfies readonly QuickAction[]
 export const pdfPageActions = [{ id: 'edit-pdf-pages', label: 'Arrange PDF pages', glyph: 'pdf-pages' }] as const satisfies readonly QuickAction[]
-export const allToolActions: QuickAction[] = [...imageToolActions, ...videoToolActions, ...audioToolActions]
+export const allToolActions: QuickAction[] = [...imageToolActions]
 
 export const fileActions = [
   { id: 'create-zip', label: 'Create ZIP', glyph: 'archive' },

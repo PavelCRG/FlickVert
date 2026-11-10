@@ -5,6 +5,6 @@ export function conversionMatchesFamily(category: string, inputs: string[], fami
   if (family === 'images') return category === 'Images and PDFs' && inputs.some((extension) => ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'svg', 'heic', 'heif', 'avif', 'tif', 'tiff'].includes(extension))
   if (family === 'pdf') return category === 'PDF documents' || inputs.includes('pdf')
   if (family === 'documents') return category === 'Documents'
-  if (family === 'media') return category === 'Audio and video'
+  if (family === 'media') return category === 'Subtitles'
   return category === 'Files and archives'
 }

@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import { strict as assert } from 'node:assert'
-import { canRunFileAction, canRunSelectedTool, canRunWheelTool, canUseNativeImagePath, commonFormats, conversionConcurrency, launcherActions, moveWheelAction, operationShortcutActions, orderWheelActions, selectedToolUnavailableReason, toolActionsFor } from './quick-actions.ts'
+import { allToolActions, canRunFileAction, canRunSelectedTool, canRunWheelTool, canUseNativeImagePath, commonFormats, conversionConcurrency, launcherActions, moveWheelAction, operationShortcutActions, orderWheelActions, selectedToolUnavailableReason, toolActionsFor } from './quick-actions.ts'
 import { operationErrorKind } from './operation-errors.ts'
 import { conversionPreview, conversionPreviewDetail } from './conversion-preview.ts'
 import { validateVideoFrameTime, validateVideoTrimRange } from '../video-trim/ranges.ts'
@@ -187,4 +187,6 @@ test('operation shortcut catalog contains unique wheel operations', () => {
   assert.ok(ids.includes('extract-archive'))
   assert.ok(ids.includes('edit-pdf-pages'))
   assert.ok(ids.includes('copy-path'))
+  assert.equal(ids.some((id) => ['compress-video', 'trim-video', 'mute-video', 'extract-audio', 'video-thumbnail', 'compress-audio', 'normalize-audio'].includes(id)), false)
+  assert.deepEqual(allToolActions.map((action) => action.id), ['image-editor', 'images-to-pdf', 'resize', 'rotate', 'flip', 'grayscale', 'square', 'compress', 'metadata'])
 })

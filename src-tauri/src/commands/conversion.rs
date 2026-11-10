@@ -405,6 +405,9 @@ pub(crate) fn process_image_tool(
     destination_folder: Option<String>,
     dropped: tauri::State<'_, DroppedFiles>,
 ) -> Result<String, String> {
+    if !operations::all_engine_status().imagemagick {
+        return Err(operation_error("unsupported"));
+    }
     let input =
         selected_dropped_file(&input_path, &dropped).map_err(|_| operation_error("input"))?;
     let extension = input
@@ -532,6 +535,9 @@ pub(crate) fn process_media_tool(
     destination_folder: Option<String>,
     dropped: tauri::State<'_, DroppedFiles>,
 ) -> Result<String, String> {
+    if !operations::all_engine_status().ffmpeg {
+        return Err(operation_error("unsupported"));
+    }
     let input =
         selected_dropped_file(&input_path, &dropped).map_err(|_| operation_error("input"))?;
     let extension = input
