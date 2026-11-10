@@ -24,7 +24,12 @@ pub fn convert_document(input: &Path, output: &Path, extension: &str) -> Result<
     if size > MAX_DOCUMENT_INPUT_BYTES {
         return Err("document exceeds the 16 MiB input limit".into());
     }
-    let converted = if source_extension == "epub" {
+    let converted = if source_extension == "rtf" {
+        if !matches!(extension, "txt" | "md" | "markdown") {
+            return Err("built-in RTF conversion only extracts text".into());
+        }
+        rtf_to_text(&fs::read(input).map_err(|error| error.to_string())?)?
+    } else if source_extension == "epub" {
         if !matches!(extension, "txt" | "md" | "markdown") {
             return Err("built-in EPUB conversion only extracts text".into());
         }
@@ -73,6 +78,190 @@ pub fn convert_document(input: &Path, output: &Path, extension: &str) -> Result<
         return Err("converted document exceeds the 128 MiB output limit".into());
     }
     fs::write(output, converted).map_err(|error| error.to_string())
+}
+
+fn rtf_to_text(input: &[u8]) -> Result<String, String> {
+    if !input.starts_with(b"{\\rtf") {
+        return Err("invalid RTF header".into());
+    }
+    let mut output = Vec::<u16>::new();
+    let mut groups = Vec::<bool>::new();
+    let (mut index, mut fallback, mut unicode_fallback, mut code_page) = (0, 0, 1, 1252);
+    while index < input.len() {
+        match input[index] {
+            b'{' => {
+                if groups.len() == 256 {
+                    return Err("RTF nesting exceeds the 256 group limit".into());
+                }
+                groups.push(groups.last().copied().unwrap_or(false));
+                index += 1;
+            }
+            b'}' => {
+                if groups.pop().is_none() {
+                    return Err("RTF has an unmatched closing group".into());
+                }
+                index += 1;
+            }
+            b'\\' => {
+                index += 1;
+                let control = *input.get(index).ok_or("truncated RTF control")?;
+                if control.is_ascii_alphabetic() {
+                    let start = index;
+                    while input.get(index).is_some_and(u8::is_ascii_alphabetic) {
+                        index += 1;
+                    }
+                    let word = std::str::from_utf8(&input[start..index])
+                        .map_err(|_| "invalid RTF control word")?;
+                    let negative = input.get(index) == Some(&b'-');
+                    if negative {
+                        index += 1;
+                    }
+                    let number_start = index;
+                    while input.get(index).is_some_and(u8::is_ascii_digit) {
+                        index += 1;
+                    }
+                    let parameter = (index > number_start)
+                        .then(|| std::str::from_utf8(&input[number_start..index]).ok()?.parse::<i32>().ok())
+                        .flatten()
+                        .map(|number| if negative { -number } else { number });
+                    if input.get(index) == Some(&b' ') {
+                        index += 1;
+                    }
+                    if word == "bin" {
+                        let length = parameter
+                            .filter(|length| *length >= 0)
+                            .ok_or("invalid RTF binary length")? as usize;
+                        index = index
+                            .checked_add(length)
+                            .filter(|end| *end <= input.len())
+                            .ok_or("truncated RTF binary data")?;
+                        continue;
+                    }
+                    if fallback > 0 {
+                        fallback -= 1;
+                        continue;
+                    }
+                    if ["fonttbl", "colortbl", "stylesheet", "info", "pict", "object", "header", "footer", "footnote", "annotation", "xmlnstbl", "listtable", "listoverridetable", "generator"].contains(&word) {
+                        if let Some(skip) = groups.last_mut() { *skip = true; }
+                    }
+                    if groups.last().copied().unwrap_or(true) {
+                        continue;
+                    }
+                    match word {
+                        "ansicpg" => code_page = parameter.filter(|page| [1251, 1252].contains(page)).ok_or("unsupported RTF code page")? as u16,
+                        "uc" => unicode_fallback = parameter.filter(|count| (0..=16).contains(count)).ok_or("invalid RTF Unicode fallback count")? as usize,
+                        "u" => {
+                            let value = parameter
+                                .filter(|value| (-32768..=32767).contains(value))
+                                .ok_or("invalid RTF Unicode value")?;
+                            let unit = value as i16 as u16;
+                            output.push(unit);
+                            fallback = unicode_fallback;
+                        }
+                        "par" | "line" | "page" | "row" => push_rtf_newline(&mut output),
+                        "tab" | "cell" => output.push('\t' as u16),
+                        "emdash" => output.push('—' as u16),
+                        "endash" => output.push('–' as u16),
+                        "bullet" => output.push('•' as u16),
+                        "lquote" => output.push('‘' as u16),
+                        "rquote" => output.push('’' as u16),
+                        "ldblquote" => output.push('“' as u16),
+                        "rdblquote" => output.push('”' as u16),
+                        _ => {}
+                    }
+                } else {
+                    index += 1;
+                    if fallback > 0 {
+                        fallback -= 1;
+                        if control == b'\'' { index = index.saturating_add(2); }
+                        continue;
+                    }
+                    if groups.last().copied().unwrap_or(true) { continue; }
+                    match control {
+                        b'\\' | b'{' | b'}' => output.push(control as u16),
+                        b'*' => {
+                            if let Some(skip) = groups.last_mut() { *skip = true; }
+                        }
+                        b'~' => output.push('\u{00a0}' as u16),
+                        b'_' => output.push('\u{2011}' as u16),
+                        b'-' => {}
+                        b'\'' => {
+                            let hex = input.get(index..index + 2).ok_or("truncated RTF hex escape")?;
+                            let hex = std::str::from_utf8(hex).map_err(|_| "invalid RTF hex escape")?;
+                            let byte = u8::from_str_radix(hex, 16).map_err(|_| "invalid RTF hex escape")?;
+                            output.push(decode_rtf_byte(byte, code_page) as u16);
+                            index += 2;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            b'\r' | b'\n' => index += 1,
+            byte => {
+                index += 1;
+                if fallback > 0 {
+                    fallback -= 1;
+                } else if !groups.last().copied().unwrap_or(true) {
+                    output.push(decode_rtf_byte(byte, code_page) as u16);
+                }
+            }
+        }
+    }
+    if !groups.is_empty() {
+        return Err("RTF has an unclosed group".into());
+    }
+    while output
+        .last()
+        .is_some_and(|unit| *unit == b' ' as u16 || *unit == b'\t' as u16 || *unit == b'\n' as u16)
+    {
+        output.pop();
+    }
+    if !output.is_empty() {
+        output.push(b'\n' as u16);
+    }
+    let text = String::from_utf16_lossy(&output);
+    if text.len() > MAX_DOCUMENT_OUTPUT_BYTES {
+        return Err("converted document exceeds the 128 MiB output limit".into());
+    }
+    Ok(text)
+}
+
+fn push_rtf_newline(output: &mut Vec<u16>) {
+    while output
+        .last()
+        .is_some_and(|unit| *unit == b' ' as u16 || *unit == b'\t' as u16)
+    {
+        output.pop();
+    }
+    output.push(b'\n' as u16);
+}
+
+fn decode_rtf_byte(byte: u8, code_page: u16) -> char {
+    const CP1252: [u16; 32] = [
+        0x20ac, 0xfffd, 0x201a, 0x0192, 0x201e, 0x2026, 0x2020, 0x2021, 0x02c6, 0x2030,
+        0x0160, 0x2039, 0x0152, 0xfffd, 0x017d, 0xfffd, 0xfffd, 0x2018, 0x2019, 0x201c,
+        0x201d, 0x2022, 0x2013, 0x2014, 0x02dc, 0x2122, 0x0161, 0x203a, 0x0153, 0xfffd,
+        0x017e, 0x0178,
+    ];
+    const CP1251: [u16; 64] = [
+        0x0402, 0x0403, 0x201a, 0x0453, 0x201e, 0x2026, 0x2020, 0x2021, 0x20ac, 0x2030,
+        0x0409, 0x2039, 0x040a, 0x040c, 0x040b, 0x040f, 0x0452, 0x2018, 0x2019, 0x201c,
+        0x201d, 0x2022, 0x2013, 0x2014, 0xfffd, 0x2122, 0x0459, 0x203a, 0x045a, 0x045c,
+        0x045b, 0x045f, 0x00a0, 0x040e, 0x045e, 0x0408, 0x00a4, 0x0490, 0x00a6, 0x00a7,
+        0x0401, 0x00a9, 0x0404, 0x00ab, 0x00ac, 0x00ad, 0x00ae, 0x0407, 0x00b0, 0x00b1,
+        0x0406, 0x0456, 0x0491, 0x00b5, 0x00b6, 0x00b7, 0x0451, 0x2116, 0x0454, 0x00bb,
+        0x0458, 0x0405, 0x0455, 0x0457,
+    ];
+    let value = if code_page == 1251 && byte >= 0x80 && byte < 0xc0 {
+        CP1251[(byte - 0x80) as usize]
+    } else if code_page == 1251 && byte >= 0xc0 {
+        0x0410 + (byte - 0xc0) as u16
+    } else if byte >= 0x80 && byte < 0xa0 {
+        CP1252[(byte - 0x80) as usize]
+    } else {
+        byte as u16
+    };
+    char::from_u32(value as u32).unwrap_or('\u{fffd}')
 }
 
 fn epub_to_text(input: &Path, extension: &str) -> Result<String, String> {
@@ -622,6 +811,23 @@ mod tests {
             assert!(text.contains(expected), "{extension}: {text:?}");
             assert!(text.contains("Second paragraph."), "{extension}: {text:?}");
         }
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn converts_rtf_text_and_unicode_without_pandoc() {
+        let dir = temp_dir();
+        let input = dir.join("note.rtf");
+        let output = dir.join("note.txt");
+        fs::write(
+            &input,
+            r#"{\rtf1\ansi{\fonttbl{\f0 Arial;}}Hello \b bold\b0\par \u1055?\u1088?\u1080?\u1074?\u1077?\u1090? \{safe\} {\*\generator hidden;}}"#,
+        )
+        .unwrap();
+
+        super::convert_document(&input, &output, "txt").unwrap();
+
+        assert_eq!(fs::read_to_string(output).unwrap(), "Hello bold\nПривет {safe}\n");
         fs::remove_dir_all(dir).unwrap();
     }
 

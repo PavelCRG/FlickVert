@@ -128,7 +128,7 @@ const VTT_TO_SRT: Operation = Operation {
 const DOCUMENT: Operation = Operation {
     engine: Engine::Pandoc,
     input_extensions: &[
-        "md", "markdown", "html", "htm", "rtf", "txt", "rst", "tex",
+        "md", "markdown", "html", "htm", "txt", "rst", "tex",
     ],
     output_extensions: &[
         "docx", "odt", "md", "html", "epub", "rtf", "txt", "rst", "tex",
@@ -147,6 +147,11 @@ const DOCUMENT_OFFICE: Operation = Operation {
 const OFFICE_TEXT: Operation = Operation {
     engine: Engine::BuiltIn,
     input_extensions: &["docx", "odt"],
+    output_extensions: &["txt", "md"],
+};
+const RTF_TEXT: Operation = Operation {
+    engine: Engine::BuiltIn,
+    input_extensions: &["rtf"],
     output_extensions: &["txt", "md"],
 };
 const EPUB_TEXT: Operation = Operation {
@@ -281,7 +286,7 @@ pub fn is_pdf_text_conversion(input_extension: &str, output_extension: &str) -> 
 pub fn is_native_document_conversion(input_extension: &str, output_extension: &str) -> bool {
     let input = input_extension.to_ascii_lowercase();
     let output = output_extension.to_ascii_lowercase();
-    [&MARKDOWN, &HTML_TEXT, &OFFICE_TEXT, &EPUB_TEXT].iter().any(|operation| {
+    [&MARKDOWN, &HTML_TEXT, &OFFICE_TEXT, &RTF_TEXT, &EPUB_TEXT].iter().any(|operation| {
         operation.input_extensions.contains(&input.as_str())
             && operation.output_extensions.contains(&output.as_str())
     })
@@ -306,13 +311,14 @@ pub fn operations_for(extension: &str, engines: Engines) -> Vec<Operation> {
 
 fn catalog_operations(
     engines: Engines,
-) -> [(&'static Operation, &'static str, &'static str, bool); 26] {
+) -> [(&'static Operation, &'static str, &'static str, bool); 27] {
     [
         (&IMAGE, "Images and PDFs", "Built in", true),
         (&DELIMITED, "Documents", "Built in", true),
         (&SPREADSHEET_READ, "Documents", "Built in", true),
         (&PDF_TEXT, "PDF documents", "Built in", true),
         (&OFFICE_TEXT, "Documents", "Built in", true),
+        (&RTF_TEXT, "Documents", "Built in", true),
         (&EPUB_TEXT, "Documents", "Built in", true),
         (&MARKDOWN, "Documents", "Built in", true),
         (&HTML_TEXT, "Documents", "Built in", true),
@@ -1324,6 +1330,9 @@ mod tests {
         assert!(is_native_document_conversion("EPUB", "MD"));
         assert!(operation_for("docx", "html", Engines::default()).is_none());
         assert_eq!(operation_for("docx", "html", Engines { pandoc: true, ..Engines::default() }).unwrap().engine, Engine::Pandoc);
+        assert_eq!(operation_for("rtf", "txt", Engines::default()).unwrap().engine, Engine::BuiltIn);
+        assert_eq!(operation_for("rtf", "md", Engines::default()).unwrap().engine, Engine::BuiltIn);
+        assert!(is_native_document_conversion("RTF", "TXT"));
     }
 
     #[test]
