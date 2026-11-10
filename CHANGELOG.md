@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.15
+
+- Matched the action wheel editor preview to the quick wheel, including custom colors, transparency, and dark appearance.
+
 ## 0.1.14
 
 - Added a personalized action wheel, local photo themes, favorites, conversion history, and reusable image, PDF, video, and audio profiles.

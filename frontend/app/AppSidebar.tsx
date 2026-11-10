@@ -37,7 +37,7 @@ export function AppSidebar({ section, language, setSection, setSettingsPage, tr 
     </nav>
     <div className="sidebar-bottom">
       <UpdateNotice language={language}/>
-      <div className="version">FlickVert <span>0.1.14</span></div>
+      <div className="version">FlickVert <span>0.1.15</span></div>
     </div>
   </aside>
 }
