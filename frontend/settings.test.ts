@@ -95,7 +95,7 @@ test('ZIP compression level is bounded and retained in settings backups', () => 
 
 test('valid settings retain supported preferences', () => {
   assert.deepEqual(normalizeSettings({ language: 'ru', appearance: 'dark', quality: 75, width: 1200, height: 900, format: 'image/jpeg', shortcut: 'CTRL+SHIFT+SPACE', outputFolder: 'D:/Photos' }), {
-    language: 'ru', appearance: 'dark', accent: 'orange', quickMenuTheme: 'default', quickMenuBackground: '#F8FAFC', quickMenuSector: '#E2E8F0', quickMenuActive: '#DBEAFE', quickMenuText: '#172033', quickMenuBackgroundOpacity: 94, quickMenuSectorOpacity: 95, quality: 75, pdfDpi: 300, pdfPageSize: 'source', pdfPageOrientation: 'auto', zipCompressionLevel: 6, width: 1200, height: 900, format: 'image/jpeg', videoPreset: 'balanced', videoCodec: 'h264', audioTargetLufs: -16, audioTruePeakDb: -1, audioExtractionFormat: 'mp3', shortcut: 'CTRL+SHIFT+SPACE', operationShortcuts: {}, terminalPreference: 'windows-terminal', launchAtStartup: true, launchAtStartupConfigured: false, contextMenuEnabled: false, confirmQuitOnClose: false, dragModifiers: { convert: 'SHIFT', tools: 'CTRL', actions: 'ALT' }, outputFolder: 'D:/Photos',
+    language: 'ru', appearance: 'dark', accent: 'orange', quickMenuTheme: 'default', quickMenuBackground: '#F8FAFC', quickMenuSector: '#E2E8F0', quickMenuActive: '#DBEAFE', quickMenuText: '#172033', quickMenuBackgroundOpacity: 94, quickMenuSectorOpacity: 95, quality: 75, pdfDpi: 300, pdfPageSize: 'source', pdfPageOrientation: 'auto', zipCompressionLevel: 6, width: 1200, height: 900, format: 'image/jpeg', videoPreset: 'balanced', videoCodec: 'h264', audioTargetLufs: -16, audioTruePeakDb: -1, audioExtractionFormat: 'mp3', shortcut: 'CTRL+SHIFT+SPACE', operationShortcuts: {}, terminalPreference: 'windows-terminal', launchAtStartup: true, launchAtStartupConfigured: false, contextMenuEnabled: false, confirmQuitOnClose: false, desktopNotifications: false, dragModifiers: { convert: 'SHIFT', tools: 'CTRL', actions: 'ALT' }, outputFolder: 'D:/Photos',
   })
 })
 
@@ -124,6 +124,13 @@ test('confirmed quit on close defaults off and is retained in settings backups',
   assert.equal(defaultSettings.confirmQuitOnClose, false)
   const settings = normalizeSettings({ confirmQuitOnClose: true })
   assert.equal(restoreSettingsBackup(JSON.parse(createSettingsBackup(settings))).confirmQuitOnClose, true)
+})
+
+test('desktop conversion notifications are opt-in and retained in settings backups', () => {
+  assert.equal(defaultSettings.desktopNotifications, false)
+  assert.equal(normalizeSettings({ desktopNotifications: 'yes' }).desktopNotifications, false)
+  const settings = normalizeSettings({ desktopNotifications: true })
+  assert.equal(restoreSettingsBackup(JSON.parse(createSettingsBackup(settings))).desktopNotifications, true)
 })
 
 test('operation shortcut assignments reject malformed keys and collisions', () => {

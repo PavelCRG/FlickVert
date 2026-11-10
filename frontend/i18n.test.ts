@@ -39,6 +39,22 @@ test('batch rename labels are translated in all supported languages', () => {
   }
 })
 
+test('background conversion notification labels are translated in all languages', () => {
+  for (const key of ['Desktop notifications', 'Notify when background conversions finish.', 'Could not enable desktop notifications.', 'Conversions finished'] as const) {
+    assert.equal(t('en', key), key)
+    assert.notEqual(t('ru', key), key)
+    assert.notEqual(t('zh', key), key)
+  }
+})
+
+test('image to PDF page arrangement labels are translated in all languages', () => {
+  for (const key of ['Arrange pages and rotate images before creating the PDF. Original files stay unchanged.', 'pages', 'Create PDF'] as const) {
+    assert.equal(t('en', key), key)
+    assert.notEqual(t('ru', key), key)
+    assert.notEqual(t('zh', key), key)
+  }
+})
+
 test('theme labels are translated in English, Russian, and Simplified Chinese', () => {
   const expected = {
     'Accent color': ['Accent color', 'Акцентный цвет', '强调色'],

@@ -315,19 +315,8 @@ export default function QuickMenu() {
       if (actionId === 'images-to-pdf') {
         if (items.length > 100) throw new Error('Select up to 100 images')
         if (items.reduce((size, file) => size + file.size, 0) > 32 * 1024 * 1024) throw new Error('Images exceed the 32 MB limit')
-        const inputs: File[] = []
-        for (const [index, file] of items.entries()) {
-          activeFile = file.name
-          setStatus(`${tr('Processing...')} · ${index + 1}/${items.length} · ${file.name}`)
-          const bytes = await invoke<number[]>('read_dropped_file', { inputPath: file.path })
-          inputs.push(new File([Uint8Array.from(bytes)], file.name, { type: file.mime }))
-        }
-        const settings = loadSettings()
-        const bytes = await imagesToPdf(inputs, settings.quality, settings.pdfPageSize, settings.pdfPageOrientation)
-        const name = items.length === 1 ? items[0].name.replace(/\.[^.]+$/, '') : 'images'
-        await invoke<string>('save_output', { fileName: `${name}.pdf`, inputPath: items[0].path, destinationFolder: loadSettings().outputFolder, bytes: Array.from(bytes) })
-        setStatus(tr('PDF created'))
-        window.setTimeout(hide, 650)
+        await emit('flickvert://images-to-pdf-open', items.map(({ path, name, size, mime }) => ({ path, name, size, mime, rotation: 0 })))
+        hide()
         return
       }
       for (const [index, file] of items.entries()) {

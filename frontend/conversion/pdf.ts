@@ -6,19 +6,23 @@ function text(value: string) {
   return encoder.encode(value)
 }
 
-async function jpegPage(file: File, quality: number) {
+async function jpegPage(file: File, quality: number, rotation: number) {
   const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
   try {
+    if (bitmap.width * bitmap.height > 100_000_000) throw new Error('Image exceeds the 100 megapixel limit')
     const canvas = document.createElement('canvas')
-    canvas.width = bitmap.width
-    canvas.height = bitmap.height
+    const sideways = rotation === 90 || rotation === 270
+    canvas.width = sideways ? bitmap.height : bitmap.width
+    canvas.height = sideways ? bitmap.width : bitmap.height
     const context = canvas.getContext('2d')
     if (!context) throw new Error('Could not create an image canvas')
     context.fillStyle = '#fff'
-    context.fillRect(0, 0, bitmap.width, bitmap.height)
-    context.drawImage(bitmap, 0, 0)
+    context.fillRect(0, 0, canvas.width, canvas.height)
+    context.translate(canvas.width / 2, canvas.height / 2)
+    context.rotate(rotation * Math.PI / 180)
+    context.drawImage(bitmap, -bitmap.width / 2, -bitmap.height / 2)
     const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((result) => result ? resolve(result) : reject(new Error('Could not encode image for PDF')), 'image/jpeg', quality / 100))
-    return { width: bitmap.width, height: bitmap.height, bytes: new Uint8Array(await blob.arrayBuffer()) }
+    return { width: canvas.width, height: canvas.height, bytes: new Uint8Array(await blob.arrayBuffer()) }
   } finally {
     bitmap.close()
   }
@@ -31,10 +35,16 @@ function join(parts: Uint8Array[]) {
   return output
 }
 
-export async function imagesToPdf(files: File[], quality: number, pageSize: PdfPageSize = 'source', orientation: PdfPageOrientation = 'auto'): Promise<Uint8Array> {
+export async function imagesToPdf(files: File[], quality: number, pageSize: PdfPageSize = 'source', orientation: PdfPageOrientation = 'auto', rotations: number[] = []): Promise<Uint8Array> {
   if (!files.length || files.length > 100) throw new Error('Select between 1 and 100 images')
-  const pages = await Promise.all(files.map((file) => jpegPage(file, quality)))
-  if (pages.reduce((size, page) => size + page.bytes.length, 0) > 32 * 1024 * 1024) throw new Error('PDF images exceed the 32 MB limit')
+  const pages = []
+  let encodedSize = 0
+  for (const [index, file] of files.entries()) {
+    const page = await jpegPage(file, quality, [0, 90, 180, 270].includes(rotations[index]) ? rotations[index] : 0)
+    encodedSize += page.bytes.length
+    if (encodedSize > 32 * 1024 * 1024) throw new Error('PDF images exceed the 32 MB limit')
+    pages.push(page)
+  }
 
   const objects: Uint8Array[] = []
   objects[1] = text('<< /Type /Catalog /Pages 2 0 R >>')

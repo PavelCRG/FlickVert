@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties } from 'react'
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { emit, listen } from '@tauri-apps/api/event'
+import { sendNotification } from '@tauri-apps/plugin-notification'
 import { accentColor, createSettingsBackup, loadSettings, normalizeSettings, restoreSettingsBackup, saveSettings, validShortcut, type AppSettings } from './settings'
 import { t, type MessageKey } from './i18n'
 import ImageEditor, { type ImageEditTool } from './image-editor/ImageEditor'
@@ -10,6 +11,8 @@ import VideoExportPreview from './video-trim/VideoExportPreview'
 import PdfMergeEditor from './pdf/PdfMergeEditor'
 import PdfSplitEditor from './pdf/PdfSplitEditor'
 import PdfPagesEditor from './pdf/PdfPagesEditor'
+import ImageToPdfEditor from './pdf/ImageToPdfEditor'
+import type { ImagePage } from './pdf/image-pages'
 import { sizePresets } from './settings/SettingsControls'
 import { purposeProfiles } from './settings/profiles'
 import { SettingsView } from './app/SettingsView'
@@ -22,6 +25,7 @@ import { ToolsPage } from './app/ToolsPage'
 import type { Engines, ConversionCatalogItem, OperationQueueItem } from './app/types'
 import { completeFirstRun, firstRunSection } from './app/first-run'
 import { loadConversionHistory, mergeConversionHistory, totalSavedBytes, type ConversionHistoryEntry } from './app/conversion-history'
+import { completedBatchKey } from './app/completion-notification'
 
 function loadThemePhoto(): string | null {
   const photo = localStorage.getItem('flickvert-photo-theme')
@@ -40,6 +44,9 @@ export default function App() {
   const [recordingOperationShortcut, setRecordingOperationShortcut] = useState<string | null>(null)
   const [operationShortcutError, setOperationShortcutError] = useState(false)
   const [preferences, setPreferences] = useState<AppSettings>(loadSettings)
+  const preferencesRef = useRef(preferences)
+  preferencesRef.current = preferences
+  const notifiedBatches = useRef(new Set<string>())
   const [themePhoto, setThemePhoto] = useState<string | null>(loadThemePhoto)
   const [photoThemeEnabled, setPhotoThemeEnabled] = useState(() => localStorage.getItem('flickvert-photo-theme-enabled') === 'true')
   const [presetName, setPresetName] = useState('')
@@ -58,6 +65,7 @@ export default function App() {
   const [pdfMergePaths, setPdfMergePaths] = useState<string[] | null>(null)
   const [pdfSplitPath, setPdfSplitPath] = useState<string | null>(null)
   const [pdfPagesPath, setPdfPagesPath] = useState<string | null>(null)
+  const [imagesPdfPages, setImagesPdfPages] = useState<ImagePage[] | null>(null)
   const [batchRenamePaths, setBatchRenamePaths] = useState<string[] | null>(null)
   const [videoThumbnailPath, setVideoThumbnailPath] = useState<string | null>(null)
   const [engines, setEngines] = useState<Engines>({ ffmpeg: false, pandoc: false, imagemagick: false, libreoffice: false, poppler: false })
@@ -106,6 +114,11 @@ export default function App() {
     }).then(addStop)
     void listen<OperationQueueItem[]>('flickvert://operation-queue', ({ payload }) => {
       setOperationQueue(payload.slice(0, 100))
+      const batchKey = completedBatchKey(payload)
+      if (batchKey && !notifiedBatches.current.has(batchKey) && preferencesRef.current.desktopNotifications && document.visibilityState === 'hidden') {
+        notifiedBatches.current.add(batchKey)
+        try { sendNotification({ title: 'FlickVert', body: t(preferencesRef.current.language, 'Conversions finished') }) } catch {}
+      }
       setConversionHistory((current) => {
         const next = mergeConversionHistory(current, payload)
         try { localStorage.setItem('flickvert-conversion-history', JSON.stringify(next)) } catch {}
@@ -124,6 +137,9 @@ export default function App() {
     }).then(addStop)
     void listen<string[]>('flickvert://pdf-merge-open', ({ payload }) => {
       if (Array.isArray(payload) && payload.length >= 2 && payload.every((path) => typeof path === 'string')) { setSection('home'); setPdfMergePaths(payload) }
+    }).then(addStop)
+    void listen<ImagePage[]>('flickvert://images-to-pdf-open', ({ payload }) => {
+      if (Array.isArray(payload) && payload.length > 0 && payload.length <= 100 && payload.every((page) => page && typeof page.path === 'string' && typeof page.name === 'string' && Number.isSafeInteger(page.size) && page.size >= 0 && typeof page.mime === 'string')) { setSection('home'); setImagesPdfPages(payload.map((page) => ({ ...page, rotation: 0 }))) }
     }).then(addStop)
     void listen<string[]>('flickvert://batch-rename-open', ({ payload }) => {
       if (Array.isArray(payload) && payload.length > 0 && payload.length <= 1_000 && payload.every((path) => typeof path === 'string')) { setSection('home'); setBatchRenamePaths(payload) }
@@ -463,6 +479,7 @@ export default function App() {
     {videoTrimPath && <VideoTrimEditor key={videoTrimPath} inputPath={videoTrimPath} language={preferences.language} outputFolder={preferences.outputFolder} videoCodec={preferences.videoCodec} videoPreset={preferences.videoPreset} onClose={() => setVideoTrimPath(null)}/>}
     {videoExportPaths && <VideoExportPreview key={videoExportPaths.join('\0')} inputPaths={videoExportPaths} language={preferences.language} outputFolder={preferences.outputFolder} codec={preferences.videoCodec} preset={preferences.videoPreset} height={videoScalingAvailable ? preferences.videoHeight : undefined} onClose={() => setVideoExportPaths(null)}/>}
     {pdfMergePaths && <PdfMergeEditor key={pdfMergePaths.join('\0')} inputPaths={pdfMergePaths} language={preferences.language} outputFolder={preferences.outputFolder} onClose={() => setPdfMergePaths(null)}/>}
+    {imagesPdfPages && <ImageToPdfEditor key={imagesPdfPages.map((page) => page.path).join('\0')} pages={imagesPdfPages} language={preferences.language} outputFolder={preferences.outputFolder} onClose={() => setImagesPdfPages(null)}/>}
     {pdfSplitPath && <PdfSplitEditor key={pdfSplitPath} inputPath={pdfSplitPath} language={preferences.language} outputFolder={preferences.outputFolder} onClose={() => setPdfSplitPath(null)}/>}
     {pdfPagesPath && <PdfPagesEditor key={pdfPagesPath} inputPath={pdfPagesPath} language={preferences.language} outputFolder={preferences.outputFolder} onClose={() => setPdfPagesPath(null)}/>}
     {batchRenamePaths && <BatchRenameDialog key={batchRenamePaths.join('\0')} inputPaths={batchRenamePaths} tr={tr} onClose={() => setBatchRenamePaths(null)}/>}

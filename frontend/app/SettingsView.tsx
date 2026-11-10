@@ -1,5 +1,6 @@
 import { useState, type ChangeEvent, type RefObject } from 'react'
 import { invoke, isTauri } from '@tauri-apps/api/core'
+import { isPermissionGranted, requestPermission } from '@tauri-apps/plugin-notification'
 import { AppIcon } from '../icons/AppIcon'
 import type { MessageKey } from '../i18n'
 import { quickMenuThemeValues, resetSettingsSection, type AppSettings } from '../settings'
@@ -30,6 +31,7 @@ type SettingsViewProps = {
 
 export function SettingsView(props: SettingsViewProps) {
   const [closeError, setCloseError] = useState(false)
+  const [notificationError, setNotificationError] = useState(false)
   const [contextMenuError, setContextMenuError] = useState(false)
   const { settingsPage, preferences, tr, pickError, shortcutError, operationShortcutError, modifierError, recordingShortcut, recordingOperationShortcut, startupError, setStartupError, setRecordingShortcut, setRecordingOperationShortcut, setShortcutError, setOperationShortcutError, updatePreferences, updateShortcut, updateOperationShortcut, updateDragModifier, setSection, chooseOutputFolder, engines, videoCodecs, audioFormats, videoScalingAvailable, selectedDimensionPreset, setSelectedDimensionPreset, applyDimensionPreset, saveDimensionPreset, removeDimensionPreset, presetName, setPresetName, presetSaved, setPresetSaved, exportSettings, importSettings, settingsImportInput, settingsImportError } = props
   const shellIntegrationSupported = isTauri() && /Win|Mac/.test(navigator.platform)
@@ -42,6 +44,8 @@ export function SettingsView(props: SettingsViewProps) {
         {settingsPage === 'general' && <section className="settings-group" aria-labelledby="general-title">
           <h2 id="general-title">{tr('General')}</h2>
           <div className="setting-row"><span className="setting-copy"><span>{tr('Quick start')}</span><small>{tr('Review the main gestures and shortcuts.')}</small></span><button className="secondary-button" onClick={() => setSection('guide')}><AppIcon name="guide"/>{tr('Show quick start')}</button></div>
+          {isTauri() && <label className="setting-row"><span className="setting-copy"><span>{tr('Desktop notifications')}</span><small>{tr('Notify when background conversions finish.')}</small></span><input type="checkbox" checked={preferences.desktopNotifications} onChange={(event) => { const enabled = event.target.checked; setNotificationError(false); if (!enabled) { updatePreferences({ desktopNotifications: false }); return } void (async () => { try { let granted = await isPermissionGranted(); if (!granted) granted = await requestPermission() === 'granted'; if (!granted) throw new Error('Notification permission denied'); updatePreferences({ desktopNotifications: true }) } catch { setNotificationError(true) } })() }}/></label>}
+          {notificationError && <p className="shortcut-error" role="alert">{tr('Could not enable desktop notifications.')}</p>}
           <p className="catalog-note">{tr('Closing the window keeps FlickVert running in the tray. Use Quit in the tray menu to exit.')}</p>
           {isTauri() && <label className="setting-row"><span className="setting-copy"><span>{tr('Ask before quitting when closing the window')}</span><small>{tr('Closing normally keeps FlickVert in the tray.')}</small></span><input type="checkbox" checked={preferences.confirmQuitOnClose} onChange={(event) => { const enabled = event.target.checked; setCloseError(false); void invoke('set_confirm_quit_on_close', { enabled }).then(() => updatePreferences({ confirmQuitOnClose: enabled })).catch(() => setCloseError(true)) }}/></label>}
           {closeError && <p className="shortcut-error" role="alert">{tr('Could not update close behavior.')}</p>}

@@ -49,12 +49,13 @@ export type AppSettings = {
   launchAtStartupConfigured: boolean
   contextMenuEnabled: boolean
   confirmQuitOnClose: boolean
+  desktopNotifications: boolean
   operationShortcuts: Record<string, string>
   dragModifiers: DragModifiers
 }
 
 export const defaultSettings: AppSettings = {
-  language: 'en', appearance: 'system', accent: 'orange', quickMenuTheme: 'default', quickMenuBackground: '#F8FAFC', quickMenuSector: '#E2E8F0', quickMenuActive: '#DBEAFE', quickMenuText: '#172033', quickMenuBackgroundOpacity: 94, quickMenuSectorOpacity: 95, quality: 88, pdfDpi: 300, pdfPageSize: 'source', pdfPageOrientation: 'auto', zipCompressionLevel: 6, format: 'image/webp', videoPreset: 'balanced', videoCodec: 'h264', audioTargetLufs: -16, audioTruePeakDb: -1, audioExtractionFormat: 'mp3', shortcut: 'CTRL+ALT+SPACE', terminalPreference: 'windows-terminal', launchAtStartup: true, launchAtStartupConfigured: false, contextMenuEnabled: false, confirmQuitOnClose: false, operationShortcuts: {}, dragModifiers: { convert: 'SHIFT', tools: 'CTRL', actions: 'ALT' },
+  language: 'en', appearance: 'system', accent: 'orange', quickMenuTheme: 'default', quickMenuBackground: '#F8FAFC', quickMenuSector: '#E2E8F0', quickMenuActive: '#DBEAFE', quickMenuText: '#172033', quickMenuBackgroundOpacity: 94, quickMenuSectorOpacity: 95, quality: 88, pdfDpi: 300, pdfPageSize: 'source', pdfPageOrientation: 'auto', zipCompressionLevel: 6, format: 'image/webp', videoPreset: 'balanced', videoCodec: 'h264', audioTargetLufs: -16, audioTruePeakDb: -1, audioExtractionFormat: 'mp3', shortcut: 'CTRL+ALT+SPACE', terminalPreference: 'windows-terminal', launchAtStartup: true, launchAtStartupConfigured: false, contextMenuEnabled: false, confirmQuitOnClose: false, desktopNotifications: false, operationShortcuts: {}, dragModifiers: { convert: 'SHIFT', tools: 'CTRL', actions: 'ALT' },
 }
 
 export const accentColors: Record<AccentColor, string> = {
@@ -150,6 +151,7 @@ export function normalizeSettings(value: unknown): AppSettings {
     launchAtStartupConfigured: raw.launchAtStartupConfigured === true,
     contextMenuEnabled: raw.contextMenuEnabled === true,
     confirmQuitOnClose: raw.confirmQuitOnClose === true,
+    desktopNotifications: raw.desktopNotifications === true,
     dragModifiers: validModifiers ? rawModifiers as DragModifiers : defaultSettings.dragModifiers,
     ...(validDimension(raw.width) ? { width: validDimension(raw.width) } : {}),
     ...(validDimension(raw.height) ? { height: validDimension(raw.height) } : {}),
