@@ -49,6 +49,7 @@ export const fileActions = [
   { id: 'extract-archive', label: 'Extract archive', glyph: 'archive' },
   { id: 'copy-to-folder', label: 'Copy to FlickVert', glyph: 'copy' },
   { id: 'move-to-folder', label: 'Move to FlickVert', glyph: 'move' },
+  { id: 'rename-files', label: 'Rename files', glyph: 'document' },
   { id: 'reveal', label: 'Show in folder', glyph: 'folder' },
   { id: 'copy-path', label: 'Copy path', glyph: 'copy' },
   { id: 'copy-powershell-path', label: 'Copy PowerShell cd command', glyph: 'terminal' },
@@ -114,9 +115,10 @@ export function canRunWheelTool(actionId: string, fileCount: number, totalBytes:
   return true
 }
 
-export function canRunFileAction(actionId: string, files: { extension: string; name?: string }[]) {
+export function canRunFileAction(actionId: string, files: { extension: string; name?: string; isDirectory?: boolean }[]) {
   if (!files.length) return false
   if (['create-zip', 'create-tar', 'create-targz', 'copy-to-folder', 'move-to-folder'].includes(actionId)) return true
+  if (actionId === 'rename-files') return files.every((file) => !file.isDirectory)
   if (actionId === 'create-gzip') return files.length === 1
   if (actionId === 'extract-archive') return files.length === 1 && (['zip', 'tar', 'tgz', 'gz'].includes(files[0].extension))
   return ['reveal', 'copy-path', 'copy-powershell-path', 'open-terminal'].includes(actionId) && files.length === 1

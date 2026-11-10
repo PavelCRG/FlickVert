@@ -69,6 +69,8 @@ pub(super) fn run() {
             copy_powershell_path,
             open_terminal,
             output_file_size,
+            preview_batch_rename,
+            rename_batch_files,
             copy_to_flickvert_folder,
             move_to_flickvert_folder,
             register_shortcut,

@@ -108,6 +108,108 @@ pub fn destination_directory(input: &Path, selected: Option<&str>) -> Result<Pat
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Input folder not found").into())
 }
 
+pub fn batch_rename_files(inputs: &[PathBuf], template: &str) -> Result<Vec<PathBuf>, FileError> {
+    let plan = plan_batch_rename(inputs, template)?;
+    if plan.iter().any(|(_, _, collision)| *collision) {
+        return Err(std::io::Error::new(std::io::ErrorKind::AlreadyExists, "Rename target already exists").into());
+    }
+    let sources = plan.iter().map(|(source, _, _)| source.clone()).collect::<Vec<_>>();
+    let targets = plan.iter().map(|(_, target, _)| target.clone()).collect::<Vec<_>>();
+
+    let mut created = Vec::new();
+    for (source, target) in sources.iter().zip(&targets) {
+        if source == target {
+            continue;
+        }
+        if let Err(error) = fs::hard_link(source, target) {
+            for path in &created { let _ = fs::remove_file(path); }
+            return Err(error.into());
+        }
+        created.push(target.clone());
+    }
+
+    for (index, source) in sources.iter().enumerate() {
+        if source == &targets[index] {
+            continue;
+        }
+        if let Err(error) = fs::remove_file(source) {
+            let mut restored = true;
+            for prior in 0..index {
+                if sources[prior] != targets[prior]
+                    && !sources[prior].exists()
+                    && fs::hard_link(&targets[prior], &sources[prior]).is_err()
+                {
+                    restored = false;
+                }
+            }
+            if restored {
+                for path in &created { let _ = fs::remove_file(path); }
+            }
+            return Err(error.into());
+        }
+    }
+    Ok(targets)
+}
+
+pub fn preview_batch_rename_files(
+    inputs: &[PathBuf],
+    template: &str,
+) -> Result<Vec<(String, bool)>, FileError> {
+    Ok(plan_batch_rename(inputs, template)?
+        .into_iter()
+        .map(|(_, target, collision)| (target.file_name().unwrap().to_string_lossy().into_owned(), collision))
+        .collect())
+}
+
+fn plan_batch_rename(
+    inputs: &[PathBuf],
+    template: &str,
+) -> Result<Vec<(PathBuf, PathBuf, bool)>, FileError> {
+    if inputs.is_empty() || inputs.len() > 1_000 || template.trim().is_empty() || template.len() > 120 {
+        return Err(FileError::InvalidName);
+    }
+
+    let mut plan = Vec::with_capacity(inputs.len());
+    let mut source_keys = std::collections::HashSet::new();
+    let mut target_keys = std::collections::HashMap::new();
+    for (index, input) in inputs.iter().enumerate() {
+        let source = fs::canonicalize(input)?;
+        if !source.is_file() || !source_keys.insert(path_key(&source)) {
+            return Err(FileError::InvalidName);
+        }
+        let stem = source.file_stem().and_then(|value| value.to_str()).ok_or(FileError::InvalidName)?;
+        let extension = source.extension().and_then(|value| value.to_str()).unwrap_or("");
+        let numbered = format!("{:02}", index + 1);
+        let name = template.replace("{name}", stem).replace("{counter}", &numbered);
+        if name.contains('{') || name.contains('}') {
+            return Err(FileError::InvalidName);
+        }
+        let file_name = if extension.is_empty() { name } else { format!("{name}.{extension}") };
+        if !valid_name(&file_name) {
+            return Err(FileError::InvalidName);
+        }
+        let parent = source.parent().ok_or(FileError::InvalidName)?;
+        let target = parent.join(file_name);
+        let key = path_key(&target);
+        let duplicate = target_keys.insert(key, index);
+        let collision = target != source && exists_case_aware(parent, target.file_name().unwrap().to_string_lossy().as_ref())?;
+        plan.push((source, target, collision || duplicate.is_some()));
+        if let Some(prior) = duplicate {
+            plan[prior].2 = true;
+        }
+    }
+    Ok(plan)
+}
+
+fn path_key(path: &Path) -> String {
+    let path = path.to_string_lossy();
+    if cfg!(any(windows, target_os = "macos")) {
+        path.to_lowercase()
+    } else {
+        path.into_owned()
+    }
+}
+
 pub fn copy_directory(source: &Path, destination: &Path) -> Result<PathBuf, FileError> {
     let source = fs::canonicalize(source)?;
     if !fs::metadata(&source)?.is_dir() {
@@ -379,5 +481,46 @@ mod tests {
         assert!(write_output(&root, "missing/photo.webp", b"data").is_err());
         assert!(!root.join("missing").exists());
         let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn batch_rename_preserves_extensions_and_rolls_back_name_collisions() {
+        let root = dir();
+        let first = root.join("photo.jpg");
+        let second = root.join("scan.png");
+        fs::write(&first, b"photo").unwrap();
+        fs::write(&second, b"scan").unwrap();
+
+        let renamed = batch_rename_files(&[first.clone(), second.clone()], "{name}-{counter}")
+            .unwrap();
+        assert_eq!(renamed[0].file_name().unwrap(), "photo-01.jpg");
+        assert_eq!(renamed[1].file_name().unwrap(), "scan-02.png");
+        assert!(!first.exists());
+        assert!(!second.exists());
+        assert_eq!(fs::read(&renamed[0]).unwrap(), b"photo");
+
+        let conflict = root.join("already-01.jpg");
+        fs::write(&conflict, b"keep").unwrap();
+        let input = root.join("already.jpg");
+        fs::write(&input, b"source").unwrap();
+        assert!(batch_rename_files(&[input.clone()], "already-{counter}").is_err());
+        assert_eq!(fs::read(&input).unwrap(), b"source");
+        assert_eq!(fs::read(&conflict).unwrap(), b"keep");
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn batch_rename_rejects_paths_and_duplicate_targets_without_changing_sources() {
+        let root = dir();
+        let first = root.join("one.txt");
+        let second = root.join("two.txt");
+        fs::write(&first, b"one").unwrap();
+        fs::write(&second, b"two").unwrap();
+
+        assert!(batch_rename_files(&[first.clone()], "../{name}").is_err());
+        assert!(batch_rename_files(&[first.clone(), second.clone()], "same").is_err());
+        assert_eq!(fs::read(&first).unwrap(), b"one");
+        assert_eq!(fs::read(&second).unwrap(), b"two");
+        fs::remove_dir_all(root).unwrap();
     }
 }

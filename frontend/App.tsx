@@ -17,6 +17,7 @@ import { AppSidebar, SettingsNavigation, type Section, type SettingsPage } from 
 import { WindowChrome } from './app/WindowChrome'
 import { QuickStartPage } from './app/QuickStartPage'
 import { HomePage } from './app/HomePage'
+import { BatchRenameDialog } from './app/BatchRenameDialog'
 import { ToolsPage } from './app/ToolsPage'
 import type { Engines, ConversionCatalogItem, OperationQueueItem } from './app/types'
 import { completeFirstRun, firstRunSection } from './app/first-run'
@@ -57,6 +58,7 @@ export default function App() {
   const [pdfMergePaths, setPdfMergePaths] = useState<string[] | null>(null)
   const [pdfSplitPath, setPdfSplitPath] = useState<string | null>(null)
   const [pdfPagesPath, setPdfPagesPath] = useState<string | null>(null)
+  const [batchRenamePaths, setBatchRenamePaths] = useState<string[] | null>(null)
   const [videoThumbnailPath, setVideoThumbnailPath] = useState<string | null>(null)
   const [engines, setEngines] = useState<Engines>({ ffmpeg: false, pandoc: false, imagemagick: false, libreoffice: false, poppler: false })
   const [videoCodecs, setVideoCodecs] = useState<string[]>([])
@@ -122,6 +124,9 @@ export default function App() {
     }).then(addStop)
     void listen<string[]>('flickvert://pdf-merge-open', ({ payload }) => {
       if (Array.isArray(payload) && payload.length >= 2 && payload.every((path) => typeof path === 'string')) { setSection('home'); setPdfMergePaths(payload) }
+    }).then(addStop)
+    void listen<string[]>('flickvert://batch-rename-open', ({ payload }) => {
+      if (Array.isArray(payload) && payload.length > 0 && payload.length <= 1_000 && payload.every((path) => typeof path === 'string')) { setSection('home'); setBatchRenamePaths(payload) }
     }).then(addStop)
     void listen<string>('flickvert://pdf-split-open', ({ payload }) => {
       if (typeof payload === 'string') { setSection('home'); setPdfSplitPath(payload) }
@@ -460,6 +465,7 @@ export default function App() {
     {pdfMergePaths && <PdfMergeEditor key={pdfMergePaths.join('\0')} inputPaths={pdfMergePaths} language={preferences.language} outputFolder={preferences.outputFolder} onClose={() => setPdfMergePaths(null)}/>}
     {pdfSplitPath && <PdfSplitEditor key={pdfSplitPath} inputPath={pdfSplitPath} language={preferences.language} outputFolder={preferences.outputFolder} onClose={() => setPdfSplitPath(null)}/>}
     {pdfPagesPath && <PdfPagesEditor key={pdfPagesPath} inputPath={pdfPagesPath} language={preferences.language} outputFolder={preferences.outputFolder} onClose={() => setPdfPagesPath(null)}/>}
+    {batchRenamePaths && <BatchRenameDialog key={batchRenamePaths.join('\0')} inputPaths={batchRenamePaths} tr={tr} onClose={() => setBatchRenamePaths(null)}/>}
     {videoThumbnailPath && <VideoThumbnailEditor key={videoThumbnailPath} inputPath={videoThumbnailPath} language={preferences.language} outputFolder={preferences.outputFolder} videoCodec={preferences.videoCodec} videoPreset={preferences.videoPreset} onClose={() => setVideoThumbnailPath(null)}/>}
   </div>
 }

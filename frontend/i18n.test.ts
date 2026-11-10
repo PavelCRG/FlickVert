@@ -31,6 +31,14 @@ test('conversion history labels are translated in all supported languages', () =
   }
 })
 
+test('batch rename labels are translated in all supported languages', () => {
+  for (const key of ['Rename files', 'Rename pattern', 'Use {name} and {counter}; the extension stays unchanged.', 'Rename preview', 'Name already exists', 'Could not preview file names.', 'A file with that name already exists.', 'Could not rename files.', 'Previewing...', 'Renamed files'] as const) {
+    assert.equal(t('en', key), key)
+    assert.notEqual(t('ru', key), key)
+    assert.notEqual(t('zh', key), key)
+  }
+})
+
 test('theme labels are translated in English, Russian, and Simplified Chinese', () => {
   const expected = {
     'Accent color': ['Accent color', 'Акцентный цвет', '强调色'],

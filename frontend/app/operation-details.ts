@@ -37,6 +37,7 @@ export const operationDetails: Record<string, OperationDetail> = {
   'extract-archive': { input: '.zip, .tar, .tar.gz, .tgz, .gz', output: 'Files in a new folder or decompressed file', limitation: selected },
   'copy-to-folder': { input: 'Files and folders', output: 'Copies with original extensions', limitation: selected },
   'move-to-folder': { input: 'Files and folders', output: 'Moves with original extensions', limitation: selected },
+  'rename-files': { input: 'Regular files', output: 'Renamed files with extensions preserved', limitation: selected },
   reveal: { input: 'One file or folder', output: 'No output file', limitation: selected },
   'copy-path': { input: 'One file or folder', output: 'Path copied to clipboard', limitation: selected },
   'copy-powershell-path': { input: 'One file or folder', output: 'PowerShell cd command copied', limitation: selected },

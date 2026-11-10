@@ -93,6 +93,8 @@ test('wheel only runs file actions that support the selected file set', () => {
   assert.equal(canRunFileAction('extract-archive', [{ extension: 'png' }]), false)
   assert.equal(canRunFileAction('reveal', [{ extension: 'png' }, { extension: 'jpg' }]), false)
   assert.equal(canRunFileAction('move-to-folder', []), false)
+  assert.equal(canRunFileAction('rename-files', [{ extension: 'jpg' }, { extension: 'png' }]), true)
+  assert.equal(canRunFileAction('rename-files', [{ extension: '', isDirectory: true }]), false)
 })
 
 test('native image path only handles formats that preserve alpha and supported fallbacks', () => {

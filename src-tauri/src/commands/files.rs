@@ -1,5 +1,62 @@
 use crate::*;
 
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct RenamePreviewItem {
+    original_name: String,
+    output_name: String,
+    collision: bool,
+}
+
+fn selected_rename_inputs(
+    input_paths: Vec<String>,
+    dropped: &DroppedFiles,
+) -> Result<Vec<PathBuf>, String> {
+    if input_paths.is_empty() || input_paths.len() > 1_000 {
+        return Err(operation_error("unsupported"));
+    }
+    input_paths
+        .iter()
+        .map(|path| selected_dropped_file(path, dropped).map_err(|_| operation_error("input")))
+        .collect()
+}
+
+#[tauri::command]
+pub(crate) fn preview_batch_rename(
+    input_paths: Vec<String>,
+    template: String,
+    dropped: tauri::State<'_, DroppedFiles>,
+) -> Result<Vec<RenamePreviewItem>, String> {
+    let inputs = selected_rename_inputs(input_paths, &dropped)?;
+    let outputs = files::preview_batch_rename_files(&inputs, &template)
+        .map_err(|_| operation_error("unsupported"))?;
+    Ok(inputs
+        .iter()
+        .zip(outputs)
+        .map(|(input, (output_name, collision))| RenamePreviewItem {
+            original_name: input.file_name().unwrap().to_string_lossy().into_owned(),
+            output_name,
+            collision,
+        })
+        .collect())
+}
+
+#[tauri::command]
+pub(crate) fn rename_batch_files(
+    input_paths: Vec<String>,
+    template: String,
+    dropped: tauri::State<'_, DroppedFiles>,
+) -> Result<Vec<String>, String> {
+    let inputs = selected_rename_inputs(input_paths, &dropped)?;
+    files::batch_rename_files(&inputs, &template)
+        .map(|paths| paths.into_iter().map(|path| path.to_string_lossy().into_owned()).collect())
+        .map_err(|error| match error {
+            files::FileError::Io(error) if error.kind() == std::io::ErrorKind::AlreadyExists => "Rename target already exists".into(),
+            files::FileError::InvalidName => operation_error("unsupported"),
+            _ => operation_error("write"),
+        })
+}
+
 pub(crate) fn existing_output_path(output_path: &str) -> Result<PathBuf, String> {
     let path = fs::canonicalize(output_path).map_err(|_| "Output is unavailable")?;
     if path.is_file() || path.is_dir() {

@@ -611,6 +611,9 @@ export default function QuickMenu() {
       if (canRunSelectedTool(actionId, allToolActions.map((action) => action.id), filesRef.current.length)) {
         await runTool(actionId, filesRef.current)
         return
+      } else if (actionId === 'rename-files') {
+        await emit('flickvert://batch-rename-open', filesRef.current.map((file) => file.path))
+        await invoke('quick_action', { actionId: 'home' })
       } else if (['create-zip', 'create-tar', 'create-targz'].includes(actionId)) {
         const items = filesRef.current
         const settings = loadSettings()
