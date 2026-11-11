@@ -69,13 +69,18 @@ pub(crate) fn show_quick(app: &AppHandle, activate: bool) {
 
 pub(crate) fn show_drag_quick(app: &AppHandle) {
     let foreground = selection::foreground_window();
-    *app.state::<DragTrigger>().0.lock().unwrap() = true;
-    show_quick(app, false);
-    let _ = app.emit("flickvert://drag-wheel-open", ());
     let handle = app.clone();
     std::thread::spawn(move || {
-        let paths = selection::selected_paths(foreground);
-        let _ = handle.emit("flickvert://shortcut-files", paths);
+        let paths = selection::dragged_paths(foreground);
+        if paths.is_empty() {
+            return;
+        }
+        let _ = handle.clone().run_on_main_thread(move || {
+            *handle.state::<DragTrigger>().0.lock().unwrap() = true;
+            show_quick(&handle, false);
+            let _ = handle.emit("flickvert://drag-wheel-open", ());
+            let _ = handle.emit("flickvert://shortcut-files", paths);
+        });
     });
 }
 
