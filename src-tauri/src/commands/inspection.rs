@@ -1,7 +1,32 @@
 use crate::*;
 
-pub(crate) fn media_duration_us(_: &Path) -> Option<u64> {
-    None
+fn parse_media_duration_us(output: &[u8]) -> Option<u64> {
+    let seconds = std::str::from_utf8(output).ok()?.trim().parse::<f64>().ok()?;
+    let microseconds = seconds * 1_000_000.0;
+    (seconds > 0.0 && microseconds.is_finite() && microseconds < u64::MAX as f64)
+        .then_some(microseconds.round() as u64)
+}
+
+pub(crate) fn media_duration_us(input: &Path) -> Option<u64> {
+    let ffprobe = operations::find_executable("ffprobe")?;
+    let args = [
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+    ]
+    .into_iter()
+    .map(std::ffi::OsString::from)
+    .chain([input.as_os_str().to_owned()])
+    .collect::<Vec<_>>();
+    let output = operations::run(&ffprobe, &args).ok()?;
+    output
+        .status
+        .success()
+        .then(|| parse_media_duration_us(&output.stdout))
+        .flatten()
 }
 
 #[tauri::command(async)]
@@ -392,7 +417,7 @@ pub(crate) fn has_pdf_text<R: Read>(reader: &mut R) -> std::io::Result<bool> {
 mod tests {
     use super::{
         cancel_all_operation_jobs, clamp_pdf_dpi, error_log_line, file_mime, has_pdf_text,
-        supports_windows_update, OperationJobs,
+        parse_media_duration_us, supports_windows_update, OperationJobs,
     };
     use std::{
         io::Cursor,
@@ -406,6 +431,15 @@ mod tests {
         assert!(supports_windows_update(Some(BundleType::Msi)));
         assert!(supports_windows_update(Some(BundleType::Nsis)));
         assert!(!supports_windows_update(None));
+    }
+
+    #[test]
+    fn parses_ffprobe_duration_as_positive_microseconds() {
+        assert_eq!(parse_media_duration_us(b"12.345678\n"), Some(12_345_678));
+        assert_eq!(parse_media_duration_us(b"N/A\n"), None);
+        assert_eq!(parse_media_duration_us(b"0\n"), None);
+        assert_eq!(parse_media_duration_us(b"inf\n"), None);
+        assert_eq!(parse_media_duration_us(b"1e308\n"), None);
     }
 
     #[test]

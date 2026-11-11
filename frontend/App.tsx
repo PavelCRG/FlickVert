@@ -68,7 +68,8 @@ export default function App() {
   const [imagesPdfPages, setImagesPdfPages] = useState<ImagePage[] | null>(null)
   const [batchRenamePaths, setBatchRenamePaths] = useState<string[] | null>(null)
   const [videoThumbnailPath, setVideoThumbnailPath] = useState<string | null>(null)
-  const engines: Engines = { ffmpeg: false, pandoc: false, imagemagick: false, libreoffice: false, poppler: false }
+  const [engines, setEngines] = useState<Engines>({ ffmpeg: false, pandoc: false, imagemagick: false, libreoffice: false, poppler: false })
+  const [videoScalingAvailable, setVideoScalingAvailable] = useState(false)
   const [operationQueue, setOperationQueue] = useState<OperationQueueItem[]>([])
   const [conversionHistory, setConversionHistory] = useState<ConversionHistoryEntry[]>(loadConversionHistory)
   const [conversionCatalog, setConversionCatalog] = useState<ConversionCatalogItem[]>([])
@@ -214,7 +215,9 @@ export default function App() {
 
   useEffect(() => {
     if (isTauri()) {
+      void invoke<Engines>('engine_status').then(setEngines).catch(() => {})
       void invoke<ConversionCatalogItem[]>('conversion_catalog').then(setConversionCatalog).catch(() => {})
+      void invoke<boolean>('video_scaling_available').then(setVideoScalingAvailable).catch(() => setVideoScalingAvailable(false))
     }
   }, [])
 
@@ -465,7 +468,7 @@ export default function App() {
     </main>
     {imageEdit && <ImageEditor key={imageEdit.inputPath} inputPath={imageEdit.inputPath} initialTool={imageEdit.initialTool} outputFolder={preferences.outputFolder} onClose={() => setImageEdit(null)}/>}
     {videoTrimPath && <VideoTrimEditor key={videoTrimPath} inputPath={videoTrimPath} language={preferences.language} outputFolder={preferences.outputFolder} videoCodec={preferences.videoCodec} videoPreset={preferences.videoPreset} onClose={() => setVideoTrimPath(null)}/>}
-    {videoExportPaths && <VideoExportPreview key={videoExportPaths.join('\0')} inputPaths={videoExportPaths} language={preferences.language} outputFolder={preferences.outputFolder} codec={preferences.videoCodec} preset={preferences.videoPreset} onClose={() => setVideoExportPaths(null)}/>}
+    {videoExportPaths && <VideoExportPreview key={videoExportPaths.join('\0')} inputPaths={videoExportPaths} language={preferences.language} outputFolder={preferences.outputFolder} codec={preferences.videoCodec} preset={preferences.videoPreset} height={videoScalingAvailable ? preferences.videoHeight : undefined} onClose={() => setVideoExportPaths(null)}/>}
     {pdfMergePaths && <PdfMergeEditor key={pdfMergePaths.join('\0')} inputPaths={pdfMergePaths} language={preferences.language} outputFolder={preferences.outputFolder} onClose={() => setPdfMergePaths(null)}/>}
     {imagesPdfPages && <ImageToPdfEditor key={imagesPdfPages.map((page) => page.path).join('\0')} pages={imagesPdfPages} language={preferences.language} outputFolder={preferences.outputFolder} onClose={() => setImagesPdfPages(null)}/>}
     {pdfSplitPath && <PdfSplitEditor key={pdfSplitPath} inputPath={pdfSplitPath} language={preferences.language} outputFolder={preferences.outputFolder} onClose={() => setPdfSplitPath(null)}/>}

@@ -4,12 +4,14 @@ use std::{
     io::{self, Read},
     path::{Path, PathBuf},
     process::{Command, Output, Stdio},
-    sync::atomic::{AtomicBool, Ordering},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        OnceLock,
+    },
     thread,
     time::{Duration, Instant},
 };
 
-#[cfg(test)]
 use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
@@ -48,7 +50,6 @@ pub struct MediaStream {
     pub track_index: usize,
 }
 
-#[cfg(test)]
 pub fn parse_media_streams(listing: &str) -> Option<Vec<MediaStream>> {
     let root: serde_json::Value = serde_json::from_str(listing).ok()?;
     let streams = root.get("streams")?.as_array()?;
@@ -68,8 +69,15 @@ pub fn parse_media_streams(listing: &str) -> Option<Vec<MediaStream>> {
     }).collect())
 }
 
-pub fn media_streams(_: &Path) -> Option<Vec<MediaStream>> {
-    None
+pub fn media_streams(input: &Path) -> Option<Vec<MediaStream>> {
+    let ffprobe = find_executable("ffprobe")?;
+    let args = ["-v", "error", "-show_entries", "stream=codec_type,codec_name:stream_tags=language", "-of", "json"]
+        .into_iter()
+        .map(OsString::from)
+        .chain([input.as_os_str().to_owned()])
+        .collect::<Vec<_>>();
+    let output = run(&ffprobe, &args).ok()?;
+    output.status.success().then(|| parse_media_streams(&String::from_utf8_lossy(&output.stdout))).flatten()
 }
 
 #[derive(serde::Serialize)]
@@ -426,12 +434,20 @@ pub fn output_extensions_for(extension: &str, engines: Engines) -> Vec<String> {
     outputs
 }
 
-pub fn all_engine_status() -> Engines {
-    // shortcut: formats needing external programs stay unavailable until their Rust paths exist.
-    Engines::default()
+fn engine_status(mut available: impl FnMut(&str) -> bool) -> Engines {
+    Engines {
+        ffmpeg: available("ffmpeg"),
+        pandoc: available("pandoc"),
+        imagemagick: available("magick"),
+        libreoffice: available("soffice"),
+        poppler: available("pdftoppm") && available("pdftotext"),
+    }
 }
 
-#[cfg(test)]
+pub fn all_engine_status() -> Engines {
+    engine_status(|name| find_executable(name).is_some())
+}
+
 pub fn supported_video_codecs(encoder_listing: &str, muxer_listing: &str) -> Vec<&'static str> {
     let has_encoder = |media, encoder| {
         encoder_listing.lines().any(|line| {
@@ -459,10 +475,24 @@ pub fn supported_video_codecs(encoder_listing: &str, muxer_listing: &str) -> Vec
 }
 
 pub fn available_video_codecs() -> Vec<&'static str> {
-    Vec::new()
+    static CODECS: OnceLock<Vec<&'static str>> = OnceLock::new();
+    CODECS
+        .get_or_init(|| {
+            let Some(ffmpeg) = find_executable("ffmpeg") else {
+                return Vec::new();
+            };
+            let listing = |option| {
+                let output = run(&ffmpeg, &[OsString::from("-hide_banner"), OsString::from(option)]).ok()?;
+                output.status.success().then(|| format!("{}\n{}", String::from_utf8_lossy(&output.stdout), String::from_utf8_lossy(&output.stderr)))
+            };
+            let (Some(encoders), Some(muxers)) = (listing("-encoders"), listing("-muxers")) else {
+                return Vec::new();
+            };
+            supported_video_codecs(&encoders, &muxers)
+        })
+        .clone()
 }
 
-#[cfg(test)]
 pub fn supported_audio_formats(encoder_listing: &str, muxer_listing: &str) -> Vec<&'static str> {
     let has_encoder = |encoder| {
         encoder_listing.lines().any(|line| {
@@ -485,10 +515,20 @@ pub fn supported_audio_formats(encoder_listing: &str, muxer_listing: &str) -> Ve
 }
 
 pub fn available_audio_formats() -> Vec<&'static str> {
-    Vec::new()
+    static FORMATS: OnceLock<Vec<&'static str>> = OnceLock::new();
+    FORMATS
+        .get_or_init(|| {
+            let Some(ffmpeg) = find_executable("ffmpeg") else { return Vec::new() };
+            let listing = |option| {
+                let output = run(&ffmpeg, &[OsString::from("-hide_banner"), OsString::from(option)]).ok()?;
+                output.status.success().then(|| format!("{}\n{}", String::from_utf8_lossy(&output.stdout), String::from_utf8_lossy(&output.stderr)))
+            };
+            let (Some(encoders), Some(muxers)) = (listing("-encoders"), listing("-muxers")) else { return Vec::new() };
+            supported_audio_formats(&encoders, &muxers)
+        })
+        .clone()
 }
 
-#[cfg(test)]
 pub fn supports_video_scaling(filter_listing: &str) -> bool {
     filter_listing.lines().any(|line| {
         let mut fields = line.split_whitespace();
@@ -498,7 +538,14 @@ pub fn supports_video_scaling(filter_listing: &str) -> bool {
 }
 
 pub fn video_scaling_available() -> bool {
-    false
+    static AVAILABLE: OnceLock<bool> = OnceLock::new();
+    *AVAILABLE.get_or_init(|| {
+        let Some(ffmpeg) = find_executable("ffmpeg") else { return false };
+        let Ok(output) = run(&ffmpeg, &[OsString::from("-hide_banner"), OsString::from("-filters")]) else { return false };
+        if !output.status.success() { return false; }
+        let listing = format!("{}\n{}", String::from_utf8_lossy(&output.stdout), String::from_utf8_lossy(&output.stderr));
+        supports_video_scaling(&listing)
+    })
 }
 
 pub fn find_executable(name: &str) -> Option<PathBuf> {
@@ -511,11 +558,17 @@ pub fn find_executable(name: &str) -> Option<PathBuf> {
     })
 }
 
-pub fn has_audio_stream(_: &Path) -> Option<bool> {
-    None
+pub fn has_audio_stream(input: &Path) -> Option<bool> {
+    let ffprobe = find_executable("ffprobe")?;
+    let args = ["-v", "error", "-select_streams", "a", "-show_entries", "stream=codec_type", "-of", "csv=p=0"]
+        .into_iter()
+        .map(OsString::from)
+        .chain([input.as_os_str().to_owned()])
+        .collect::<Vec<_>>();
+    let result = run(&ffprobe, &args).ok()?;
+    result.status.success().then(|| has_audio_stream_in_listing(&String::from_utf8_lossy(&result.stdout)))
 }
 
-#[cfg(test)]
 fn has_audio_stream_in_listing(listing: &str) -> bool {
     listing.lines().any(|line| line.trim().eq_ignore_ascii_case("audio"))
 }
@@ -993,14 +1046,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn standalone_mode_does_not_discover_or_launch_converter_engines() {
-        let engines = all_engine_status();
-        assert!(!engines.ffmpeg && !engines.pandoc && !engines.imagemagick && !engines.libreoffice && !engines.poppler);
-        assert!(available_video_codecs().is_empty());
-        assert!(available_audio_formats().is_empty());
-        assert!(!video_scaling_available());
-        assert!(media_streams(Path::new("unused")).is_none());
-        assert!(has_audio_stream(Path::new("unused")).is_none());
+    fn reports_each_detected_external_engine() {
+        let engines = engine_status(|name| matches!(name, "ffmpeg" | "soffice" | "pdftoppm"));
+
+        assert!(engines.ffmpeg);
+        assert!(!engines.pandoc);
+        assert!(!engines.imagemagick);
+        assert!(engines.libreoffice);
+        assert!(!engines.poppler);
     }
 
     #[test]
