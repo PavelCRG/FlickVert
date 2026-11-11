@@ -17,6 +17,17 @@ FlickVert 在本机处理文件，无需上传。拖动文件，选择操作，�
 
 最新版本提供 Windows 安装程序和便携 ZIP。Setup 可选择安装目录，无需管理员权限。便携 ZIP 可解压到任何可写磁盘，需手动更新。应用设置保存在 Windows 用户配置文件中。由于安装程序尚未使用 Authenticode 证书签名，Windows 可能显示 SmartScreen 警告。需要 Windows 10/11 和 Microsoft Edge WebView2 Runtime。
 
+[直接下载 Setup](https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.exe)。
+
+若要通过 PowerShell 将 Setup 下载到 Windows“下载”文件夹，请粘贴以下命令。该命令只下载文件，不会运行安装程序：
+
+~~~powershell
+$downloads = (New-Object -ComObject Shell.Application).NameSpace('shell:Downloads').Self.Path
+$setup = Join-Path $downloads 'FlickVert-Windows-x64-Setup.exe'
+if (Test-Path $setup) { $setup = Join-Path $downloads ('FlickVert-Windows-x64-Setup-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.exe') }
+Invoke-WebRequest -UseBasicParsing 'https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.exe' -OutFile $setup
+~~~
+
 [查看最新版本和校验和](https://github.com/PavelCRG/FlickVert/releases/latest)。
 
 [验证下载文件和构建来源](docs/download-verification.md)。

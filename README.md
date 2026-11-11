@@ -17,6 +17,17 @@ FlickVert is a Windows desktop app for working with files without uploading them
 
 The latest release includes a Windows installer and a portable ZIP. Setup lets you choose an install folder and installs for your Windows user without requiring administrator rights. The portable ZIP can be extracted to any writable drive and is updated manually. App settings stay in your Windows user profile. Windows may show a SmartScreen warning because the installer is not Authenticode-signed. Windows 10/11 and Microsoft Edge WebView2 Runtime are required.
 
+[Direct Setup download](https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.exe).
+
+To download Setup to your Windows Downloads folder from PowerShell without running it, paste:
+
+~~~powershell
+$downloads = (New-Object -ComObject Shell.Application).NameSpace('shell:Downloads').Self.Path
+$setup = Join-Path $downloads 'FlickVert-Windows-x64-Setup.exe'
+if (Test-Path $setup) { $setup = Join-Path $downloads ('FlickVert-Windows-x64-Setup-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.exe') }
+Invoke-WebRequest -UseBasicParsing 'https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.exe' -OutFile $setup
+~~~
+
 [Open the latest release and checksums](https://github.com/PavelCRG/FlickVert/releases/latest).
 
 [Verify downloads and build origin](docs/download-verification.md).

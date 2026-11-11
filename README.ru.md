@@ -17,6 +17,17 @@ FlickVert помогает работать с файлами без загру�
 
 В последнем релизе есть установщик Windows и портативный ZIP. В Setup можно выбрать папку установки; права администратора не нужны. Портативный ZIP можно распаковать на любой доступный для записи диск, обновлять его нужно вручную. Настройки приложения хранятся в профиле Windows. Windows может показать SmartScreen: установщик не подписан сертификатом Authenticode. Требуются Windows 10/11 и Microsoft Edge WebView2 Runtime.
 
+[Скачать Setup напрямую](https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.exe).
+
+Чтобы скачать установщик в папку «Загрузки» через PowerShell, скопируйте и вставьте эту команду. Она только скачивает файл и не запускает его:
+
+~~~powershell
+$downloads = (New-Object -ComObject Shell.Application).NameSpace('shell:Downloads').Self.Path
+$setup = Join-Path $downloads 'FlickVert-Windows-x64-Setup.exe'
+if (Test-Path $setup) { $setup = Join-Path $downloads ('FlickVert-Windows-x64-Setup-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.exe') }
+Invoke-WebRequest -UseBasicParsing 'https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.exe' -OutFile $setup
+~~~
+
 [Последний релиз и контрольные суммы](https://github.com/PavelCRG/FlickVert/releases/latest).
 
 [Проверка загрузки и источника сборки](docs/download-verification.md).
