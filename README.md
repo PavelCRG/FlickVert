@@ -19,14 +19,13 @@ The latest release includes a Windows installer and a portable ZIP. Setup lets y
 
 [Direct Setup download](https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.exe).
 
-To download Setup to your Windows Downloads folder from PowerShell without running it, paste:
+To install the latest release from PowerShell, paste:
 
 ~~~powershell
-$downloads = (New-Object -ComObject Shell.Application).NameSpace('shell:Downloads').Self.Path
-$setup = Join-Path $downloads 'FlickVert-Windows-x64-Setup.exe'
-if (Test-Path $setup) { $setup = Join-Path $downloads ('FlickVert-Windows-x64-Setup-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.exe') }
-Invoke-WebRequest -UseBasicParsing 'https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.exe' -OutFile $setup
+irm https://raw.githubusercontent.com/PavelCRG/FlickVert/main/scripts/install.ps1 | iex
 ~~~
+
+It runs the [open-source installer script](https://github.com/PavelCRG/FlickVert/blob/main/scripts/install.ps1), verifies Setup's SHA-256 checksum, and opens the standard installer. To download the installer without running it, use the direct link above.
 
 [Open the latest release and checksums](https://github.com/PavelCRG/FlickVert/releases/latest).
 

@@ -19,14 +19,13 @@ FlickVert 在本机处理文件，无需上传。拖动文件，选择操作，�
 
 [直接下载 Setup](https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.exe)。
 
-若要通过 PowerShell 将 Setup 下载到 Windows“下载”文件夹，请粘贴以下命令。该命令只下载文件，不会运行安装程序：
+若要通过 PowerShell 安装最新版本，请粘贴以下命令：
 
 ~~~powershell
-$downloads = (New-Object -ComObject Shell.Application).NameSpace('shell:Downloads').Self.Path
-$setup = Join-Path $downloads 'FlickVert-Windows-x64-Setup.exe'
-if (Test-Path $setup) { $setup = Join-Path $downloads ('FlickVert-Windows-x64-Setup-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.exe') }
-Invoke-WebRequest -UseBasicParsing 'https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.exe' -OutFile $setup
+irm https://raw.githubusercontent.com/PavelCRG/FlickVert/main/scripts/install.ps1 | iex
 ~~~
+
+该命令会运行[开源安装脚本](https://github.com/PavelCRG/FlickVert/blob/main/scripts/install.ps1)，下载 Setup、验证 SHA-256，并打开标准 Windows 安装程序。如需只下载而不运行安装程序，请使用上面的直接下载链接。
 
 [查看最新版本和校验和](https://github.com/PavelCRG/FlickVert/releases/latest)。
 

@@ -19,14 +19,13 @@ FlickVert помогает работать с файлами без загру�
 
 [Скачать Setup напрямую](https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.exe).
 
-Чтобы скачать установщик в папку «Загрузки» через PowerShell, скопируйте и вставьте эту команду. Она только скачивает файл и не запускает его:
+Чтобы установить последнюю версию через PowerShell, скопируйте и вставьте команду:
 
 ~~~powershell
-$downloads = (New-Object -ComObject Shell.Application).NameSpace('shell:Downloads').Self.Path
-$setup = Join-Path $downloads 'FlickVert-Windows-x64-Setup.exe'
-if (Test-Path $setup) { $setup = Join-Path $downloads ('FlickVert-Windows-x64-Setup-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.exe') }
-Invoke-WebRequest -UseBasicParsing 'https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.exe' -OutFile $setup
+irm https://raw.githubusercontent.com/PavelCRG/FlickVert/main/scripts/install.ps1 | iex
 ~~~
+
+Команда запускает [открытый скрипт установки](https://github.com/PavelCRG/FlickVert/blob/main/scripts/install.ps1), проверяет SHA-256 и открывает обычный установщик Windows. Чтобы только скачать файл, не запуская установку, используйте прямую ссылку выше.
 
 [Последний релиз и контрольные суммы](https://github.com/PavelCRG/FlickVert/releases/latest).
 
