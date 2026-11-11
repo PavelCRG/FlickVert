@@ -93,6 +93,11 @@ const AUDIO: Operation = Operation {
         "aac", "aiff", "flac", "m4a", "mp3", "ogg", "opus", "wav", "wma",
     ],
 };
+const AUDIO_TO_WAV: Operation = Operation {
+    engine: Engine::BuiltIn,
+    input_extensions: &["aif", "aiff", "flac", "m4a", "m4b", "mka", "mp3", "oga", "ogg"],
+    output_extensions: &["wav"],
+};
 const VIDEO: Operation = Operation {
     engine: Engine::Ffmpeg,
     input_extensions: &[
@@ -295,6 +300,11 @@ pub fn is_native_subtitle_conversion(input_extension: &str, output_extension: &s
             && output_extension.eq_ignore_ascii_case("srt")
 }
 
+pub fn is_native_audio_conversion(input_extension: &str, output_extension: &str) -> bool {
+    AUDIO_TO_WAV.input_extensions.contains(&input_extension.to_ascii_lowercase().as_str())
+        && output_extension.eq_ignore_ascii_case("wav")
+}
+
 pub fn operations_for(extension: &str, engines: Engines) -> Vec<Operation> {
     let extension = extension.to_ascii_lowercase();
     catalog_operations(engines)
@@ -308,7 +318,7 @@ pub fn operations_for(extension: &str, engines: Engines) -> Vec<Operation> {
 
 fn catalog_operations(
     engines: Engines,
-) -> [(&'static Operation, &'static str, &'static str, bool); 27] {
+) -> [(&'static Operation, &'static str, &'static str, bool); 28] {
     [
         (&IMAGE, "Images and PDFs", "Built in", true),
         (&DELIMITED, "Documents", "Built in", true),
@@ -321,6 +331,7 @@ fn catalog_operations(
         (&HTML_TEXT, "Documents", "Built in", true),
         (&SRT_TO_VTT, "Subtitles", "Built in", true),
         (&VTT_TO_SRT, "Subtitles", "Built in", true),
+        (&AUDIO_TO_WAV, "Audio", "Built in", true),
         (&AUDIO, "Audio and video", "FFmpeg", engines.ffmpeg),
         (&VIDEO, "Audio and video", "FFmpeg", engines.ffmpeg),
         (&SUBTITLE_FROM_ASS, "Audio and video", "FFmpeg", engines.ffmpeg),
@@ -383,6 +394,8 @@ pub fn conversion_catalog(engines: Engines) -> Vec<ConversionCatalogItem> {
                 Some("DOCX/ODT text extraction only; tables are flattened and layout, images, headers, and footnotes are not retained; 16 MiB input, 64 MiB XML, and 128 MiB output limits.")
             } else if std::ptr::eq(operation, &EPUB_TEXT) {
                 Some("EPUB spine text extraction only; images and layout are not retained; UTF-8 members, 16 MiB input, 64 MiB content, and 128 MiB output limits.")
+            } else if category == "Audio" && engine == "Built in" {
+                Some("Converts one supported audio track to 16-bit PCM WAV; 512 MiB input, 1 GiB output, and eight channels maximum. Video is not copied.")
             } else {
                 None
             },
@@ -1609,6 +1622,21 @@ mod tests {
                 .collect::<Vec<_>>()
         );
         assert!(quick_image_formats("exe").is_none());
+    }
+
+    #[test]
+    fn built_in_audio_conversion_offers_only_supported_inputs_to_wav() {
+        for input in ["aiff", "flac", "mp3", "m4a", "mka", "ogg"] {
+            assert_eq!(operation_for(input, "wav", Engines::default()).unwrap().engine, Engine::BuiltIn);
+        }
+        assert!(operation_for("wma", "wav", Engines::default()).is_none());
+        assert!(operation_for("opus", "wav", Engines::default()).is_none());
+        assert!(operation_for("wav", "wav", Engines::default()).is_none());
+        assert!(is_native_audio_conversion("FLAC", "WAV"));
+        assert!(!is_native_audio_conversion("WMA", "WAV"));
+        let item = conversion_catalog(Engines::default()).into_iter().find(|item| item.category == "Audio" && item.engine == "Built in").unwrap();
+        assert_eq!(item.output_extensions, ["wav"]);
+        assert!(item.limitation.is_some());
     }
 
     #[test]

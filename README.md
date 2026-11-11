@@ -40,9 +40,10 @@ FlickVert offers the operations implemented inside the app. It does not look for
 | Documents | Convert Markdown, HTML, and text; extract text from RTF, DOCX, ODT, and EPUB |
 | Spreadsheets | Convert CSV and TSV; convert a single-sheet XLSX to CSV/TSV and TSV to XLSX |
 | Subtitles | Convert SRT and VTT |
+| Audio | Convert AIFF, FLAC, M4A, MP3, MKA, OGA, and OGG audio to WAV |
 | Archives | Create and extract ZIP, TAR, TAR.GZ, TGZ, and GZIP |
 
-Formats without an in-app implementation are not offered. FlickVert uses third-party Rust crates; their code remains under their respective licenses and is not claimed as original FlickVert code.
+Formats without an in-app implementation are not offered. FlickVert uses third-party Rust crates; their code remains under their respective licenses and is not claimed as original FlickVert code. Audio decoding uses Symphonia (MPL 2.0); source and license details are included with the installer.
 
 ## Files and privacy
 

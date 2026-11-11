@@ -2,6 +2,7 @@
 
 mod app;
 mod archive;
+mod audio_conversion;
 mod commands;
 mod delimited_conversion;
 mod document_conversion;

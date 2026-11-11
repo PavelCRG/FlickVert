@@ -188,7 +188,7 @@ test('native EPUB text extraction limitation is translated in every language', (
 })
 
 test('operation shortcut controls are translated in every language', () => {
-  for (const key of ['Operation shortcuts', 'Not assigned', 'Remove shortcut', 'Operation shortcut conflicts or is unavailable.'] as const) {
+  for (const key of ['Operation shortcuts', 'Not assigned', 'Remove shortcut', 'Operation shortcut conflicts or is unavailable.', 'Press a shortcut with Ctrl or Alt. Shift may be added. Escape cancels.'] as const) {
     assert.equal(t('en', key), key)
     assert.notEqual(t('ru', key), key)
     assert.notEqual(t('zh', key), key)
@@ -339,6 +339,18 @@ test('settings section reset labels are translated', () => {
   for (const key of ['Reset', 'Reset appearance settings', 'Reset keyboard settings'] as const) {
     assert.notEqual(t('ru', key), key)
     assert.notEqual(t('zh', key), key)
+  }
+})
+
+test('audio decoder license notice is translated in every language', () => {
+  for (const language of ['ru', 'zh'] as const) {
+    assert.notEqual(t(language, 'Audio decoder and licenses are listed in the installer notices.'), 'Audio decoder and licenses are listed in the installer notices.')
+  }
+})
+
+test('audio conversion limits are translated in every language', () => {
+  for (const language of ['ru', 'zh'] as const) {
+    assert.notEqual(t(language, 'Converts one supported audio track to 16-bit PCM WAV; 512 MiB input, 1 GiB output, and eight channels maximum. Video is not copied.'), 'Converts one supported audio track to 16-bit PCM WAV; 512 MiB input, 1 GiB output, and eight channels maximum. Video is not copied.')
   }
 })
 

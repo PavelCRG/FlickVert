@@ -105,6 +105,9 @@ pub(crate) fn convert_file(
             } else if operations::is_native_subtitle_conversion(&extension, &output_extension) {
                 subtitle_conversion::convert_subtitle(&input, &output_temp, &output_extension)
                     .map_err(|_| operation_error("conversion"))?;
+            } else if operations::is_native_audio_conversion(&extension, &output_extension) {
+                audio_conversion::convert_to_wav(&input, &output_temp, &cancelled)
+                    .map_err(|_| operation_error(if cancelled.load(Ordering::Acquire) { "cancelled" } else { "conversion" }))?;
             } else {
                 image_conversion::convert_image(
                     &input,

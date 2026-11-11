@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.17
+
+- Added built-in Rust audio decoding to WAV for supported AIFF, FLAC, M4A, MP3, MKA, OGA, and OGG files.
+- Added audio format discovery to the tools catalog and home screen; bundled third-party license notices.
+
 ## 0.1.16
 
 - Made the tools catalog show only operations implemented in FlickVert and removed manual converter installation prompts.
