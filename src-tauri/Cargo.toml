@@ -1,6 +1,6 @@
 [package]
 name = "flickvert"
-version = "0.1.17"
+version = "0.1.18"
 description = "Local-first cross-platform file converter"
 authors = ["FlickVert"]
 edition = "2021"

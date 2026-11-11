@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.18
+
+- Added separate tool catalog filters for images, video, audio, PDF, documents, slides, spreadsheets, EPUB, subtitles, and archives.
+- Included available video and audio conversions in the catalog and made archive filtering show only archive actions.
+
 ## 0.1.17
 
 - Added built-in Rust audio decoding to WAV for supported AIFF, FLAC, M4A, MP3, MKA, OGA, and OGG files.

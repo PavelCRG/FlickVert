@@ -790,12 +790,18 @@
 
 .family-filter {
   display: flex;
-  flex-wrap: wrap;
+  overflow-x: auto;
+  flex-wrap: nowrap;
   gap: 6px;
+  padding: 2px 1px 6px;
 }
 
 .family-filter button {
-  min-height: 34px;
+  min-height: 38px;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
   padding: 0 11px;
   border: 1px solid var(--line);
   border-radius: 7px;
@@ -805,6 +811,8 @@
   font-size: 12px;
   transition: border-color .14s ease, background-color .14s ease, color .14s ease;
 }
+
+.family-filter button svg { width: 16px; height: 16px; }
 
 .family-filter button:hover:not([aria-pressed="true"]) {
   border-color: color-mix(in srgb, var(--accent) 35%, var(--line));

@@ -202,11 +202,12 @@ test('empty tool search can be cleared in every language', () => {
 })
 
 test('tool family filters are labeled in every language', () => {
-  for (const key of ['All tools', 'Images', 'Filter by family'] as const) {
+  for (const key of ['All tools', 'Images', 'Video', 'Audio', 'PDF documents', 'Documents', 'Slides', 'Spreadsheets', 'Subtitles', 'Archives', 'Filter by family'] as const) {
     assert.ok(t('en', key))
     assert.notEqual(t('ru', key), key)
     assert.notEqual(t('zh', key), key)
   }
+  assert.equal(t('ru', 'EPUB'), 'EPUB')
 })
 
 test('JPEG transparency background is translated in all supported languages', () => {
