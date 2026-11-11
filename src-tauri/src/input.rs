@@ -104,7 +104,18 @@ fn mode_for_modifier(key: ModifierKey) -> WheelMode {
     MODIFIER_MODES.get().and_then(|modes| modes.lock().ok().map(|modes| modes[index])).unwrap_or([WheelMode::Convert, WheelMode::Tools, WheelMode::Actions][index])
 }
 
+pub fn drag_wheel_active() -> bool {
+    GESTURE
+        .get()
+        .and_then(|gesture| gesture.lock().ok().map(|state| state.drag_wheel_active()))
+        .unwrap_or(false)
+}
+
 impl Gesture {
+    fn drag_wheel_active(&self) -> bool {
+        self.left_down && self.dragging && self.wheel_open
+    }
+
     fn transition(&mut self, event: InputEvent) -> Option<Action> {
         match event {
             InputEvent::Move(x, y) => {
@@ -475,6 +486,17 @@ mod tests {
         assert!(gesture
             .transition(InputEvent::ModifierUp(WheelMode::Convert))
             .is_none());
+    }
+
+    #[test]
+    fn drag_wheel_is_inactive_as_soon_as_the_mouse_is_released() {
+        let mut gesture = Gesture::default();
+        gesture.transition(InputEvent::LeftDown(10.0, 10.0));
+        gesture.transition(InputEvent::Move(20.0, 10.0));
+        gesture.transition(InputEvent::ModifierDown(WheelMode::Convert));
+        assert!(gesture.drag_wheel_active());
+        gesture.transition(InputEvent::LeftUp);
+        assert!(!gesture.drag_wheel_active());
     }
 
     #[test]

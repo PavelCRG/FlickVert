@@ -76,6 +76,9 @@ pub(crate) fn show_drag_quick(app: &AppHandle) {
             return;
         }
         let _ = handle.clone().run_on_main_thread(move || {
+            if !input::drag_wheel_active() {
+                return;
+            }
             *handle.state::<DragTrigger>().0.lock().unwrap() = true;
             show_quick(&handle, false);
             let _ = handle.emit("flickvert://drag-wheel-open", ());

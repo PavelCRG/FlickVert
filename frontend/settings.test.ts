@@ -5,6 +5,8 @@ import { normalizeSettings, normalizeOperationShortcuts, defaultSettings, create
 test('invalid or absent saved settings resolve to safe defaults', () => {
   assert.deepEqual(normalizeSettings(undefined), defaultSettings)
   assert.deepEqual(normalizeSettings({ language: 'xx', appearance: 'custom', quality: 200, width: -1, shortcut: 'bad' }), defaultSettings)
+  assert.equal(normalizeSettings({ shortcut: 'SHIFT+W' }).shortcut, defaultSettings.shortcut)
+  assert.equal(normalizeSettings({ shortcut: 'CTRL+SHIFT+W' }).shortcut, 'CTRL+SHIFT+W')
   assert.equal(normalizeSettings({ videoPreset: 'fastest' }).videoPreset, 'balanced')
   assert.equal(normalizeSettings({ videoCodec: 'av1', videoHeight: 4320 }).videoCodec, 'h264')
   assert.equal(normalizeSettings({ videoCodec: 'av1', videoHeight: 4320 }).videoHeight, undefined)
@@ -134,7 +136,7 @@ test('desktop conversion notifications are opt-in and retained in settings backu
 })
 
 test('operation shortcut assignments reject malformed keys and collisions', () => {
-  assert.deepEqual(normalizeOperationShortcuts({ resize: 'CTRL+ALT+R', rotate: 'CTRL+ALT+R', grayscale: 'CTRL+ALT+G', bad: 'CTRL+CTRL+R', 'not valid': 'CTRL+ALT+B' }, 'CTRL+ALT+SPACE'), {
+  assert.deepEqual(normalizeOperationShortcuts({ resize: 'CTRL+ALT+R', rotate: 'CTRL+ALT+R', grayscale: 'CTRL+ALT+G', bad: 'CTRL+CTRL+R', game: 'SHIFT+W', 'not valid': 'CTRL+ALT+B' }, 'CTRL+ALT+SPACE'), {
     resize: 'CTRL+ALT+R', grayscale: 'CTRL+ALT+G',
   })
   assert.deepEqual(normalizeOperationShortcuts({ square: 'CTRL+ALT+SPACE' }, 'CTRL+ALT+SPACE'), {})

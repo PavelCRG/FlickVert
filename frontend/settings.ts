@@ -85,7 +85,7 @@ export function validShortcut(value: unknown): value is string {
   const parts = value.split('+')
   const key = parts.pop()
   const modifiers = parts
-  return Boolean(key && modifiers.length && new Set(modifiers).size === modifiers.length && modifiers.every((part) => ['CTRL', 'ALT', 'SHIFT'].includes(part)) && /^(SPACE|[A-Z0-9]|F(?:[1-9]|1[0-2]))$/.test(key))
+  return Boolean(key && modifiers.length && modifiers.some((part) => part === 'CTRL' || part === 'ALT') && new Set(modifiers).size === modifiers.length && modifiers.every((part) => ['CTRL', 'ALT', 'SHIFT'].includes(part)) && /^(SPACE|[A-Z0-9]|F(?:[1-9]|1[0-2]))$/.test(key))
 }
 
 export function normalizeOperationShortcuts(value: unknown, primaryShortcut: string): Record<string, string> {

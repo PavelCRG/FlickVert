@@ -16,6 +16,7 @@ pub(crate) fn parse_global_shortcut(
         || parts.iter().enumerate().any(|(index, modifier)| {
             !["CTRL", "ALT", "SHIFT"].contains(modifier) || parts[..index].contains(modifier)
         })
+        || !parts.iter().any(|modifier| ["CTRL", "ALT"].contains(modifier))
     {
         return Err("Unsupported shortcut".into());
     }
@@ -351,7 +352,7 @@ pub(crate) fn save_output(
 
 #[cfg(test)]
 mod tests {
-    use super::{validate_operation_shortcuts, xml_escape};
+    use super::{parse_global_shortcut, validate_operation_shortcuts, xml_escape};
     use std::collections::HashMap;
 
     #[test]
@@ -396,6 +397,17 @@ mod tests {
         .is_err());
         assert!(validate_operation_shortcuts(
             &HashMap::from([("resize".into(), "CTRL+CTRL+R".into())]),
+            None
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn shift_alone_cannot_be_used_for_global_shortcuts() {
+        assert!(parse_global_shortcut("SHIFT+W").is_err());
+        assert!(parse_global_shortcut("CTRL+SHIFT+W").is_ok());
+        assert!(validate_operation_shortcuts(
+            &HashMap::from([("resize".into(), "SHIFT+W".into())]),
             None
         )
         .is_err());
