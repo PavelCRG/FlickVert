@@ -466,6 +466,18 @@ mod tests {
     use super::*;
 
     #[test]
+    fn shift_and_keyboard_activity_without_a_mouse_drag_never_opens_the_wheel() {
+        let mut gesture = Gesture::default();
+        assert!(gesture
+            .transition(InputEvent::ModifierDown(WheelMode::Convert))
+            .is_none());
+        assert!(gesture.transition(InputEvent::Move(100.0, 100.0)).is_none());
+        assert!(gesture
+            .transition(InputEvent::ModifierUp(WheelMode::Convert))
+            .is_none());
+    }
+
+    #[test]
     fn shift_opens_wheel_during_drag() {
         let mut gesture = Gesture::default();
         assert!(gesture
