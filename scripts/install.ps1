@@ -25,7 +25,12 @@ $installerPath = Join-Path $temporaryDirectory 'FlickVert-Windows-x64-Setup.exe'
 try {
   $releaseUrl = 'https://github.com/PavelCRG/FlickVert/releases/download/' + $release.tag_name
   Invoke-WebRequest -UseBasicParsing -TimeoutSec 120 -Uri ($releaseUrl + '/FlickVert-Windows-x64-Setup.exe') -OutFile $installerPath
-  $checksums = (Invoke-WebRequest -UseBasicParsing -TimeoutSec 30 -Uri ($releaseUrl + '/SHA256SUMS.txt')).Content
+  $checksumResponse = Invoke-WebRequest -UseBasicParsing -TimeoutSec 30 -Uri ($releaseUrl + '/SHA256SUMS.txt')
+  $checksums = if ($checksumResponse.Content -is [byte[]]) {
+    [Text.Encoding]::UTF8.GetString($checksumResponse.Content)
+  } else {
+    [string]$checksumResponse.Content
+  }
   $match = [regex]::Match($checksums, '(?m)^([0-9a-fA-F]{64})\s+\*?FlickVert-Windows-x64-Setup\.exe\s*$')
   if (-not $match.Success) { throw 'The release checksum file does not contain the Setup checksum.' }
 
