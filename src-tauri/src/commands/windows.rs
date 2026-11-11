@@ -76,7 +76,7 @@ pub(crate) fn show_drag_quick(app: &AppHandle) {
             return;
         }
         let _ = handle.clone().run_on_main_thread(move || {
-            if !input::drag_wheel_active() {
+            if !input::drag_wheel_active() || selection::foreground_window() != foreground {
                 return;
             }
             *handle.state::<DragTrigger>().0.lock().unwrap() = true;

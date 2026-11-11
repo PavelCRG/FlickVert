@@ -78,8 +78,17 @@ end tell"#;
 }
 
 #[cfg(target_os = "macos")]
-pub fn dragged_paths(foreground: isize) -> Vec<String> {
-    selected_paths(foreground)
+pub fn dragged_paths(_: isize) -> Vec<String> {
+    apple_paths(
+        r#"tell application "Finder"
+if not frontmost then return ""
+set foundPaths to ""
+repeat with selectedItem in selection
+set foundPaths to foundPaths & (POSIX path of (selectedItem as alias)) & linefeed
+end repeat
+return foundPaths
+end tell"#,
+    )
 }
 
 #[cfg(target_os = "macos")]
