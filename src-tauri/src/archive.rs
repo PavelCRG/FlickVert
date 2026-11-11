@@ -181,8 +181,23 @@ pub fn create_gzip(input: &Path, output: &Path) -> Result<(), String> {
     if metadata.len() > MAX_FILE_SIZE { return Err("GZIP input exceeds the 512 MB limit".into()); }
     let mut source = File::open(input).map_err(|error| error.to_string())?;
     let mut encoder = GzEncoder::new(File::create(output).map_err(|error| error.to_string())?, Compression::default());
-    io::copy(&mut source, &mut encoder).map_err(|error| error.to_string())?;
+    let copied = copy_with_limit(&mut source, &mut encoder, MAX_FILE_SIZE).map_err(|error| {
+        if error.kind() == io::ErrorKind::InvalidData { "GZIP input exceeds the 512 MB limit".to_owned() } else { error.to_string() }
+    })?;
+    if copied != metadata.len() { return Err("GZIP input changed while reading".into()); }
     encoder.finish().map_err(|error| error.to_string())?.sync_all().map_err(|error| error.to_string())
+}
+
+fn copy_with_limit<R: Read, W: io::Write>(input: &mut R, output: &mut W, limit: u64) -> io::Result<u64> {
+    let copied = {
+        let mut limited = (&mut *input).take(limit);
+        io::copy(&mut limited, output)?
+    };
+    let mut extra = [0; 1];
+    if input.read(&mut extra)? != 0 {
+        return Err(io::Error::new(io::ErrorKind::InvalidData, "input exceeds size limit"));
+    }
+    Ok(copied)
 }
 
 pub fn extract_gzip(input: &Path, parent: &Path, output_name: &str) -> Result<PathBuf, String> {
@@ -253,15 +268,19 @@ fn add_to_zip(
         if metadata.len() > MAX_FILE_SIZE {
             return Err("ZIP file exceeds the 512 MB limit".into());
         }
-        *total_size = total_size
-            .checked_add(metadata.len())
-            .filter(|size| *size <= MAX_TOTAL_SIZE)
-            .ok_or("ZIP archive exceeds the 2 GB limit")?;
+        let remaining = MAX_TOTAL_SIZE.saturating_sub(*total_size);
+        if metadata.len() > remaining { return Err("ZIP archive exceeds the 2 GB limit".into()); }
         archive
             .start_file(name, options)
             .map_err(|error| error.to_string())?;
         let mut source = File::open(path).map_err(|error| error.to_string())?;
-        io::copy(&mut source, archive).map_err(|error| error.to_string())?;
+        let copied = copy_with_limit(&mut source, archive, MAX_FILE_SIZE.min(remaining)).map_err(|error| {
+            if error.kind() == io::ErrorKind::InvalidData {
+                if remaining < MAX_FILE_SIZE { "ZIP archive exceeds the 2 GB limit".to_owned() } else { "ZIP file exceeds the 512 MB limit".to_owned() }
+            } else { error.to_string() }
+        })?;
+        if copied != metadata.len() { return Err("ZIP file changed while reading".into()); }
+        *total_size += copied;
     }
     Ok(())
 }
@@ -515,6 +534,17 @@ mod tests {
         assert_eq!(compression_level(0), 1);
         assert_eq!(compression_level(5), 5);
         assert_eq!(compression_level(20), 9);
+    }
+
+    #[test]
+    fn bounded_copy_rejects_growth_without_writing_past_the_limit() {
+        let mut exact = Vec::new();
+        assert_eq!(copy_with_limit(&mut io::Cursor::new(b"12345"), &mut exact, 5).unwrap(), 5);
+        assert_eq!(exact, b"12345");
+
+        let mut growing = Vec::new();
+        assert!(copy_with_limit(&mut io::Cursor::new(b"123456"), &mut growing, 5).is_err());
+        assert_eq!(growing, b"12345");
     }
 
     #[test]

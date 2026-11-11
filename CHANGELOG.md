@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.19
+
+- Enforced ZIP and GZIP input size limits while reading files, including files that change during archive creation.
+
 ## 0.1.18
 
 - Added separate tool catalog filters for images, video, audio, PDF, documents, slides, spreadsheets, EPUB, subtitles, and archives.
