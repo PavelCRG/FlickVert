@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.22
+
+- Added one-click signed updates for portable ZIP builds alongside Setup and MSI, with a safe staged executable replacement and automatic relaunch.
+- Added an update center in Settings → About and made the file-drag modifier mapping visible on Home and Quick start.
+
 ## 0.1.19
 
 - Enforced ZIP and GZIP input size limits while reading files, including files that change during archive creation.

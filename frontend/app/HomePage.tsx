@@ -6,6 +6,7 @@ import type { AppSettings } from '../settings'
 import type { OperationQueueItem } from './types'
 import { operationShortcutActions } from '../quick-menu/quick-actions'
 import { formatBytes, type ConversionHistoryEntry } from './conversion-history'
+import { modifierLabel } from './keyboard'
 
 export function HomePage({ preferences, favorites, history, spaceSaved, queue, setQueue, pickError, resultOpenError, setResultOpenError, tr, onChooseFiles, onExploreTools, onOpenFavorite, onRerunHistory, onOpenCategory, onOpenKeyboard, onRevealOutput }: {
   preferences: AppSettings
@@ -32,6 +33,9 @@ export function HomePage({ preferences, favorites, history, spaceSaved, queue, s
     {favorites.length > 0 && <section className="dashboard-favorites" aria-labelledby="dashboard-favorites-title"><h2 id="dashboard-favorites-title">{tr('Favorites')}</h2><div>{operationShortcutActions.filter((action) => favorites.includes(action.id)).slice(0, 8).map((action) => <button key={action.id} type="button" className="dashboard-favorite" onClick={() => onOpenFavorite(action.id)}><AppIcon name={action.glyph}/><span>{tr(action.label)}</span><AppIcon name="arrow-right"/></button>)}</div></section>}
     {spaceSaved > 0 && <section className="dashboard-savings" aria-label={tr('Space saved')}><AppIcon name="compress"/><span>{tr('Space saved')}</span><strong>{formatBytes(spaceSaved, preferences.language === 'zh' ? 'zh-CN' : preferences.language)}</strong></section>}
     <section className="dashboard-start"><div><span className="dashboard-icon"><AppIcon name="convert"/></span><div><h2>{tr('Convert files')}</h2><p>{tr('Drop a file on the quick wheel or choose files to start.')}</p></div></div><button className="secondary-button" onClick={onExploreTools}><AppIcon name="tools"/>{tr('Explore tools')}</button></section>
+    <section className="dashboard-modifiers" aria-label={tr('Drag modifiers')}>
+      {(['convert', 'tools', 'actions'] as const).map((mode) => <div key={mode}><kbd>{modifierLabel(preferences.dragModifiers[mode])}</kbd><span>{tr(mode === 'convert' ? 'Formats modifier' : mode === 'tools' ? 'Tools modifier' : 'File actions modifier')}</span></div>)}
+    </section>
     <section className="dashboard-grid" aria-label={tr('Tools & formats')}>
       <button className="dashboard-card" onClick={() => onOpenCategory('image-tools')}><span className="dashboard-card-icon"><AppIcon name="image"/></span><strong>{tr('Images and PDFs')}</strong><small>PNG · JPEG · WebP · SVG · PDF</small><AppIcon name="arrow-right" className="dashboard-card-arrow"/></button>
       <button className="dashboard-card" onClick={() => onOpenCategory('document-tools')}><span className="dashboard-card-icon"><AppIcon name="document"/></span><strong>{tr('Documents')}</strong><small>DOCX · ODT · Markdown · HTML · EPUB</small><AppIcon name="arrow-right" className="dashboard-card-arrow"/></button>

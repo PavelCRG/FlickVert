@@ -1,10 +1,13 @@
 import { AppIcon } from '../icons/AppIcon'
 import type { MessageKey } from '../i18n'
+import type { AppSettings } from '../settings'
+import { modifierLabel } from './keyboard'
 
-export function QuickStartPage({ tr, onHome, onChooseFiles }: {
+export function QuickStartPage({ tr, onHome, onChooseFiles, preferences }: {
   tr: (key: MessageKey) => string
   onHome: () => void
   onChooseFiles: () => void
+  preferences: AppSettings
 }) {
   return <div className="page welcome-page">
     <p className="welcome-eyebrow">{tr('Quick start')}</p>
@@ -17,6 +20,9 @@ export function QuickStartPage({ tr, onHome, onChooseFiles }: {
     </div>
     <div className="welcome-details">
       <p>{tr('FlickVert shows actions for your file. Built-in tools work immediately.')}</p>
+      <div className="dashboard-modifiers" aria-label={tr('Drag modifiers')}>
+        {(['convert', 'tools', 'actions'] as const).map((mode) => <div key={mode}><kbd>{modifierLabel(preferences.dragModifiers[mode])}</kbd><span>{tr(mode === 'convert' ? 'Formats modifier' : mode === 'tools' ? 'Tools modifier' : 'File actions modifier')}</span></div>)}
+      </div>
     </div>
     <div className="welcome-actions">
       <button className="primary-button" onClick={onChooseFiles}><AppIcon name="file-plus"/>{tr('Choose files')}</button>

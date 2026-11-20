@@ -1,6 +1,6 @@
 import { AppIcon } from '../icons/AppIcon'
 import type { AppIconName } from '../icons/AppIcon'
-import UpdateNotice from '../updates/UpdateNotice'
+import { UpdateNotice } from '../updates/UpdateNotice'
 import type { MessageKey } from '../i18n'
 
 export type Section = 'guide' | 'home' | 'settings' | 'tools'
@@ -30,14 +30,15 @@ export function AppSidebar({ section, language, setSection, setSettingsPage, tr 
   setSettingsPage: (page: SettingsPage) => void
   tr: (key: MessageKey) => string
 }) {
+  const openAbout = () => { setSection('settings'); setSettingsPage('about') }
   return <aside className="sidebar">
     <div className="side-label">{tr('Workspace')}</div>
     <nav aria-label="Main navigation">
       {sections.map(({ id, label }) => <button key={id} aria-current={section === id ? 'page' : undefined} className={section === id ? 'nav-item active' : 'nav-item'} onClick={() => { setSection(id); if (id === 'settings') setSettingsPage('general') }}><AppIcon name={id} className="nav-icon"/><span>{tr(label)}</span></button>)}
     </nav>
     <div className="sidebar-bottom">
-      <UpdateNotice language={language}/>
-      <div className="version">FlickVert <span>0.1.19</span></div>
+      <UpdateNotice language={language} onOpenAbout={openAbout}/>
+      <div className="version">FlickVert <span>0.1.22</span></div>
     </div>
   </aside>
 }

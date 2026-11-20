@@ -21,7 +21,7 @@ export async function syncReleaseVersion(root, tag) {
   const cargoPackage = /(\[package\][\s\S]*?\r?\nname = "flickvert"\r?\nversion = ")[^"]+(\")/
   const cargoLockPackage = /(\[\[package\]\]\r?\nname = "flickvert"\r?\nversion = ")[^"]+(\")/
   const appVersion = /(<div className="version">FlickVert <span>)[^<]+(<\/span><\/div>)/
-  const aboutVersion = /(settingsPage === 'about' && <section className="settings-group"><h2>FlickVert )[^<]+(<\/h2>)/
+  const aboutVersion = /(<h2>FlickVert )[^<]+(<\/h2>)/
   if (!packageLock.packages?.[''] || !cargoPackage.test(cargoToml) || !cargoLockPackage.test(cargoLock) || !appVersion.test(appSidebar) || !aboutVersion.test(settingsView)) {
     throw new Error('Could not find every FlickVert version field')
   }

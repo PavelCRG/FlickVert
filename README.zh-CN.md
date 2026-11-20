@@ -15,7 +15,7 @@ FlickVert 在本机处理文件，无需上传。拖动文件，选择操作，�
 
 ## 下载
 
-最新版本提供 Windows 安装程序和便携 ZIP。Setup 可选择安装目录，无需管理员权限。便携 ZIP 可解压到任何可写磁盘，需手动更新。应用设置保存在 Windows 用户配置文件中。由于安装程序尚未使用 Authenticode 证书签名，Windows 可能显示 SmartScreen 警告。需要 Windows 10/11 和 Microsoft Edge WebView2 Runtime。
+最新版本提供 Setup、MSI 和便携 ZIP。Setup 可选择安装目录，无需管理员权限。便携 ZIP 可解压到任何可写磁盘。所有版本都会自动检查签名更新；发现新版后，可在设置 → 关于中点击下载和安装。应用设置保存在 Windows 用户配置文件中。由于安装程序尚未使用 Authenticode 证书签名，Windows 可能显示 SmartScreen 警告。需要 Windows 10/11 和 Microsoft Edge WebView2 Runtime。
 
 [直接下载 Setup](https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.exe)。
 

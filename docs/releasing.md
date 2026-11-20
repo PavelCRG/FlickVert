@@ -1,6 +1,6 @@
 # Releasing FlickVert
 
-The Desktop builds workflow tests every push and pull request. Pushing a version tag builds the Windows installer, MSI, and portable ZIP, creates checksums, and publishes a GitHub Release.
+The Desktop builds workflow tests every push and pull request. Pushing a version tag builds Setup, MSI, and portable ZIP packages, signs all three update targets, creates checksums, and publishes a GitHub Release.
 
 ## Prepare a release
 
@@ -21,7 +21,7 @@ The Desktop builds workflow tests every push and pull request. Pushing a version
    git push origin v0.1.11
    ~~~
 
-5. Watch the **Desktop builds** workflow. It runs the checks, builds Windows packages, verifies install/upgrade behavior (including a custom install directory), and publishes the release with SHA-256 checksums and GitHub build attestations. The installer update artifacts are signed; see [release signing](release-signing.md).
+5. Watch the **Desktop builds** workflow. It runs the checks, tests installer upgrades and portable executable replacement, and publishes the release with SHA-256 checksums and GitHub build attestations. Setup, MSI, and portable update artifacts are signed; see [release signing](release-signing.md).
 
 Do not reuse or move an existing release tag. If a tag build needs to be retried, use **Actions → Desktop builds → Run workflow**, select the existing tag in the branch picker, and enter the same tag; the workflow checks that both values match before it rebuilds and republishes. For a new version, create a new tag after the fix has reached main.
 
@@ -29,5 +29,5 @@ Do not reuse or move an existing release tag. If a tag build needs to be retried
 
 - Confirm the changelog and app version match the tag.
 - Confirm the **Desktop builds** workflow completed successfully.
-- Confirm the release page contains the EXE, MSI, portable ZIP, update signatures, and SHA-256SUMS.txt.
+- Confirm the release page contains Setup, MSI, portable ZIP, all three update signatures, `latest.json`, and `SHA256SUMS.txt`.
 - Keep release signing credentials in GitHub Actions Secrets; never add them to the repository or an issue.

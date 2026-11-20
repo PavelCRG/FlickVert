@@ -26,6 +26,7 @@ import type { Engines, ConversionCatalogItem, OperationQueueItem } from './app/t
 import { completeFirstRun, firstRunSection } from './app/first-run'
 import { loadConversionHistory, mergeConversionHistory, totalSavedBytes, type ConversionHistoryEntry } from './app/conversion-history'
 import { completedBatchKey } from './app/completion-notification'
+import { UpdateProvider } from './updates/UpdateNotice'
 
 function loadThemePhoto(): string | null {
   const photo = localStorage.getItem('flickvert-photo-theme')
@@ -382,7 +383,7 @@ export default function App() {
     if (folder) updatePreferences({ outputFolder: folder })
   }
 
-  return <div className={`app ${preferences.appearance}${photoThemeEnabled && themePhoto ? ' photo-theme' : ''}`} data-accent={preferences.accent} style={{ '--accent-base': accentColor(preferences), ...(photoThemeEnabled && themePhoto ? { '--photo-wallpaper': `url("${themePhoto}")` } : {}) } as CSSProperties}>
+  return <UpdateProvider language={preferences.language}><div className={`app ${preferences.appearance}${photoThemeEnabled && themePhoto ? ' photo-theme' : ''}`} data-accent={preferences.accent} style={{ '--accent-base': accentColor(preferences), ...(photoThemeEnabled && themePhoto ? { '--photo-wallpaper': `url("${themePhoto}")` } : {}) } as CSSProperties}>
     <WindowChrome language={preferences.language} photo={themePhoto} photoEnabled={photoThemeEnabled} onChoosePhoto={chooseThemePhoto} onTogglePhoto={togglePhotoTheme} onRemovePhoto={removeThemePhoto} tr={tr}/>
     <AppSidebar
       section={section}
@@ -424,6 +425,7 @@ export default function App() {
         onToggleFavorite={toggleFavorite}
       /> : section === 'guide' ? <QuickStartPage
         tr={tr}
+        preferences={preferences}
         onHome={dismissGuide}
         onChooseFiles={() => { dismissGuide(); void chooseFiles() }}
       /> : <div className="settings-layout">
@@ -475,5 +477,5 @@ export default function App() {
     {pdfPagesPath && <PdfPagesEditor key={pdfPagesPath} inputPath={pdfPagesPath} language={preferences.language} outputFolder={preferences.outputFolder} onClose={() => setPdfPagesPath(null)}/>}
     {batchRenamePaths && <BatchRenameDialog key={batchRenamePaths.join('\0')} inputPaths={batchRenamePaths} tr={tr} onClose={() => setBatchRenamePaths(null)}/>}
     {videoThumbnailPath && <VideoThumbnailEditor key={videoThumbnailPath} inputPath={videoThumbnailPath} language={preferences.language} outputFolder={preferences.outputFolder} videoCodec={preferences.videoCodec} videoPreset={preferences.videoPreset} onClose={() => setVideoThumbnailPath(null)}/>}
-  </div>
+  </div></UpdateProvider>
 }

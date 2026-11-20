@@ -15,7 +15,7 @@ FlickVert is a Windows desktop app for working with files without uploading them
 
 ## Download
 
-The latest release includes a Windows installer and a portable ZIP. Setup lets you choose an install folder and installs for your Windows user without requiring administrator rights. The portable ZIP can be extracted to any writable drive and is updated manually. App settings stay in your Windows user profile. Windows may show a SmartScreen warning because the installer is not Authenticode-signed. Windows 10/11 and Microsoft Edge WebView2 Runtime are required.
+The latest release includes Setup, MSI, and a portable ZIP. Setup installs for your Windows user without requiring administrator rights. All three versions check for signed updates automatically; choose **Settings → About → Download and install** when a new version is ready. App settings stay in your Windows user profile. Windows may show a SmartScreen warning because the installer is not Authenticode-signed. Windows 10/11 and Microsoft Edge WebView2 Runtime are required.
 
 [Direct Setup download](https://github.com/PavelCRG/FlickVert/releases/latest/download/FlickVert-Windows-x64-Setup.exe).
 

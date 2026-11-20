@@ -306,26 +306,6 @@ pub(crate) fn conversion_catalog() -> Vec<operations::ConversionCatalogItem> {
 }
 
 #[tauri::command]
-pub(crate) fn supports_in_app_updates() -> bool {
-    #[cfg(windows)]
-    {
-        supports_windows_update(tauri::utils::platform::bundle_type())
-    }
-    #[cfg(not(windows))]
-    {
-        cfg!(target_os = "macos")
-    }
-}
-
-#[cfg(any(windows, test))]
-pub(crate) fn supports_windows_update(bundle: Option<tauri::utils::config::BundleType>) -> bool {
-    matches!(
-        bundle,
-        Some(tauri::utils::config::BundleType::Msi | tauri::utils::config::BundleType::Nsis)
-    )
-}
-
-#[tauri::command]
 pub(crate) fn take_drag_trigger(trigger: tauri::State<'_, DragTrigger>) -> bool {
     std::mem::take(&mut *trigger.0.lock().unwrap())
 }
@@ -417,21 +397,13 @@ pub(crate) fn has_pdf_text<R: Read>(reader: &mut R) -> std::io::Result<bool> {
 mod tests {
     use super::{
         cancel_all_operation_jobs, clamp_pdf_dpi, error_log_line, file_mime, has_pdf_text,
-        parse_media_duration_us, supports_windows_update, OperationJobs,
+        parse_media_duration_us, OperationJobs,
     };
     use std::{
         io::Cursor,
         sync::atomic::{AtomicBool, Ordering},
         sync::Arc,
     };
-
-    #[test]
-    fn updater_accepts_installed_windows_bundles_but_not_portable_builds() {
-        use tauri::utils::config::BundleType;
-        assert!(supports_windows_update(Some(BundleType::Msi)));
-        assert!(supports_windows_update(Some(BundleType::Nsis)));
-        assert!(!supports_windows_update(None));
-    }
 
     #[test]
     fn parses_ffprobe_duration_as_positive_microseconds() {

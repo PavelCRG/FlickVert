@@ -9,6 +9,7 @@ import { modifierLabel } from './keyboard'
 import { operationShortcutActions } from '../quick-menu/quick-actions'
 import { WheelEditor } from './WheelEditor'
 import { purposeProfiles } from '../settings/profiles'
+import { UpdatePanel } from '../updates/UpdateNotice'
 import { applyConversionProfile, removeConversionProfile, saveConversionProfile } from '../settings/conversion-profiles'
 import type { Section, SettingsPage } from './AppSidebar'
 
@@ -97,7 +98,9 @@ export function SettingsView(props: SettingsViewProps) {
             {recordingOperationShortcut && <p className="catalog-note" role="status">{tr('Press a shortcut with Ctrl or Alt. Shift may be added. Escape cancels.')}</p>}
             {operationShortcutError && <p className="shortcut-error" role="alert">{tr('Operation shortcut conflicts or is unavailable.')}</p>}
           </section>}
-          {(['convert', 'tools', 'actions'] as const).map((mode) => <SettingsRow key={mode} label={tr(mode === 'convert' ? 'Formats modifier' : mode === 'tools' ? 'Tools modifier' : 'File actions modifier')}><select className="modifier-select" value={preferences.dragModifiers[mode]} aria-label={tr(mode === 'convert' ? 'Formats modifier' : mode === 'tools' ? 'Tools modifier' : 'File actions modifier')} onChange={(event) => updateDragModifier(mode, event.target.value as 'SHIFT' | 'CTRL' | 'ALT')}>{(['SHIFT', 'CTRL', 'ALT'] as const).map((key) => <option key={key} value={key} disabled={key !== preferences.dragModifiers[mode] && Object.entries(preferences.dragModifiers).some(([other, assigned]) => other !== mode && assigned === key)}>{modifierLabel(key)}</option>)}</select></SettingsRow>)}
+          <section className="operation-shortcuts drag-modifier-settings" aria-label={tr('Drag modifiers')}><h3>{tr('Drag modifiers')}</h3>
+            {(['convert', 'tools', 'actions'] as const).map((mode) => <SettingsRow key={mode} label={tr(mode === 'convert' ? 'Formats modifier' : mode === 'tools' ? 'Tools modifier' : 'File actions modifier')}><select className="modifier-select" value={preferences.dragModifiers[mode]} aria-label={tr(mode === 'convert' ? 'Formats modifier' : mode === 'tools' ? 'Tools modifier' : 'File actions modifier')} onChange={(event) => updateDragModifier(mode, event.target.value as 'SHIFT' | 'CTRL' | 'ALT')}>{(['SHIFT', 'CTRL', 'ALT'] as const).map((key) => <option key={key} value={key} disabled={key !== preferences.dragModifiers[mode] && Object.entries(preferences.dragModifiers).some(([other, assigned]) => other !== mode && assigned === key)}>{modifierLabel(key)}</option>)}</select></SettingsRow>)}
+          </section>
           {modifierError && <p className="shortcut-error">{tr('Could not update drag modifiers.')}</p>}
           <SettingsRow label={tr('Reset keyboard settings')}><button className="secondary-button" onClick={() => updatePreferences(resetSettingsSection('keyboard'))}>{tr('Reset')}</button></SettingsRow>
         </section>}
@@ -123,6 +126,6 @@ export function SettingsView(props: SettingsViewProps) {
         </section>}
 
         {settingsPage === 'files' && <><section className="settings-group"><h2>{tr('Files')}</h2><div className="output-folder-setting"><div><strong>{tr('Save location')}</strong><span title={preferences.outputFolder}>{preferences.outputFolder || tr('Same folder as original')}</span></div><button className="secondary-button" onClick={() => void chooseOutputFolder()}><AppIcon name="folder"/>{tr('Choose folder')}</button>{preferences.outputFolder && <button className="secondary-button" onClick={() => updatePreferences({ outputFolder: undefined })}>{tr('Use source folder')}</button>}</div><label className="field"><span>{tr('ZIP compression')} · {preferences.zipCompressionLevel}/9</span><input type="range" min="1" max="9" value={preferences.zipCompressionLevel} onChange={(event) => updatePreferences({ zipCompressionLevel: Number(event.target.value) })}/></label><p className="catalog-note">{tr('Higher compression can make ZIP archives smaller but takes longer.')}</p></section><section className="settings-group"><h2>{tr('Settings backup')}</h2><p className="catalog-note">{tr('Back up appearance, keyboard, and conversion preferences. Folder paths are excluded.')}</p><div className="settings-backup-actions"><button className="secondary-button" onClick={exportSettings}><AppIcon name="download"/>{tr('Export settings')}</button><button className="secondary-button" onClick={() => settingsImportInput.current?.click()}><AppIcon name="folder"/>{tr('Import settings')}</button><input ref={settingsImportInput} hidden type="file" accept="application/json,.json" onChange={(event) => void importSettings(event)}/></div>{settingsImportError && <p className="shortcut-error" role="alert">{tr('Could not import settings. Choose a valid FlickVert backup.')}</p>}</section></>}
-        {settingsPage === 'about' && <section className="settings-group"><h2>FlickVert 0.1.19</h2><p className="catalog-note">{tr('Audio decoder and licenses are listed in the installer notices.')}</p></section>}
+        {settingsPage === 'about' && <><section className="settings-group"><h2>FlickVert 0.1.22</h2><p className="catalog-note">{tr('Audio decoder and licenses are listed in the installer notices.')}</p></section><UpdatePanel language={preferences.language}/></>}
       </div>
 }

@@ -10,6 +10,7 @@ export async function createUpdateManifest(root = process.cwd(), tag = process.e
   const artifacts = {
     'windows-x86_64-nsis': 'FlickVert-Windows-x64-Setup.exe',
     'windows-x86_64-msi': 'FlickVert-Windows-x64-Setup.msi',
+    'windows-x86_64-portable': 'FlickVert-Windows-x64-Portable.zip',
   }
   const platforms = Object.fromEntries(await Promise.all(Object.entries(artifacts).map(async ([platform, file]) => {
     const signature = (await readFile(join(root, 'release-assets', `${file}.sig`), 'utf8')).trim()

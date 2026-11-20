@@ -98,7 +98,8 @@ pub(super) fn run() {
             pdf_page_count,
             video_scaling_available,
             conversion_catalog,
-            supports_in_app_updates,
+            windows_update_channel,
+            install_portable_update,
             convert_file,
             process_image_tool,
             process_media_tool,
@@ -115,7 +116,7 @@ pub(super) fn run() {
         .setup(|app| {
             if let Ok(cache) = app.path().app_cache_dir() {
                 let now = std::time::SystemTime::now();
-                for workspace in ["media-work", "image-work", "archive-work"] {
+                for workspace in ["media-work", "image-work", "archive-work", "portable-updates"] {
                     cleanup_stale_workspaces(&cache.join(workspace), now);
                 }
             }

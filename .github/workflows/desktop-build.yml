@@ -76,10 +76,17 @@ jobs:
       - name: Package portable Windows app
         if: runner.os == 'Windows'
         shell: pwsh
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
         run: |
+          cargo build --manifest-path src-tauri/Cargo.toml --release --target x86_64-pc-windows-msvc --bin flickvert-updater
+          ./scripts/test-windows-portable-update.ps1 -Updater 'src-tauri/target/x86_64-pc-windows-msvc/release/flickvert-updater.exe'
           $package = Join-Path $env:RUNNER_TEMP 'FlickVert-portable'
           New-Item -ItemType Directory -Path $package -Force | Out-Null
           Copy-Item 'src-tauri/target/x86_64-pc-windows-msvc/release/flickvert.exe' (Join-Path $package 'FlickVert.exe')
+          Copy-Item 'src-tauri/target/x86_64-pc-windows-msvc/release/flickvert-updater.exe' (Join-Path $package 'FlickVertUpdater.exe')
           Copy-Item 'README.md','README.ru.md','README.zh-CN.md' $package
           @'
           Run FlickVert.exe. Drag a file and press Shift for the conversion wheel, Ctrl for tools, or Alt for file actions. Image tools can combine up to 100 images into a PDF; the actions wheel can create/extract ZIP archives, copy/move selected files and folders to Downloads/FlickVert, or open the selected folder in Windows Terminal (PowerShell is the fallback).
@@ -92,12 +99,19 @@ jobs:
 
           FlickVert shows Quick start on first launch and opens Settings on later launches. Closing the window keeps FlickVert running in the system tray, so the drag wheel and shortcut remain available. Choose Quit from the tray menu to stop FlickVert. Press Shift while dragging a file to open the conversion wheel; Ctrl opens tools and Alt opens file actions.
           '@ | Set-Content (Join-Path $package 'INSTALL.txt') -Encoding utf8
-          Compress-Archive -Path (Join-Path $package '*') -DestinationPath (Join-Path $env:RUNNER_TEMP 'FlickVert-Windows-x64-portable.zip') -CompressionLevel Optimal
+          $portable = Join-Path $env:RUNNER_TEMP 'FlickVert-Windows-x64-Portable.zip'
+          Compress-Archive -Path (Join-Path $package '*') -DestinationPath $portable -CompressionLevel Optimal
+          if ($env:GITHUB_REF -like 'refs/tags/v*' -or $env:RELEASE_TAG -like 'v*') {
+            $version = $env:RELEASE_TAG.TrimStart('v')
+            npm run tauri -- signer sign --app-version $version $portable
+          }
       - uses: actions/upload-artifact@v4
         if: runner.os == 'Windows'
         with:
           name: flickvert-windows-portable
-          path: ${{ runner.temp }}/FlickVert-Windows-x64-portable.zip
+          path: |
+            ${{ runner.temp }}/FlickVert-Windows-x64-Portable.zip
+            ${{ runner.temp }}/FlickVert-Windows-x64-Portable.zip.sig
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
@@ -139,7 +153,8 @@ jobs:
           }
           copy_one flickvert-x86_64-pc-windows-msvc '*.msi' FlickVert-Windows-x64-Setup.msi
           copy_one flickvert-x86_64-pc-windows-msvc '*-setup.exe' FlickVert-Windows-x64-Setup.exe
-          copy_one flickvert-windows-portable '*-portable.zip' FlickVert-Windows-x64-Portable.zip
+          copy_one flickvert-windows-portable '*-Portable.zip' FlickVert-Windows-x64-Portable.zip
+          copy_one flickvert-windows-portable '*-Portable.zip.sig' FlickVert-Windows-x64-Portable.zip.sig
           copy_one flickvert-x86_64-pc-windows-msvc '*-setup.exe.sig' FlickVert-Windows-x64-Setup.exe.sig
           copy_one flickvert-x86_64-pc-windows-msvc '*.msi.sig' FlickVert-Windows-x64-Setup.msi.sig
           node scripts/create-update-manifest.mjs "$RELEASE_TAG"
@@ -163,7 +178,7 @@ jobs:
             ## Download
 
             - **Windows 10/11 x64:** [Setup](https://github.com/PavelCRG/FlickVert/releases/download/${{ inputs.release_tag || github.ref_name }}/FlickVert-Windows-x64-Setup.exe) · [MSI](https://github.com/PavelCRG/FlickVert/releases/download/${{ inputs.release_tag || github.ref_name }}/FlickVert-Windows-x64-Setup.msi) · [Portable ZIP](https://github.com/PavelCRG/FlickVert/releases/download/${{ inputs.release_tag || github.ref_name }}/FlickVert-Windows-x64-Portable.zip)
-            Setup installs for the current user and lets you choose the destination folder. Portable ZIPs can be extracted to any writable drive. Setup builds check for signed updates at launch and every six hours; portable builds update manually. Windows may show a SmartScreen warning because the installer is not Authenticode-signed. If updating from an older development build, uninstall it before installing this release.
+            Setup installs for the current user and lets you choose the destination folder. Portable ZIPs can be extracted to any writable drive. FlickVert checks for signed updates at launch and every six hours; use Settings → About to install them. Windows may show a SmartScreen warning because the installer is not Authenticode-signed. If updating from an older development build, uninstall it before installing this release.
 
             Files are processed locally. Optional engines (FFmpeg, Pandoc, ImageMagick, LibreOffice, Poppler) are installed separately. Verify downloads with `SHA256SUMS.txt` and the GitHub build attestation; see [download verification](https://github.com/PavelCRG/FlickVert/blob/main/docs/download-verification.md).
           files: release-assets/*

@@ -5,6 +5,7 @@ mod inspection;
 mod pdf;
 mod preferences;
 mod windows;
+mod updates;
 
 pub(crate) use archives::*;
 pub(crate) use conversion::*;
@@ -13,3 +14,4 @@ pub(crate) use inspection::*;
 pub(crate) use pdf::*;
 pub(crate) use preferences::*;
 pub(crate) use windows::*;
+pub(crate) use updates::*;
