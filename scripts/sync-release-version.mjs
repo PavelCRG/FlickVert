@@ -18,7 +18,7 @@ export async function syncReleaseVersion(root, tag) {
   const cargoLock = await read('src-tauri/Cargo.lock')
   const appSidebar = await read('frontend/app/AppSidebar.tsx')
   const settingsView = await read('frontend/app/SettingsView.tsx')
-  const cargoPackage = /(\[package\][\s\S]*?\r?\nname = "flickvert"\r?\nversion = ")[^"]+(\")/
+  const cargoPackage = /(\[package\][\s\S]*?\r?\nname = "flickvert"\r?\n(?:default-run = "[^"]+"\r?\n)?version = ")[^"]+(\")/
   const cargoLockPackage = /(\[\[package\]\]\r?\nname = "flickvert"\r?\nversion = ")[^"]+(\")/
   const appVersion = /(<div className="version">FlickVert <span>)[^<]+(<\/span><\/div>)/
   const aboutVersion = /(<h2>FlickVert )[^<]+(<\/h2>)/

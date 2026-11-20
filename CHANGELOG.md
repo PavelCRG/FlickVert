@@ -1,9 +1,10 @@
 # Changelog
 
-## 0.1.22
+## 0.1.23
 
 - Added one-click signed updates for portable ZIP builds alongside Setup and MSI, with a safe staged executable replacement and automatic relaunch.
 - Added an update center in Settings → About and made the file-drag modifier mapping visible on Home and Quick start.
+- Set the default Cargo binary explicitly so Tauri can build FlickVert alongside its portable updater helper.
 
 ## 0.1.19
 
