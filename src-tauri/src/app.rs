@@ -152,7 +152,7 @@ pub(super) fn run() {
                     quick_window
                 }
             };
-            match quick_window
+            if let Err(error) = quick_window
                 .title("FlickVert Quick Actions")
                 .inner_size(QUICK_WIDTH as f64, QUICK_HEIGHT as f64)
                 .resizable(false)
@@ -163,15 +163,10 @@ pub(super) fn run() {
                 .skip_taskbar(true)
                 .focused(false)
                 .focusable(false)
-                .visible(true)
+                .visible(false)
                 .build()
             {
-                Ok(window) => {
-                    if let Err(error) = window.hide() {
-                        eprintln!("Could not hide the prepared quick actions window: {error}");
-                    }
-                }
-                Err(error) => eprintln!("Could not prepare quick actions: {error}"),
+                eprintln!("Could not prepare quick actions: {error}");
             }
             let tray = tray_menu(app.handle()).and_then(|menu| {
                 let icon = app

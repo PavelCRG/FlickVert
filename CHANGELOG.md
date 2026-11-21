@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2
+
+- Kept Windows startup silent by suppressing the console in every Windows build and creating the background quick-actions window hidden.
+
 ## 0.1.23
 
 - Added one-click signed updates for portable ZIP builds alongside Setup and MSI, with a safe staged executable replacement and automatic relaunch.
