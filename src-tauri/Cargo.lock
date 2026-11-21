@@ -1429,7 +1429,7 @@ dependencies = [
 
 [[package]]
 name = "flickvert"
-version = "0.2.2"
+version = "0.1.24"
 dependencies = [
  "calamine",
  "csv",

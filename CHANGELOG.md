@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.2
+## 0.1.24
 
 - Kept Windows startup silent by suppressing the console in every Windows build and creating the background quick-actions window hidden.
 
